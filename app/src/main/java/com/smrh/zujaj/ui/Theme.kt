@@ -77,6 +77,8 @@ fun ZujajTheme(content: @Composable () -> Unit) {
         LocalLayoutDirection provides if (ar) LayoutDirection.Rtl else LayoutDirection.Ltr,
         LocalAccent provides accent,
     ) {
-        MaterialTheme(colorScheme = scheme, typography = typo, content = content)
+        MaterialTheme(colorScheme = scheme, typography = typo) {
+            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides Z.text, content = content)
+        }
     }
 }

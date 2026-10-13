@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -138,11 +139,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             // ---------------------------------------------------------------- controls
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Section(tr("Style presets", "أنماط جاهزة")) {
-                    Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        presets.take(4).forEach { (en, a, p) -> Box(Modifier.weight(1f)) { ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } } }
-                    }
-                    Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        presets.drop(4).forEach { (en, a, p) -> Box(Modifier.weight(1f)) { ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } } }
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
                     }
                 }
 
