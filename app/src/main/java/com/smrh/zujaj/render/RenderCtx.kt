@@ -284,6 +284,13 @@ class RenderCtx(
         val f = if (bold) sansBold else sansMed
         val p = paint(color, size, f, align)
         val left = (target - System.currentTimeMillis()).coerceAtLeast(0) / 1000
+        if (left >= 86400) {
+            // Long countdowns: static "in 80d 4h" (refreshed periodically)
+            val s = prefix + n("${left / 86400}") + t("d ", "ي ") + n("${(left % 86400) / 3600}") + t("h", "س")
+            val fm = p.fontMetrics
+            canvas.drawText(s, x, cy - (fm.ascent + fm.descent) / 2f, p)
+            return
+        }
         val shown = prefix + n(String.format(Locale.US, "%d:%02d:%02d", left / 3600, (left % 3600) / 60, left % 60))
         val fm = p.fontMetrics
         if (preview) {

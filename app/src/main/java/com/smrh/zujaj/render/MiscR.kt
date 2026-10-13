@@ -614,7 +614,8 @@ object ToolsR {
         val frac = ((now - rise).toFloat() / (set - rise)).coerceIn(0f, 1f)
         val left = r.pad + 20 * r.u; val right = r.w - r.pad - 20 * r.u
         val base = r.h * 0.66f
-        val rect = RectF(left, base - (right - left) * 0.42f, right, base + (right - left) * 0.42f)
+        val ry = (base - r.pad - 12 * r.u).coerceAtMost((right - left) / 2)
+        val rect = RectF(left, base - ry, right, base + ry)
         val arc = r.strokePaint(withAlpha(r.c1, 60), 2 * r.u).apply { pathEffect = android.graphics.DashPathEffect(floatArrayOf(5 * r.u, 5 * r.u), 0f) }
         r.canvas.save(); r.canvas.clipRect(0f, 0f, r.w, base)
         r.canvas.drawArc(rect, 180f, 180f, false, arc)

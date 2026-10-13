@@ -26,9 +26,9 @@ object DigitalR {
     }
 
     fun stacked(r: RenderCtx) {
-        val size = r.h * 0.5f * r.s1
-        r.liveTime(r.hh(), r.w / 2, r.h * 0.3f, size, LiveFont.SHOULDERS, r.c1, sample = "00")
-        r.liveTime("mm", r.w / 2, r.h * 0.7f, size, LiveFont.SHOULDERS, r.c2, sample = "00")
+        val size = r.h * 0.44f * r.s1
+        r.liveTime(r.hh(), r.w / 2, r.h * 0.29f, size, LiveFont.SHOULDERS, r.c1, sample = "00")
+        r.liveTime("mm", r.w / 2, r.h * 0.71f, size, LiveFont.SHOULDERS, r.c2, sample = "00")
     }
 
     fun tall(r: RenderCtx) {

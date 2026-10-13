@@ -49,7 +49,7 @@ object PrayerR {
     /** 0 = highlighted time pill, 1 = highlighted column, 2 = dots */
     fun strip(r: RenderCtx, variant: Int, area: RectF = RectF(r.pad, 0f, r.w - r.pad, r.h)) {
         val d = day(r)
-        val five = d.five
+        val five = if (r.ar) d.five.reversed() else d.five
         val cw = area.width() / 5
         val nextKey = d.next.key.let { if (it == "sunrise") "dhuhr" else it }
         for ((i, p) in five.withIndex()) {
@@ -220,9 +220,15 @@ object PrayerR {
             if (pr.key == d.next.key && pr.time == d.next.time) {
                 r.canvas.drawRoundRect(RectF(p, cy - rowH * 0.46f, r.w - p, cy + rowH * 0.46f), 12 * r.u, 12 * r.u, r.fillPaint(withAlpha(r.c1, 26)))
             }
-            icon(r, pr.key, p + 16 * r.u, cy, 14 * r.u, r.c2)
-            r.text(nm(r, pr), p + 32 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans)
-            r.text(tm(r, pr.time), r.w - p - 12 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans, Paint.Align.RIGHT)
+            if (r.ar) {
+                icon(r, pr.key, r.w - p - 16 * r.u, cy, 14 * r.u, r.c2)
+                r.text(nm(r, pr), r.w - p - 32 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans, Paint.Align.RIGHT)
+                r.text(tm(r, pr.time), p + 12 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans)
+            } else {
+                icon(r, pr.key, p + 16 * r.u, cy, 14 * r.u, r.c2)
+                r.text(nm(r, pr), p + 32 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans)
+                r.text(tm(r, pr.time), r.w - p - 12 * r.u, cy, 11 * r.u * r.s2, r.c1, r.sans, Paint.Align.RIGHT)
+            }
         }
     }
 

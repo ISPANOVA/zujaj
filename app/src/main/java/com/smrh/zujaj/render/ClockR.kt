@@ -87,7 +87,7 @@ object ClockR {
         val clip = Path().apply { addCircle(d.cx, d.cy, d.r * 0.62f, Path.Direction.CW) }
         r.canvas.clipPath(clip)
         val sp = r.strokePaint(withAlpha(r.c1, 18), d.r * 0.035f, false)
-        var x = d.cx - d.r
+        var x = d.cx - d.r * 3
         while (x < d.cx + d.r) { r.canvas.drawLine(x, d.cy + d.r, x + d.r * 2, d.cy - d.r, sp); x += d.r * 0.09f }
         r.canvas.restoreToCount(save)
         r.circle(d.cx, d.cy, d.r * 0.36f, withAlpha(r.bgColorSafe(), 255))
