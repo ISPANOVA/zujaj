@@ -75,8 +75,6 @@ fun HomeScreen(nav: Nav) {
             }
             when (tab) {
                 0 -> WidgetsTab(nav)
-                1 -> IconsTab()
-                2 -> WallsTab(nav)
                 else -> MyWidgetsTab(nav)
             }
         }
@@ -89,8 +87,6 @@ private fun BottomBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
     val accent = LocalAccent.current
     val items = listOf(
         Icons.Rounded.Widgets to tr("Widgets", "الويدجت"),
-        Icons.Rounded.Apps to tr("Icons", "الأيقونات"),
-        Icons.Rounded.Image to tr("Walls", "الخلفيات"),
         Icons.Rounded.Dashboard to tr("Mine", "ويدجتاتي"),
     )
     Row(
@@ -165,7 +161,7 @@ fun WidgetsTab(nav: Nav, shape: Shape? = null, onPick: ((WidgetStyle) -> Unit)? 
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(list, key = { it.id }, span = { GridItemSpan(if (it.shape == Shape.SMALL) 1 else 2) }) { st ->
+            items(pack(list), key = { it.id }, span = { GridItemSpan(if (it.shape == Shape.SMALL) 1 else 2) }) { st ->
                 StyleCard(st) { if (onPick != null) onPick(st) else nav.go(Screen.Editor(st.id)) }
             }
         }
@@ -198,3 +194,16 @@ fun PickScreen(nav: Nav, s: Screen.Pick) {
 
 @Suppress("unused")
 private val spacer = Modifier.height(1.dp)
+
+/** Pair small (1-column) widgets so the 2-column grid never leaves an empty half row. */
+fun pack(list: List<WidgetStyle>): List<WidgetStyle> {
+    val out = ArrayList<WidgetStyle>(list.size)
+    var pending: WidgetStyle? = null
+    for (s in list) {
+        if (s.shape == Shape.SMALL) {
+            if (pending != null) { out += pending; out += s; pending = null } else pending = s
+        } else out += s
+    }
+    pending?.let { out += it }
+    return out
+}

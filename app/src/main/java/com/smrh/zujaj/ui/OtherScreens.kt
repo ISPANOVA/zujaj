@@ -137,6 +137,7 @@ fun SettingsScreen(nav: Nav) {
     val scope = rememberCoroutineScope()
     var showCity by remember { mutableStateOf(false) }
     var taps by remember { mutableIntStateOf(0) }
+    var showGate by remember { mutableStateOf(false) }
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
@@ -154,7 +155,7 @@ fun SettingsScreen(nav: Nav) {
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(if (Prefs.isPro) tr("You are Pro ✓", "أنت مشترك برو ✓") else tr("Zujaj Pro", "زجاج برو"), style = MaterialTheme.typography.titleMedium)
-                        Text(tr("All widgets, icon styles & wallpapers", "كل الويدجت والأيقونات والخلفيات"), color = Z.sub, style = MaterialTheme.typography.bodySmall)
+                        Text(tr("All widgets & every future widget", "كل الويدجت وكل الويدجت القادمة"), color = Z.sub, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -234,12 +235,13 @@ fun SettingsScreen(nav: Nav) {
                 Divider()
                 RowBase(tr("Version", "الإصدار"), sub = BuildConfig.VERSION_NAME + " · by SMRH", onClick = {
                     taps++
-                    if (taps >= 7) { taps = 0; nav.go(Screen.Admin) }
+                    if (taps >= 7) { taps = 0; showGate = true }
                 }) {}
             }
             Spacer(Modifier.height(60.dp))
         }
     }
+    if (showGate) AdminGateDialog({ showGate = false }) { showGate = false; nav.go(Screen.Admin) }
     if (showCity) CityPickerDialog({ showCity = false }) { c ->
         Prefs.lat = c.lat; Prefs.lng = c.lng; Prefs.cityName = c.name; Prefs.hasLocation = true
         scope.launch(Dispatchers.IO) { Scheduler.refreshWeatherIfNeeded(ctx, true); WidgetUpdater.updateAll(ctx) }
@@ -274,7 +276,6 @@ fun PaywallScreen(nav: Nav) {
             Spacer(Modifier.height(18.dp))
             listOf(
                 tr("All ${Catalog.all.size}+ widgets — clocks, prayer, media, calendar…", "كل الويدجت (${Catalog.all.size}+) — ساعات، صلاة، ميديا، تقويم…"),
-                tr("Every icon style & wallpaper", "كل ستايلات الأيقونات والخلفيات"),
                 tr("Glass, aurora & texture backgrounds", "خلفيات زجاجية وشفق وملمس"),
                 tr("New widgets every month", "ويدجت جديدة كل شهر"),
                 tr("Support an independent developer ♥", "ادعم مطوراً مستقلاً ♥"),
@@ -340,33 +341,20 @@ fun AdminScreen(nav: Nav) {
                 modifier = Modifier.padding(20.dp), color = Z.sub)
             return
         }
-        var user by remember { mutableStateOf(auth.currentUser) }
-        if (user == null) {
-            var email by remember { mutableStateOf("") }
-            var pass by remember { mutableStateOf("") }
-            var busy by remember { mutableStateOf(false) }
-            Column(Modifier.padding(20.dp)) {
-                OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(pass, { pass = it }, label = { Text(tr("Password", "كلمة المرور")) }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(16.dp))
-                PrimaryButton(if (busy) "…" else tr("Sign in", "دخول"), Modifier.fillMaxWidth()) {
-                    if (busy) return@PrimaryButton
-                    busy = true
-                    scope.launch {
-                        val r = runCatching { auth.signInWithEmailAndPassword(email, pass).await() }
-                        busy = false
-                        r.onSuccess { user = auth.currentUser }.onFailure { Toast.makeText(ctx, it.message, Toast.LENGTH_LONG).show() }
-                    }
-                }
-                TextButton(onClick = {
-                    scope.launch {
-                        val r = runCatching { auth.createUserWithEmailAndPassword(email, pass).await(); auth.currentUser?.sendEmailVerification()?.await() }
-                        r.onSuccess { user = auth.currentUser; Toast.makeText(ctx, tr("Account created – verify your email", "تم إنشاء الحساب – فعّل بريدك"), Toast.LENGTH_LONG).show() }
-                            .onFailure { Toast.makeText(ctx, it.message, Toast.LENGTH_LONG).show() }
-                    }
-                }) { Text(tr("Create admin account (first time)", "إنشاء حساب الأدمن (أول مرة)"), color = Z.sub) }
+        if (!AdminSession.unlocked) { Text(tr("Locked", "مقفول"), modifier = Modifier.padding(20.dp)); return }
+        var user by remember { mutableStateOf(auth.currentUser?.takeIf { AdminSession.isAdminEmail(it.email) }) }
+        var error by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) {
+            if (user != null) return@LaunchedEffect
+            val r = runCatching {
+                runCatching { auth.signInWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
+                    .recoverCatching { auth.createUserWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
+                    .getOrThrow()
             }
+            r.onSuccess { user = auth.currentUser }.onFailure { error = it.message }
+        }
+        if (user == null) {
+            Text(error ?: tr("Signing in…", "جارٍ تسجيل الدخول…"), modifier = Modifier.padding(20.dp), color = Z.sub)
             return
         }
         val flags by Flags.flags.collectAsState()
@@ -429,7 +417,7 @@ fun TutorialScreen(nav: Nav) {
                 tr("Tap Apply", "اضغط إضافة") to tr("Your launcher asks where to place it — confirm and it appears on your home screen.", "سيسألك المشغل عن مكان الويدجت — أكّد وستظهر على شاشتك."),
                 tr("Or add from the launcher", "أو من المشغل") to tr("Long-press the home screen → Widgets → Zujaj → choose a size, then pick a design.", "اضغط مطولاً على الشاشة ← الأدوات ← زجاج ← اختر الحجم ثم التصميم."),
                 tr("Edit anytime", "عدّل في أي وقت") to tr("Open the Mine tab, or long-press a widget → Settings/Edit (Android 12+).", "افتح قسم ويدجتاتي، أو اضغط مطولاً على الويدجت ← إعدادات (أندرويد ١٢+)."),
-                tr("Lock screen", "شاشة القفل") to tr("Phones with lock-screen widget support (e.g. Samsung One UI 7+, Android 16 hub) list Zujaj widgets there too. Use the Walls tab to put a matching wallpaper on the lock screen.", "الهواتف التي تدعم ويدجت شاشة القفل (مثل سامسونج One UI 7+ وأندرويد 16) تعرض ويدجت زجاج هناك أيضاً. واستخدم قسم الخلفيات لوضع خلفية متناسقة على شاشة القفل."),
+                tr("Lock screen", "شاشة القفل") to tr("Phones with lock-screen widget support (e.g. Samsung One UI 7+, Android 16 hub) list Zujaj widgets there too. ", "الهواتف التي تدعم ويدجت شاشة القفل (مثل سامسونج One UI 7+ وأندرويد 16) تعرض ويدجت زجاج هناك أيضاً."),
                 tr("Media widgets", "ويدجت الميديا") to tr("Allow music access once so widgets show what's playing in any app.", "اسمح بالوصول للميديا مرة واحدة لتعرض الويدجت ما يُشغَّل في أي تطبيق."),
                 tr("Keep widgets fresh", "حافظ على التحديث") to tr("If your phone kills background apps, allow Zujaj in battery settings.", "إذا كان هاتفك يغلق التطبيقات في الخلفية، اسمح لزجاج في إعدادات البطارية."),
             )
@@ -477,6 +465,56 @@ fun AboutScreen(nav: Nav) {
             Spacer(Modifier.height(18.dp))
             Text(tr("Credits", "الحقوق"), style = MaterialTheme.typography.titleMedium)
             Text("• Weather data: MET Norway (api.met.no), CC BY 4.0\n• Prayer times: Adhan library (MIT)\n• Fonts: Manrope, Cairo, Playfair Display, Bodoni Moda, Big Shoulders, Oswald, Cormorant, Amiri, Aref Ruqaa, Reem Kufi, Rakkas — SIL Open Font License\n• Designed & built by SMRH", color = Z.sub)
+        }
+    }
+}
+
+
+// =============================================================================== ADMIN GATE
+/** Holds the admin credentials for this app session only (never written to disk). */
+object AdminSession {
+    private const val PASS_HASH = "0db2cde54e86a0e70d3095763b58310744658fc5643843638f4e9f3ac74848a3"
+    private const val EMAIL_HASH = "66b4246fab51306dc69ca5c7ffe3ca1e05123352709401cb5118208380223ea7"
+    var unlocked = false
+        private set
+    var email = ""
+        private set
+    var pass = ""
+        private set
+
+    fun sha(s: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    fun checkPass(p: String) = sha(p) == PASS_HASH
+    fun isAdminEmail(e: String?) = e != null && sha(e.trim().lowercase()) == EMAIL_HASH
+    fun unlock(p: String, e: String) { pass = p; email = e.trim().lowercase(); unlocked = true }
+}
+
+@Composable
+fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
+    var step by remember { mutableIntStateOf(0) }
+    var pass by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf(false) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(20.dp)) {
+            Text(if (step == 0) tr("Password", "كلمة المرور") else tr("Email", "البريد الإلكتروني"), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            if (step == 0) {
+                OutlinedTextField(pass, { pass = it; err = false }, singleLine = true, isError = err,
+                    visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            } else {
+                OutlinedTextField(email, { email = it; err = false }, singleLine = true, isError = err, modifier = Modifier.fillMaxWidth())
+            }
+            if (err) Text(tr("Wrong", "غير صحيح"), color = Color(0xFFE5484D), fontSize = 12.sp)
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+                TextButton(onClick = {
+                    if (step == 0) { if (AdminSession.checkPass(pass)) step = 1 else err = true }
+                    else if (AdminSession.isAdminEmail(email)) { AdminSession.unlock(pass, email); onOk() } else err = true
+                }) { Text(tr("Next", "التالي"), color = LocalAccent.current) }
+            }
         }
     }
 }

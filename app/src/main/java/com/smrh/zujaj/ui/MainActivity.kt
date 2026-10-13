@@ -36,7 +36,6 @@ sealed class Screen {
     data object Tutorial : Screen()
     data object MediaAccess : Screen()
     data object About : Screen()
-    data class Wall(val kind: Int, val seed: Long) : Screen()
 }
 
 class Nav(start: Screen) {
@@ -126,7 +125,6 @@ fun Root(nav: Nav) {
                     Screen.Tutorial -> TutorialScreen(nav)
                     Screen.MediaAccess -> MediaAccessScreen(nav)
                     Screen.About -> AboutScreen(nav)
-                    is Screen.Wall -> WallScreen(nav, s)
                 }
             }
         }

@@ -108,7 +108,7 @@ class RenderCtx(
     val ar: Boolean = when (cfg.language) {
         Lang.AR -> true
         Lang.EN -> false
-        Lang.AUTO -> Locale.getDefault().language == "ar"
+        Lang.AUTO -> com.smrh.zujaj.data.Prefs.isArabicUi
     }
     val arDigits: Boolean = when (cfg.numerals) {
         Numerals.ARABIC -> true
