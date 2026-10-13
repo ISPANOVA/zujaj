@@ -37,6 +37,27 @@ jobs:
           ./gradlew --no-daemon :app:bundleRelease 2>&1 | tee build.log
           ./gradlew --no-daemon :app:assembleRelease -PtestingSign 2>&1 | tee -a build.log
 
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/release/*.apk "release/Zujaj-1.0.0-build${{ github.run_number }}.apk"
+
+      - name: Create GitHub Release (APK for testing)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Zujaj 1.0.0 · build ${{ github.run_number }}
+          prerelease: true
+          make_latest: true
+          body: |
+            ## زجاج – Zujaj (نسخة تجريبية)
+            ملف APK للتجربة المباشرة على الموبايل (موقّع بمفتاح تجربة).
+            نسخة جوجل بلاي (AAB) بتتوقّع بمفتاح الرفع الخاص ومش بتترفع هنا.
+
+            Test APK, install directly on Android 8+.
+            Commit: ${{ github.sha }}
+          files: release/*.apk
+
       - name: Publish outputs to the "builds" branch
         if: always()
         run: |
