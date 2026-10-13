@@ -19,6 +19,16 @@ android {
     }
 
     signingConfigs {
+        // Real upload key, provided by GitHub Actions secrets (or local env vars)
+        val ks = System.getenv("ZUJAJ_KEYSTORE_FILE")
+        if (ks != null && file(ks).exists()) {
+            create("upload") {
+                storeFile = file(ks)
+                storePassword = System.getenv("ZUJAJ_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ZUJAJ_KEY_ALIAS") ?: "zujaj"
+                keyPassword = System.getenv("ZUJAJ_KEYSTORE_PASSWORD")
+            }
+        }
         create("testing") {
             storeFile = rootProject.file("ci/testing.keystore.bin")
             storePassword = "zujajtest"
@@ -34,7 +44,8 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // AAB for Google Play is signed afterwards with the private upload key.
             // The APK built by CI is signed with a testing key so it can be installed directly.
-            if (project.hasProperty("testingSign")) signingConfig = signingConfigs.getByName("testing")
+            signingConfig = signingConfigs.findByName("upload")
+                ?: if (project.hasProperty("testingSign")) signingConfigs.getByName("testing") else null
         }
         debug {
             applicationIdSuffix = ".debug"

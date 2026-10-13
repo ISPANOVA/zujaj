@@ -30,17 +30,33 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon :app:testDebugUnitTest --tests '*RenderAllTest*' --tests '*UiShotsTest*' 2>&1 | tee test.log
 
-      - name: Build release APK (testing key) and AAB (unsigned, for Play)
+      - name: Restore upload key from secrets
+        env:
+          KS: ${{ secrets.ZUJAJ_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "ZUJAJ_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "Signing with the real upload key"
+          else
+            echo "No upload key secret – APK uses the testing key, AAB unsigned"
+          fi
+
+      - name: Build release APK and AAB
         id: build
+        env:
+          ZUJAJ_KEYSTORE_PASSWORD: ${{ secrets.ZUJAJ_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
           ./gradlew --no-daemon :app:bundleRelease 2>&1 | tee build.log
           ./gradlew --no-daemon :app:assembleRelease -PtestingSign 2>&1 | tee -a build.log
+          rm -f "$RUNNER_TEMP/upload.jks" || true
 
       - name: Prepare release files
         run: |
           mkdir -p release
           cp app/build/outputs/apk/release/*.apk "release/Zujaj-1.0.0-build${{ github.run_number }}.apk"
+          if [ -n "$ZUJAJ_KEYSTORE_FILE" ]; then cp app/build/outputs/bundle/release/*.aab "release/Zujaj-1.0.0-build${{ github.run_number }}-GooglePlay.aab"; fi
 
       - name: Create GitHub Release (APK for testing)
         uses: softprops/action-gh-release@v2
@@ -52,11 +68,11 @@ jobs:
           body: |
             ## زجاج – Zujaj (نسخة تجريبية)
             ملف APK للتجربة المباشرة على الموبايل (موقّع بمفتاح تجربة).
-            نسخة جوجل بلاي (AAB) بتتوقّع بمفتاح الرفع الخاص ومش بتترفع هنا.
+            ملف AAB (لو موجود) موقّع بمفتاح الرفع وجاهز للرفع على جوجل بلاي مباشرة.
 
             Test APK, install directly on Android 8+.
             Commit: ${{ github.sha }}
-          files: release/*.apk
+          files: release/*
 
       - name: Publish outputs to the "builds" branch
         if: always()
