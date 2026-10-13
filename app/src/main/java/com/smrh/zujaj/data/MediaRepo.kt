@@ -134,8 +134,15 @@ object MediaRepo {
             "play_pause" -> if (c.playbackState?.state == PlaybackState.STATE_PLAYING) t.pause() else t.play()
             "next" -> t.skipToNext()
             "prev" -> t.skipToPrevious()
-            "shuffle" -> runCatching { t.setShuffleMode(PlaybackState.SHUFFLE_MODE_ALL) }
-            "repeat" -> runCatching { t.setRepeatMode(PlaybackState.REPEAT_MODE_ALL) }
+            // Compat sessions (most players) understand these custom actions
+            "shuffle" -> runCatching {
+                t.sendCustomAction("android.support.v4.media.session.action.SET_SHUFFLE_MODE",
+                    android.os.Bundle().apply { putInt("android.support.v4.media.session.action.ARGUMENT_SHUFFLE_MODE", 1) })
+            }
+            "repeat" -> runCatching {
+                t.sendCustomAction("android.support.v4.media.session.action.SET_REPEAT_MODE",
+                    android.os.Bundle().apply { putInt("android.support.v4.media.session.action.ARGUMENT_REPEAT_MODE", 2) })
+            }
         }
     }
 
