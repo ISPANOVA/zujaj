@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:contentDescription="@null" />
+    <FrameLayout android:id="@+id/an_wrap" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <AnalogClock android:id="@+id/an_clock" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:dial="@drawable/dial_blank" android:hand_hour="@drawable/hand_hour" android:hand_minute="@drawable/hand_minute" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_3_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_3" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_4_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_4" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_5_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_5" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_bold_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_bold_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_bold_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_bold_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_sans_bold_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_sans_bold_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_playfair_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_playfair_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/playfair_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_playfair_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_playfair_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/playfair_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_playfair_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_playfair_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/playfair_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_bodoni_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_bodoni_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/bodoni_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_bodoni_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_bodoni_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/bodoni_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_bodoni_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_bodoni_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/bodoni_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_shoulders_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_shoulders_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/shoulders_medium" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_shoulders_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_shoulders_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/shoulders_medium" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_shoulders_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_shoulders_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/shoulders_medium" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_oswald_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_oswald_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/oswald_light" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_oswald_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_oswald_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/oswald_light" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_oswald_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_oswald_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/oswald_light" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_cairo_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_cairo_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/cairo_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_cairo_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_cairo_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/cairo_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/tc_cairo_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <TextClock android:id="@+id/tc_cairo_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/cairo_bold" android:includeFontPadding="false" android:maxLines="1" android:textAllCaps="true"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="20sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/ch_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <Chronometer android:id="@+id/ch_0" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="14sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/ch_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <Chronometer android:id="@+id/ch_1" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_semibold" android:includeFontPadding="false" android:maxLines="1"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="14sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/ch_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <Chronometer android:id="@+id/ch_2" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_bold" android:includeFontPadding="false" android:maxLines="1"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="14sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/ch_3_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <Chronometer android:id="@+id/ch_3" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:fontFamily="@font/manrope_bold" android:includeFontPadding="false" android:maxLines="1"
+            android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="14sp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_0" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_1" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_2_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_2" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_3_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_3" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_4_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_4" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_5_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_5" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_6_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_6" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_7_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_7" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_8_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_8" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_9_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_9" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_10_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_10" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_11_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_11" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_12_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_12" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_13_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_13" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_14_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_14" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_15_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_15" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_16_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_16" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_17_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_17" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_18_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_18" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_19_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_19" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_20_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_20" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_21_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_21" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_22_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_22" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/hit_23_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ImageView android:id="@+id/hit_23" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" />
+    </FrameLayout>
+</FrameLayout>

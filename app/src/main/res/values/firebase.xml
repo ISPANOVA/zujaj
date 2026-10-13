@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Firebase project keys for the admin dashboard (leave empty to disable). -->
+<resources>
+    <string name="fb_api_key" translatable="false"></string>
+    <string name="fb_app_id" translatable="false"></string>
+    <string name="fb_project_id" translatable="false"></string>
+</resources>

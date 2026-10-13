@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">زجاج</string>
+    <string name="w_small">زجاج · صغير ٢×٢</string>
+    <string name="w_wide">زجاج · عريض ٤×٢</string>
+    <string name="w_banner">زجاج · شريط ٤×١</string>
+    <string name="w_large">زجاج · كبير ٤×٣</string>
+    <string name="w_desc">ساعات، صلاة، طقس، ميديا، تقويم والمزيد</string>
+    <string name="media_listener">ويدجت الميديا في زجاج</string>
+    <string name="loading">زجاج</string>
+</resources>
