@@ -40,6 +40,7 @@ class UiShotsTest {
             "settings" to Screen.Settings,
             "tutorial" to Screen.Tutorial,
         )
+        rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)
         rule.setContent { ZujajTheme { Root(nav) } }
         for ((name, s) in screens) {
@@ -48,10 +49,10 @@ class UiShotsTest {
                     Prefs.appLanguage = if (ar) "ar" else "en"
                     nav.stack.clear(); nav.stack.add(s)
                 }
-                rule.mainClock.advanceTimeBy(1500)
-                rule.waitForIdle()
-                Thread.sleep(400)
-                rule.mainClock.advanceTimeBy(500)
+                repeat(6) {
+                    rule.mainClock.advanceTimeBy(400)
+                    Thread.sleep(700)
+                }
                 val img = rule.onRoot().captureToImage().asAndroidBitmap()
                 FileOutputStream(File(out, "ui_${name}_${if (ar) "ar" else "en"}.png")).use { img.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
