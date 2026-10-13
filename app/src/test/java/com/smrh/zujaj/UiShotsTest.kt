@@ -53,8 +53,14 @@ class UiShotsTest {
                     rule.mainClock.advanceTimeBy(400)
                     Thread.sleep(700)
                 }
-                val img = rule.onRoot().captureToImage().asAndroidBitmap()
-                FileOutputStream(File(out, "ui_${name}_${if (ar) "ar" else "en"}.png")).use { img.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                var img: Bitmap? = null
+                rule.runOnUiThread {
+                    val v = rule.activity.window.decorView
+                    val b = Bitmap.createBitmap(v.width.coerceAtLeast(1), v.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                    v.draw(android.graphics.Canvas(b))
+                    img = b
+                }
+                FileOutputStream(File(out, "ui_${name}_${if (ar) "ar" else "en"}.png")).use { img!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
         }
     }
