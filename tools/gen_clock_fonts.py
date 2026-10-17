@@ -36,7 +36,6 @@ LATIN = [
     ("clk_syne", f"{OFL}/syne/Syne[wght].ttf", {"wght": 700}),
 ]
 ARABIC = [
-    ("clk_ar_label", f"{RES}/cairo_bold.ttf"),
     ("clk_ar_cairo", f"{RES}/cairo_bold.ttf"),
     ("clk_ar_amiri", f"{RES}/amiri_bold.ttf"),
     ("clk_ar_rakkas", f"{RES}/rakkas.ttf"),
@@ -58,6 +57,24 @@ def lnum_map(f):
                 if hasattr(st, "mapping"): out.update(st.mapping)
     return out
 
+def tighten(f, chars, extra_desc=0.0):
+    """Vertical metrics hugging the digits, so a TextClock's line box == the visible numbers
+    (lets the widget centre them exactly and stack two lines tightly)."""
+    from fontTools.pens.boundsPen import BoundsPen
+    gs = f.getGlyphSet(); best = f.getBestCmap()
+    lo, hi = 0, 0
+    for ch in chars:
+        g = best.get(ord(ch))
+        if not g: continue
+        bp = BoundsPen(gs); gs[g].draw(bp)
+        if bp.bounds: lo = min(lo, bp.bounds[1]); hi = max(hi, bp.bounds[3])
+    h = hi - lo
+    asc = int(hi + h * 0.06); desc = int(-lo + h * (0.06 + extra_desc))
+    f["hhea"].ascent = asc; f["hhea"].descent = -desc; f["hhea"].lineGap = 0
+    o = f["OS/2"]
+    o.sTypoAscender = asc; o.sTypoDescender = -desc; o.sTypoLineGap = 0
+    o.usWinAscent = asc; o.usWinDescent = desc
+
 def cmaps(f):
     return [t for t in f["cmap"].tables if t.isUnicode()]
 
@@ -76,6 +93,7 @@ for name, src, axes in LATIN:
     sub = subset.Subsetter(opts)
     sub.populate(unicodes=list(range(0x20, 0x7F)) + list(range(0x660, 0x66A)) + list(range(0x6F0, 0x6FA)))
     sub.subset(f)
+    tighten(f, "0123456789:")
     f.save(f"{OUT}/{name}.ttf")
     print(name, os.path.getsize(f"{OUT}/{name}.ttf"))
 
@@ -85,5 +103,6 @@ for name, src in ARABIC:
     for t in cmaps(f):
         for i in range(10):
             t.cmap[0x30 + i] = best[0x660 + i]
+    tighten(f, "\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669:", 0.1)
     f.save(f"{OUT}/{name}.ttf")
     print(name, os.path.getsize(f"{OUT}/{name}.ttf"))

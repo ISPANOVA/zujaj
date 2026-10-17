@@ -231,7 +231,7 @@ class RenderCtx(
         val b = android.graphics.Rect()
         p.getTextBounds(s, 0, s.length, b)
         if (b.width() < 8 || b.height() < 8) return
-        val m = p.textSize * 0.075f                // mark size
+        val m = p.textSize * 0.1f                 // mark size
         val cell = (m * 0.9f).coerceAtLeast(2f)
         val cols = (b.width() / cell).toInt() + 2
         val rows = (b.height() / cell).toInt() + 2
@@ -258,15 +258,15 @@ class RenderCtx(
         val cand = mutableListOf<Pair<Int, Int>>()
         for (yy in 1 until rows - 1) for (xx in 1 until cols - 1) {
             if (ink(xx, yy, 1)) continue
-            if (!ink(xx, yy, 4)) continue
+            if (!ink(xx, yy, 5)) continue
             // keep marks in the upper ~75% (calligraphers fill the space above the baseline)
             if (yy > rows * 0.78f) continue
             cand += xx to yy
         }
         cand.shuffle(rnd)
         val placed = mutableListOf<Pair<Float, Float>>()
-        val want = (s.count { it.isLetter() } * 0.9f).toInt().coerceIn(3, 9)
-        val minD = m * 2.4f
+        val want = (s.count { it.isLetter() } * 1.5f).toInt().coerceIn(5, 12)
+        val minD = m * 2.0f
         val mark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = withAlpha(color, 235); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         }
@@ -369,20 +369,30 @@ class RenderCtx(
     fun liveTime(
         pattern: String, cx: Float, cy: Float, size: Float, font: LiveFont,
         color: Int = c1, align: Paint.Align = Paint.Align.CENTER, zone: String? = null,
-        maxW: Float = 0f, spacing: Float = 0f, sample: String? = null,
+        maxW: Float = 0f, spacing: Float = 0f, sample: String? = null, maxH: Float = 0f,
     ) {
         val lf = resolveFont(font, size)
         val f = lf.f
         val shown = fmt(pattern, zone)
         val measureStr = sample ?: shown
+        val numeric = measureStr.all { it.isDigit() || it == ':' || it == ' ' || it == '.' }
+        // widest rendering of the sample (digits are not equally wide in every face)
+        fun widest(pp: Paint): Float = if (!numeric) pp.measureText(measureStr)
+            else ('0'..'9').maxOf { d -> pp.measureText(measureStr.map { if (it.isDigit()) d else it }.joinToString("")) }
         var sz = size
         if (maxW > 0) {
-            val mw = paint(size = sz, font = f, spacing = spacing).measureText(measureStr)
+            val mw = widest(paint(size = sz, font = f, spacing = spacing))
             if (mw > maxW) sz *= maxW / mw
+        }
+        if (maxH > 0) {
+            val b = android.graphics.Rect()
+            paint(size = sz, font = f).getTextBounds("0123456789", 0, 10, b)
+            if (b.height() > maxH) sz *= maxH / b.height()
         }
         val p = paint(color, sz, f, align, spacing)
         val fm = p.fontMetrics
-        val width = p.measureText(measureStr) * 1.15f + 4 * u
+        var width = widest(p) * 1.12f + 4 * u
+        if (!numeric) width = maxOf(width, sz * 3.2f)
         val left = when (align) {
             Paint.Align.LEFT -> cx
             Paint.Align.RIGHT -> cx - width
@@ -390,7 +400,6 @@ class RenderCtx(
         }
         // Numbers are centred on their real ink (lining digits), not on the font's line box,
         // so the time sits exactly in the middle instead of drifting down.
-        val numeric = measureStr.all { it.isDigit() || it == ':' || it == ' ' || it == '.' }
         val baseline = if (numeric) {
             val b = android.graphics.Rect()
             p.getTextBounds("0123456789", 0, 10, b)

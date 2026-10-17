@@ -38,9 +38,9 @@ object DigitalR {
     fun stacked(r: RenderCtx) {
         val size = r.h * 0.56f * r.s1
         val maxW = r.w - 2 * r.pad
-        r.liveTime(r.hh(), r.w / 2, r.h * 0.285f, size, LiveFont.ANTON, r.c1, maxW = maxW, spacing = -0.02f, sample = "00")
+        r.liveTime(r.hh(), r.w / 2, r.h * 0.28f, size, LiveFont.ANTON, r.c1, maxW = maxW, spacing = -0.02f, sample = "00", maxH = r.h * 0.4f * r.s1)
         val bg = r.bgColorAt(r.h)
-        r.liveTime("mm", r.w / 2, r.h * 0.715f, size, LiveFont.ANTON, if (bg != null) r.c1 else r.c2, maxW = maxW, spacing = -0.02f, sample = "00")
+        r.liveTime("mm", r.w / 2, r.h * 0.72f, size, LiveFont.ANTON, if (bg != null) r.c1 else r.c2, maxW = maxW, spacing = -0.02f, sample = "00", maxH = r.h * 0.4f * r.s1)
         if (bg != null) r.fade(RectF(0f, r.h * 0.46f, r.w, r.h), bg, from = 0f, until = 1.04f)
     }
 
@@ -54,7 +54,7 @@ object DigitalR {
         val x = r.pad + 6 * r.u
         r.text(dateLine(r).uppercase(r.locale), x, r.pad + 8 * r.u, 11 * r.u * r.s2, r.c2, r.sansBold, spacing = 0.12f, maxW = r.w * 0.7f)
         r.circle(r.w - r.pad - 10 * r.u, r.pad + 8 * r.u, 3.5f * r.u, r.accent)
-        r.liveTime(r.hm(), r.w / 2, r.h * 0.6f, r.h * 0.78f * r.s1, LiveFont.ANTON, r.c1, maxW = r.w - 2 * r.pad, spacing = -0.01f, sample = "00:00")
+        r.liveTime(r.hm(), r.w / 2, r.h * 0.6f, r.h * 0.78f * r.s1, LiveFont.ANTON, r.c1, maxW = r.w - 2 * r.pad, spacing = -0.01f, sample = "00:00", maxH = r.h * 0.56f * r.s1)
         r.bgColorAt(r.h)?.let { r.fade(RectF(0f, r.h * 0.52f, r.w, r.h), it, until = 1.08f) }
     }
 
@@ -64,8 +64,8 @@ object DigitalR {
         val d = r.today
         r.text(com.smrh.zujaj.data.Calendars.dayName(d, r.ar), x, r.pad + 6 * r.u, 12 * r.u * r.s2, r.c2, r.sansBold, maxW = r.w - 2 * x)
         val size = r.h * 0.46f * r.s1
-        r.liveTime(r.hh(), x - 2 * r.u, r.h * 0.42f, size, LiveFont.ARCHIVO, r.c1, Paint.Align.LEFT, maxW = r.w * 0.7f, spacing = -0.04f, sample = "00")
-        r.liveTime("mm", r.w - x + 2 * r.u, r.h * 0.76f, size, LiveFont.ARCHIVO, r.accent, Paint.Align.RIGHT, maxW = r.w * 0.7f, spacing = -0.04f, sample = "00")
+        r.liveTime(r.hh(), x - 2 * r.u, r.h * 0.44f, size, LiveFont.ARCHIVO, r.c1, Paint.Align.LEFT, maxW = r.w * 0.7f, spacing = -0.04f, sample = "00", maxH = r.h * 0.28f * r.s1)
+        r.liveTime("mm", r.w - x + 2 * r.u, r.h * 0.76f, size, LiveFont.ARCHIVO, r.accent, Paint.Align.RIGHT, maxW = r.w * 0.7f, spacing = -0.04f, sample = "00", maxH = r.h * 0.28f * r.s1)
     }
 
     /** Arabic-Indic numerals with the day written in calligraphy. */
