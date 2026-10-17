@@ -203,17 +203,17 @@ fun collectionTitle(key: String): String = when (key) {
 
 /** A widget shown on a soft dark stage, name centred under it. */
 @Composable
-fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, onClick: () -> Unit) {
+fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
     Column(modifier.clip(RoundedCornerShape(28.dp)).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
+            Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(28.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF0E0E13))))
                 .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.02f))), RoundedCornerShape(28.dp))
                 .padding(if (small) 18.dp else 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2f)
+            WidgetPreview(st.defaultConfig(), if (stage != null) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), density = 2f)
         }
         if (showName) {
             Row(Modifier.padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -370,7 +370,8 @@ fun DiscoverTab(nav: Nav) {
                     SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(list.take(10), key = { it.id }) { st ->
-                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 170.dp else 318.dp)) { nav.go(Screen.Editor(st.id)) }
+                            // every card in a shelf has the same height so rows line up calmly
+                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 300.dp), stage = 168.dp) { nav.go(Screen.Editor(st.id)) }
                         }
                     }
                 }

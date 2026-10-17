@@ -114,6 +114,15 @@ object WidgetUpdater {
         mgr.updateAppWidget(id, views)
     }
 
+    private fun resetSlots(rv: RemoteViews) {
+        Slots.clocks.values.forEach { list -> list.forEach { (w, _) -> rv.setViewVisibility(w, View.GONE) } }
+        Slots.chronos.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setChronometer(v, 0L, null, false) }
+        Slots.hits.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setOnClickPendingIntent(v, null) }
+        rv.setViewVisibility(R.id.an_wrap, View.GONE)
+        rv.setViewVisibility(R.id.fx, View.GONE)
+        rv.setImageViewBitmap(R.id.fx, null)
+    }
+
     internal fun build(ctx: Context, id: Int, cfg: WidgetConfig, style: WidgetStyle, wDp: Float, hDp: Float): RemoteViews {
         val density = ctx.resources.displayMetrics.density
         // Any design fits any widget size: when the placed widget's proportions differ a lot from
@@ -130,11 +139,13 @@ object WidgetUpdater {
         val res = Renderer.render(ctx, cfg, rw, rh, preview = false)
         val k = density / res.scale // bitmap px → device px
         val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
-        if (offX >= 1f || offY >= 1f) {
-            val ox = offX.toInt(); val oy = offY.toInt()
-            rv.setViewPadding(R.id.bg, ox, oy, ox, oy)
-            rv.setViewPadding(R.id.fx, ox, oy, ox, oy)
-        }
+        // Some hosts (Samsung lock screen, many launchers) REAPPLY new RemoteViews on top of the
+        // old views instead of inflating fresh ones, so anything a previous design switched on
+        // (extra clocks, countdowns, tap areas, overlays) would stay visible. Reset everything first.
+        resetSlots(rv)
+        val ox = offX.toInt(); val oy = offY.toInt()
+        rv.setViewPadding(R.id.bg, ox, oy, ox, oy)
+        rv.setViewPadding(R.id.fx, ox, oy, ox, oy)
         if (Flags.locked(style)) {
             // Pro expired / not owned: show a lock overlay and send taps to the paywall.
             val c = android.graphics.Canvas(res.bitmap)
