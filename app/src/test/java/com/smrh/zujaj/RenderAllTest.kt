@@ -100,6 +100,17 @@ class RenderAllTest {
                 errors.append("WIDGET-AR ${st.id}: $e\n")
             }
         }
+        // a host that REAPPLIES views (Samsung lock screen): old design's clocks must disappear
+        try {
+            val a = Catalog.byId("digital_world_split")!!; val b = Catalog.byId("prayer_detail") ?: Catalog.all.first { it.cat == com.smrh.zujaj.catalog.Cat.PRAYER && it.shape == a.shape }
+            val v = WidgetUpdater.build(ctx, 1, a.defaultConfig(), a, a.shape.dw, a.shape.dh).apply(ctx, FrameLayout(ctx))
+            WidgetUpdater.build(ctx, 1, b.defaultConfig(), b, a.shape.dw, a.shape.dh).reapply(ctx, v)
+            val d = ctx.resources.displayMetrics.density
+            val w = (a.shape.dw * d).toInt(); val h = (a.shape.dh * d).toInt()
+            v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+            v.layout(0, 0, w, h)
+            val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); v.draw(Canvas(bm)); save(bm, File(out, "reapply.png"))
+        } catch (e: Throwable) { errors.append("REAPPLY: $e\n") }
         File(out, "errors.txt").writeText(errors.toString().ifBlank { "OK" })
         println("RENDER ERRORS:\n$errors")
     }
