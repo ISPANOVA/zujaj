@@ -55,6 +55,22 @@ object Calendars {
     fun monthName(m: Int, ar: Boolean) = (if (ar) monthsAr else monthsEn)[m - 1]
     fun hijriMonth(m: Int, ar: Boolean) = (if (ar) hijriAr else hijriEn)[(m - 1).coerceIn(0, 11)]
 
+    /** Fully vowelled forms used by the calligraphy fonts. */
+    private val tashkeelMap: Map<String, String> = mapOf(
+        "الأحد" to "الأَحَد", "الإثنين" to "الإِثْنَيْن", "الثلاثاء" to "الثُّلَاثَاء", "الأربعاء" to "الأَرْبِعَاء",
+        "الخميس" to "الخَمِيس", "الجمعة" to "الجُمُعَة", "السبت" to "السَّبْت",
+        "محرم" to "مُحَرَّم", "صفر" to "صَفَر", "ربيع الأول" to "رَبِيع الأَوَّل", "ربيع الآخر" to "رَبِيع الآخِر",
+        "جمادى الأولى" to "جُمَادَى الأُولَى", "جمادى الآخرة" to "جُمَادَى الآخِرَة", "رجب" to "رَجَب", "شعبان" to "شَعْبَان",
+        "رمضان" to "رَمَضَان", "شوال" to "شَوَّال", "ذو القعدة" to "ذُو القَعْدَة", "ذو الحجة" to "ذُو الحِجَّة",
+        "يناير" to "يَنَايِر", "فبراير" to "فِبْرَايِر", "مارس" to "مَارِس", "أبريل" to "أَبْرِيل", "مايو" to "مَايُو",
+        "يونيو" to "يُونْيُو", "يوليو" to "يُولْيُو", "أغسطس" to "أَغُسْطُس", "سبتمبر" to "سِبْتَمْبِر",
+        "أكتوبر" to "أُكْتُوبَر", "نوفمبر" to "نُوفَمْبِر", "ديسمبر" to "دِيسَمْبِر",
+        "الفجر" to "الفَجْر", "الشروق" to "الشُّرُوق", "الظهر" to "الظُّهْر", "العصر" to "العَصْر",
+        "المغرب" to "المَغْرِب", "العشاء" to "العِشَاء", "رمضان كريم" to "رَمَضَان كَرِيم",
+    )
+
+    fun tashkeel(s: String): String = tashkeelMap[s] ?: s
+
     fun toArabicDigits(s: String): String {
         val sb = StringBuilder(s.length)
         for (c in s) sb.append(if (c in '0'..'9') ('٠' + (c - '0')) else c)

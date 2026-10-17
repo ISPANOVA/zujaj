@@ -15,6 +15,10 @@ object Hands {
         val hAng = (hour % 12 + minute / 60f) * 30f
         val mAng = (minute + second / 60f) * 6f
         val sAng = second * 6f
+        val sh = r.width() * 0.012f
+        val shadow = s.copy(hour = 0x55000000, minute = 0x55000000, center = 0x55000000)
+        c.save(); c.translate(sh, sh * 1.6f); c.rotate(hAng, cx, cy); drawHand(c, r, shadow, Which.HOUR); c.restore()
+        c.save(); c.translate(sh, sh * 1.6f); c.rotate(mAng, cx, cy); drawHand(c, r, shadow, Which.MINUTE); c.restore()
         c.save(); c.rotate(hAng, cx, cy); drawHand(c, r, s, Which.HOUR); c.restore()
         c.save(); c.rotate(mAng, cx, cy); drawHand(c, r, s, Which.MINUTE); c.restore()
         if (s.seconds) { c.save(); c.rotate(sAng, cx, cy); drawHand(c, r, s, Which.SECOND); c.restore() }
@@ -32,6 +36,16 @@ object Hands {
                 val len = rad * (if (which == Which.HOUR) s.hourLen else s.minLen)
                 p.color = if (which == Which.HOUR) s.hour else s.minute
                 when (s.kind) {
+                    4 -> { // "lume": thin neck from the centre, then a thick rounded blade
+                        val neck = len * 0.26f
+                        p.strokeWidth = w * 0.7f
+                        c.drawLine(cx, cy, cx, cy - neck, p)
+                        p.strokeWidth = w * (if (which == Which.HOUR) 2.1f else 1.7f)
+                        c.drawLine(cx, cy - neck, cx, cy - len, p)
+                        // inner groove for a machined look
+                        val g = Paint(p).apply { color = 0x33000000; strokeWidth = w * 0.45f }
+                        c.drawLine(cx, cy - neck - w * 0.6f, cx, cy - len + w * 0.6f, g)
+                    }
                     1 -> { // thick rounded (pixel-like)
                         p.strokeWidth = w * (if (which == Which.HOUR) 2.6f else 2.2f)
                         c.drawLine(cx, cy, cx, cy - len, p)
@@ -79,6 +93,12 @@ object Hands {
         val b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(b)
         val r = RectF(0f, 0f, size.toFloat(), size.toFloat())
+        if (which == Which.HOUR || which == Which.MINUTE) {
+            val sh = size * 0.012f
+            c.save(); c.translate(0f, sh * 1.6f)
+            drawHand(c, r, s.copy(hour = 0x55000000, minute = 0x55000000), which)
+            c.restore()
+        }
         drawHand(c, r, s, which)
         if (which == Which.MINUTE || (which == Which.SECOND && s.seconds)) drawHand(c, r, s, Which.CENTER)
         return b

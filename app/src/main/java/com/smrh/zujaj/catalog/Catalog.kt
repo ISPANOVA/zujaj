@@ -104,6 +104,15 @@ object Catalog {
         WidgetStyle("clock_roman", Cat.CLOCK, "Clock Roman", "ساعة رومانية", S, pro = true, isNew = true, feats = clockF, upd = none) { ClockR.roman(it) },
         WidgetStyle("clock_arabic", Cat.CLOCK, "Clock Arabic", "ساعة عربية", S, isNew = true, feats = clockF, upd = none) { ClockR.arabicNumerals(it) },
         WidgetStyle("clock_orbit", Cat.CLOCK, "Clock Orbit", "ساعة المدار", S, pro = true, isNew = true, feats = clockF, upd = none) { ClockR.orbit(it) },
+        WidgetStyle("clock_classic", Cat.CLOCK, "Clock Classic", "ساعة كلاسيك", S, popular = true, feats = clockF, upd = none) { ClockR.classic(it) },
+        WidgetStyle("clock_bold", Cat.CLOCK, "Clock Bold", "ساعة عريضة الأرقام", S, feats = clockF, upd = none) { ClockR.bold(it) },
+        WidgetStyle("clock_arabesque", Cat.CLOCK, "Clock Arabesque", "ساعة أرابيسك", S, pro = true, isNew = true, popular = true, feats = clockF, upd = none) { ClockR.arabesque(it) },
+        WidgetStyle("clock_damascene", Cat.CLOCK, "Clock Damascene", "ساعة دمشقية", S, pro = true, isNew = true, feats = clockF, upd = none) { ClockR.damascene(it) },
+        WidgetStyle("clock_radiant", Cat.CLOCK, "Clock Radiant", "ساعة النجمة", S, pro = true, isNew = true, feats = clockF, upd = none) { ClockR.radiant(it) },
+        WidgetStyle("clock_calligraphy", Cat.CLOCK, "Clock Calligraphy", "ساعة الخط", S, pro = true, isNew = true, feats = clockF, upd = none) { ClockR.calligraphy(it) },
+        WidgetStyle("clock_sunburst", Cat.CLOCK, "Clock Sunburst", "ساعة الإشعاع", S, pro = true, isNew = true, feats = clockF, upd = none, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { ClockR.sunburst(it) },
+        WidgetStyle("clock_hindi", Cat.CLOCK, "Clock Hindi", "ساعة أرقام هندية", S, isNew = true, feats = clockF, upd = none) { ClockR.hindi(it) },
+        WidgetStyle("clock_wide_date", Cat.CLOCK, "Clock Wide Date", "ساعة عريضة بالتاريخ", W, pro = true, isNew = true, feats = clockF) { ClockR.wideDate(it) },
         WidgetStyle("clock_wide", Cat.CLOCK, "Clock Wide Digital", "ساعة عريضة", W, pro = true, popular = true, feats = clockF, upd = none) { ClockR.wide(it) },
 
         // ------------------------------------------------------------------ DIGITAL
@@ -131,6 +140,7 @@ object Catalog {
         WidgetStyle("months_elegant", Cat.DATE, "Months Elegant", "الشهر الأنيق", W, feats = setOf(Feat.CALENDAR, Feat.COLOR2)) { DateR.monthsElegant(it) },
         WidgetStyle("months_thuluth", Cat.DATE, "Months Calligraphy", "الشهر بالخط العربي", W, isNew = true, feats = setOf(Feat.CALENDAR, Feat.COLOR2, Feat.SIZE2), defaults = { it.copy(calendar = com.smrh.zujaj.model.Cal.HIJRI) }) { DateR.monthsCalli(it) },
         WidgetStyle("months_thuluth_small", Cat.DATE, "Month Calligraphy", "الشهر خط صغير", S, pro = true, feats = setOf(Feat.CALENDAR, Feat.COLOR2)) { DateR.monthsCalliSmall(it) },
+        WidgetStyle("date_calli_full", Cat.DATE, "Date Calligraphy", "التاريخ بالخط", W, isNew = true, popular = true) { DateR.calliFull(it) },
         WidgetStyle("dual_banner", Cat.DATE, "Dual Banner", "هجري وميلادي", B, pro = true, popular = true) { DateR.dualBanner(it) },
         WidgetStyle("hijri_gregorian", Cat.DATE, "Hijri & Gregorian", "التاريخين", B) { DateR.hijriGregorian(it) },
         WidgetStyle("date_compact", Cat.DATE, "Date Compact", "تاريخ مختصر", S, feats = setOf(Feat.CALENDAR, Feat.SIZE2)) { DateR.compact(it) },
@@ -163,6 +173,7 @@ object Catalog {
         WidgetStyle("prayer_grid", Cat.PRAYER, "Prayer Day", "يوم الصلاة", L, pro = true, popular = true, feats = prayerF, upd = pU) { PrayerR.dayGrid(it) },
         WidgetStyle("prayer_detail", Cat.PRAYER, "Prayer Detail", "تفاصيل الصلاة", W, feats = prayerF, upd = pU) { PrayerR.detail(it) },
         WidgetStyle("prayer_list", Cat.PRAYER, "Prayer List", "قائمة الصلوات", L, pro = true, feats = prayerF, upd = pU) { PrayerR.list(it) },
+        WidgetStyle("prayer_spotlight", Cat.PRAYER, "Prayer Spotlight", "الصلاة بالخط الكبير", W, pro = true, isNew = true, popular = true, feats = prayerF, upd = pU) { PrayerR.spotlight(it) },
         WidgetStyle("prayer_tiles", Cat.PRAYER, "Prayer Tiles", "مربعات الصلاة", L, pro = true, isNew = true, feats = prayerF, upd = pU) { PrayerR.tiles(it) },
 
         // ------------------------------------------------------------------ ISLAMIC (new)

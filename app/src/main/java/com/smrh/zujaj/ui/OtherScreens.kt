@@ -132,7 +132,7 @@ private suspend fun locate(ctx: Context): Boolean = withContext(Dispatchers.IO) 
 }
 
 @Composable
-fun SettingsScreen(nav: Nav) {
+fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var showCity by remember { mutableStateOf(false) }
@@ -147,7 +147,7 @@ fun SettingsScreen(nav: Nav) {
         }
     }
     Column(Modifier.fillMaxSize()) {
-        TopBar(tr("Settings", "الإعدادات"), { nav.back() })
+        TopBar(tr("Settings", "الإعدادات"), if (asTab) null else ({ nav.back() }))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Glass(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clickable { nav.go(Screen.Paywall) }, radius = 22.dp, alpha = 0.09f) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -238,7 +238,7 @@ fun SettingsScreen(nav: Nav) {
                     if (taps >= 7) { taps = 0; showGate = true }
                 }) {}
             }
-            Spacer(Modifier.height(60.dp))
+            Spacer(Modifier.height(130.dp))
         }
     }
     if (showGate) AdminGateDialog({ showGate = false }) { showGate = false; nav.go(Screen.Admin) }

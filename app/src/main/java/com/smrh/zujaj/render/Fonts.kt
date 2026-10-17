@@ -18,6 +18,7 @@ enum class F(val res: Int) {
     OSWALD_LIGHT(R.font.oswald_light),
     CORMORANT(R.font.cormorant_medium),
     RUQAA(R.font.aref_ruqaa_bold),
+    THULUTH(R.font.gulzar),
     AMIRI(R.font.amiri_bold),
     KUFI(R.font.reem_kufi_medium),
     RAKKAS(R.font.rakkas),

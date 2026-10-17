@@ -278,7 +278,7 @@ object QuoteR {
 
     fun calli(r: RenderCtx) {
         val t = r.cfg.text.ifBlank { "وَقُل رَّبِّ زِدْنِي عِلْمًا" }
-        r.paragraph(t, RectF(r.pad, r.pad * 0.6f, r.w - r.pad, r.h - r.pad * 0.6f), 40 * r.u * r.s1, r.c1, F.RUQAA, lineMult = 1.0f)
+        r.paragraph(t, RectF(r.pad, r.pad * 0.6f, r.w - r.pad, r.h - r.pad * 0.6f), 40 * r.u * r.s1, r.c1, r.calliFont, lineMult = 1.0f)
     }
 
     fun sticky(r: RenderCtx) {
@@ -320,7 +320,7 @@ object PhotoR {
         val rect = RectF(p, p, r.w - p, r.h * 0.78f)
         val b = pick(r)
         if (b == null) empty(r, rect, 6 * r.u) else Renderer.drawImage(r.canvas, b, rect, 6 * r.u)
-        r.text(r.cfg.text.ifBlank { r.t("Memories", "ذكريات") }, r.w / 2, r.h * 0.89f, 13 * r.u, 0xFF333333.toInt(), F.RUQAA.takeIf { r.ar } ?: F.PLAYFAIR, Paint.Align.CENTER, maxW = r.w - 2 * p)
+        r.text(r.cfg.text.ifBlank { r.t("Memories", "ذكريات") }, r.w / 2, r.h * 0.89f, 13 * r.u, 0xFF333333.toInt(), (if (r.ar) r.calliFont else F.PLAYFAIR), Paint.Align.CENTER, maxW = r.w - 2 * p)
     }
 
     fun caption(r: RenderCtx) {
@@ -478,7 +478,7 @@ object IslamicR {
         val goal = r.cfg.goal.coerceAtLeast(1)
         val count = r.cfg.counter
         val inRound = count % goal
-        r.paragraph(r.cfg.text.ifBlank { "أستغفر الله" }, RectF(r.w * 0.45f, r.pad, r.w - r.pad, r.h - r.pad), 34 * r.u * r.s2, r.c1, F.RUQAA)
+        r.paragraph(r.cfg.text.ifBlank { "أستغفر الله" }, RectF(r.w * 0.45f, r.pad, r.w - r.pad, r.h - r.pad), 34 * r.u * r.s2, r.c1, r.calliFont)
         val cx = r.pad + 64 * r.u; val cy = r.h / 2
         val rad = min(r.h / 2 - r.pad, 60 * r.u)
         val rect = RectF(cx - rad, cy - rad, cx + rad, cy + rad)
@@ -567,7 +567,7 @@ object IslamicR {
         val today = r.today
         val h = Calendars.hijri(today)
         if (h.month == 9) {
-            r.textTight("رمضان", r.w * 0.3f, r.h / 2, r.h * 0.5f, r.c1, F.RUQAA, maxW = r.w * 0.4f)
+            r.textTight("رمضان", r.w * 0.3f, r.h / 2, r.h * 0.5f, r.c1, r.calliFont, maxW = r.w * 0.4f)
             r.text(r.t("Day ${h.day}", "اليوم ${r.n(h.day)}"), r.w * 0.72f, r.h / 2, 20 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.CENTER)
             return
         }
@@ -578,7 +578,7 @@ object IslamicR {
             if (hh.month == 9 && hh.day == 1) break
             d = d.plusDays(1); days++
         }
-        r.textTight("رمضان", r.pad + 60 * r.u, r.h / 2, r.h * 0.5f, r.c1, F.RUQAA, maxW = 100 * r.u)
+        r.textTight("رمضان", r.pad + 60 * r.u, r.h / 2, r.h * 0.5f, r.c1, r.calliFont, maxW = 100 * r.u)
         r.text(r.n(days.toString()), r.w * 0.62f, r.h / 2, 28 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.CENTER)
         r.text(r.t("days left", "يوماً متبقياً"), r.w - r.pad - 8 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
     }
@@ -586,7 +586,7 @@ object IslamicR {
     fun hijriBig(r: RenderCtx) {
         val h = Calendars.hijri(r.today)
         r.textTight(r.n(h.day), r.w / 2, r.h * 0.34f, 54 * r.u * r.s1, r.c1, F.SANS_BOLD)
-        r.textTight(Calendars.hijriMonth(h.month, true), r.w / 2, r.h * 0.66f, 30 * r.u * r.s2, r.c1, F.RUQAA, maxW = r.w - 2 * r.pad, maxH = r.h * 0.24f)
+        r.textTight(Calendars.hijriMonth(h.month, true), r.w / 2, r.h * 0.66f, 30 * r.u * r.s2, r.c1, r.calliFont, maxW = r.w - 2 * r.pad, maxH = r.h * 0.24f)
         r.text(r.n("${h.year}") + r.t(" AH", " هـ"), r.w / 2, r.h * 0.88f, 10 * r.u, r.c2, r.sans, Paint.Align.CENTER)
     }
 }

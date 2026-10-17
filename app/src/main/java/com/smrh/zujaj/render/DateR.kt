@@ -170,12 +170,12 @@ object DateR {
 
     fun daysCalli(r: RenderCtx) {
         val name = Calendars.dayName(r.today, true)
-        r.textTight(name, r.w / 2, r.h / 2, r.h * 0.62f * r.s1, r.c1, F.RUQAA, maxW = r.w - 2 * r.pad - 20 * r.u, maxH = r.h - 2 * r.pad)
+        r.textTight(name, r.w / 2, r.h / 2, r.h * 0.62f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad - 20 * r.u, maxH = r.h - 2 * r.pad)
     }
 
     fun daysCalliSmall(r: RenderCtx) {
         val name = Calendars.dayName(r.today, true)
-        r.textTight(name, r.w / 2, r.h * 0.46f, r.h * 0.42f * r.s1, r.c1, F.RUQAA, maxW = r.w - 2 * r.pad, maxH = r.h * 0.5f)
+        r.textTight(name, r.w / 2, r.h * 0.46f, r.h * 0.42f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad, maxH = r.h * 0.5f)
         val d = r.today
         r.text("${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, r.ar)}", r.w / 2, r.h * 0.82f, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
     }
@@ -198,7 +198,7 @@ object DateR {
     fun monthsCalli(r: RenderCtx) {
         val (day, _, arName) = monthInfo(r)
         r.textTight(r.n(String.format(java.util.Locale.US, "%02d", day)), r.w / 2, r.h * 0.44f, r.h * 0.42f * r.s2, withAlpha(r.c2, 150), F.SANS_BOLD)
-        r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.6f * r.s1, r.c1, F.RUQAA, maxW = r.w - 2 * r.pad - 10 * r.u, maxH = r.h * 0.62f)
+        r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.6f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad - 10 * r.u, maxH = r.h * 0.62f)
         val d = r.today
         r.text(r.n("${d.dayOfMonth.toString().padStart(2, '0')} / ${d.monthValue.toString().padStart(2, '0')} / ${d.year}"), r.w / 2, r.h * 0.85f, 10 * r.u, withAlpha(r.c1, 190), r.sans, Paint.Align.CENTER)
     }
@@ -206,7 +206,7 @@ object DateR {
     fun monthsCalliSmall(r: RenderCtx) {
         val (day, _, arName) = monthInfo(r)
         r.textTight(r.n(day), r.w / 2, r.h * 0.4f, r.h * 0.6f * r.s2, withAlpha(r.c2, 110), F.SANS_BOLD)
-        r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.36f * r.s1, r.c1, F.RUQAA, maxW = r.w - 2 * r.pad, maxH = r.h * 0.45f)
+        r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.36f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad, maxH = r.h * 0.45f)
         val d = r.today
         r.text("${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, r.ar)}", r.w / 2, r.h * 0.84f, 10 * r.u, r.c2, r.sans, Paint.Align.CENTER)
     }
@@ -222,12 +222,12 @@ object DateR {
         val nL = r.n(h.day)
         val nW = r.measure(nL, numSize, F.SANS_BOLD)
         r.text(nL, r.pad + 6 * r.u, cy, numSize, r.c1, F.SANS_BOLD)
-        r.textTight(Calendars.hijriMonth(h.month, true), (r.pad + 6 * r.u + nW + half) / 2 + 4 * r.u, cy, r.h * 0.5f * r.s1, r.c1, F.RUQAA, maxW = half - nW - r.pad - 20 * r.u, maxH = r.h * 0.6f)
+        r.textTight(Calendars.hijriMonth(h.month, true), (r.pad + 6 * r.u + nW + half) / 2 + 4 * r.u, cy, r.h * 0.5f * r.s1, r.c1, r.calliFont, maxW = half - nW - r.pad - 20 * r.u, maxH = r.h * 0.6f)
         // right: gregorian
         val nR = r.n(d.dayOfMonth)
         val nRW = r.measure(nR, numSize, F.SANS_BOLD)
         r.text(nR, r.w - r.pad - 6 * r.u, cy, numSize, r.c1, F.SANS_BOLD, Paint.Align.RIGHT)
-        r.textTight(Calendars.monthName(d.monthValue, true), (half + r.w - r.pad - 6 * r.u - nRW) / 2 - 4 * r.u, cy, r.h * 0.5f * r.s1, r.c1, F.RUQAA, maxW = half - nRW - r.pad - 20 * r.u, maxH = r.h * 0.6f)
+        r.textTight(Calendars.monthName(d.monthValue, true), (half + r.w - r.pad - 6 * r.u - nRW) / 2 - 4 * r.u, cy, r.h * 0.5f * r.s1, r.c1, r.calliFont, maxW = half - nRW - r.pad - 20 * r.u, maxH = r.h * 0.6f)
     }
 
     fun hijriGregorian(r: RenderCtx) {
@@ -265,6 +265,15 @@ object DateR {
             r.text(r.n(day.dayOfMonth), cx, r.h * 0.64f, 16 * r.u * r.s1, col, r.sansBold, Paint.Align.CENTER)
         }
         r.hit(RectF(0f, 0f, r.w, r.h), HitAction.Launch(calendarIntent()))
+    }
+
+    fun calliFull(r: RenderCtx) {
+        val d = r.today
+        val h = hijri(r)
+        r.textTight(Calendars.dayName(d, true), r.w / 2, r.h * 0.38f, r.h * 0.5f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad, maxH = r.h * 0.5f)
+        val hij = "${r.n(h.day)} ${Calendars.hijriMonth(h.month, true)} ${r.n(h.year)}"
+        val greg = "${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, true)} ${r.n(d.year)}"
+        r.text("$hij  ·  $greg", r.w / 2, r.h * 0.82f, 11 * r.u * r.s2, r.c2, F.CAIRO, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
     }
 }
 

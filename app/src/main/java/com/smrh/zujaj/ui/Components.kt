@@ -77,8 +77,11 @@ fun AppBackdrop(content: @Composable BoxScope.() -> Unit) {
     val accent = LocalAccent.current
     Box(Modifier.fillMaxSize().background(Z.bg)) {
         Canvas(Modifier.fillMaxSize()) {
-            drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.16f), Color.Transparent), center = Offset(size.width * 0.1f, 0f), radius = size.width * 0.9f), radius = size.width * 0.9f, center = Offset(size.width * 0.1f, 0f))
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF5B4BFF).copy(alpha = 0.10f), Color.Transparent), center = Offset(size.width, size.height * 0.55f), radius = size.width * 0.8f), radius = size.width * 0.8f, center = Offset(size.width, size.height * 0.55f))
+            fun glow(c: Color, a: Float, x: Float, y: Float, r: Float) =
+                drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), Color.Transparent), center = Offset(x, y), radius = r), radius = r, center = Offset(x, y))
+            glow(Color(0xFF6C5CE7), 0.30f, size.width * 0.05f, -size.width * 0.1f, size.width * 1.0f)
+            glow(Color(0xFF13B5A8), 0.16f, size.width * 1.05f, size.width * 0.15f, size.width * 0.8f)
+            glow(accent, 0.10f, size.width * 0.6f, size.height * 1.02f, size.width * 0.9f)
         }
         content()
     }
@@ -138,15 +141,58 @@ fun ZChip(text: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 fun ProBadge(modifier: Modifier = Modifier) {
-    Box(modifier.clip(CircleShape).background(Color(0xCC14110A)).padding(4.dp)) {
-        Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(14.dp))
-    }
+    Box(
+        modifier.clip(RoundedCornerShape(50))
+            .background(Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC9963A))))
+            .padding(horizontal = 7.dp, vertical = 2.dp)
+    ) { Text("PRO", color = Color(0xFF2A1C05), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp) }
 }
 
 @Composable
 fun NewBadge(modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(50)).background(LocalAccent.current).padding(horizontal = 7.dp, vertical = 2.dp)) {
-        Text(tr("New", "جديد"), color = Color(0xFF14110A), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    Row(
+        modifier.clip(RoundedCornerShape(50)).background(Color(0xCC0B0B12)).padding(horizontal = 7.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(5.dp).clip(CircleShape).background(Color(0xFF3DDC97)))
+        Spacer(Modifier.width(4.dp))
+        Text(tr("NEW", "جديد"), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** Mini "wallpapers" the widgets are shown on, so previews look like a real home screen. */
+object Backdrops {
+    private val sets = listOf(
+        listOf(Color(0xFF1B1830), Color(0xFF0B0B14), Color(0xFF231536)),
+        listOf(Color(0xFF3A1C5C), Color(0xFF14243F), Color(0xFF0E3B44)),
+        listOf(Color(0xFF4A2A1A), Color(0xFF1E1420), Color(0xFF3A1730)),
+        listOf(Color(0xFF0E3446), Color(0xFF0A1622), Color(0xFF123A35)),
+        listOf(Color(0xFF2E2B26), Color(0xFF14130F), Color(0xFF3A3020)),
+        listOf(Color(0xFFD9D4CC), Color(0xFFB8B0A4), Color(0xFFE8E2D8)),
+    )
+    val count get() = sets.size
+    fun brush(i: Int): Brush = Brush.linearGradient(sets[i.mod(sets.size)])
+}
+
+@Composable
+fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+    val accent = LocalAccent.current
+    Row(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xE6111118))
+            .border(1.dp, Z.line, RoundedCornerShape(18.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items.forEachIndexed { i, label ->
+            val sel = i == selected
+            Box(
+                Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                    .background(if (sel) accent else Color.Transparent)
+                    .clickable { onSelect(i) }.padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = if (sel) Color(0xFF14110A) else Z.sub, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+        }
     }
 }
 

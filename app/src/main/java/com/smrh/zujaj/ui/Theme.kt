@@ -28,7 +28,7 @@ object Z {
         Accent("Sky", "سماوي", Color(0xFF4DB5FF)),
         Accent("Ember", "برتقالي", Color(0xFFFF8A4C)),
     )
-    val bg = Color(0xFF0A0A0E)
+    val bg = Color(0xFF07070C)
     val surface = Color(0xFF15151B)
     val surface2 = Color(0xFF1D1D25)
     val line = Color(0x1AFFFFFF)

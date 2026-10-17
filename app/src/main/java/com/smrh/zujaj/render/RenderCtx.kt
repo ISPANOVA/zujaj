@@ -135,6 +135,11 @@ class RenderCtx(
 
     fun tf(f: F): Typeface = Fonts.get(context, f)
 
+    /** Calligraphy face chosen by the user for Arabic display words. */
+    val calliFont: F get() = when (cfg.calli) { 1 -> F.RUQAA; 2 -> F.AMIRI; 3 -> F.KUFI; else -> F.THULUTH }
+    private fun withTashkeel(s: String, font: F) =
+        if (font == F.THULUTH || font == F.AMIRI) Calendars.tashkeel(s) else s
+
     // ------------------------------------------------------------------ paint helpers
     fun paint(color: Int = c1, size: Float = 14 * u, font: F = sans, align: Paint.Align = Paint.Align.LEFT, spacing: Float = 0f) =
         Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
@@ -164,7 +169,8 @@ class RenderCtx(
     }
 
     /** Text using its real glyph bounds to centre (better for big numerals). */
-    fun textTight(s: String, cx: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, spacing: Float = 0f, maxW: Float = 0f, maxH: Float = 0f) {
+    fun textTight(s0: String, cx: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, spacing: Float = 0f, maxW: Float = 0f, maxH: Float = 0f) {
+        val s = withTashkeel(s0, font)
         val p = paint(color, size, font, Paint.Align.LEFT, spacing)
         fitPaint(p, s, maxW, maxH)
         val b = android.graphics.Rect()

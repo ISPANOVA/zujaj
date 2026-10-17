@@ -13,6 +13,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,6 +121,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         }
     }
 
+    var tab by remember { mutableIntStateOf(0) }
+    var stage by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(style.name(ar), { if (!nav.back()) (ctx as? Activity)?.finish() }) {
@@ -129,15 +136,37 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             }
             // ---------------------------------------------------------------- preview
             Box(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(28.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF2B2440), Color(0xFF14243A), Color(0xFF3A2430))))
-                    .padding(vertical = 22.dp, horizontal = if (style.shape == Shape.SMALL) 80.dp else 20.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(30.dp))
+                    .background(Backdrops.brush(stage))
+                    .padding(top = 26.dp, bottom = 46.dp, start = if (style.shape == Shape.SMALL) 84.dp else 22.dp, end = if (style.shape == Shape.SMALL) 84.dp else 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 WidgetPreview(cfg, Modifier.fillMaxWidth(), density = 3f, live = true)
             }
+            // backdrop picker floats over the stage's bottom edge
+            Row(
+                Modifier.fillMaxWidth().offset(y = (-36).dp), horizontalArrangement = Arrangement.Center,
+            ) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color(0xCC0B0B12)).padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    repeat(Backdrops.count) { i ->
+                        Box(
+                            Modifier.size(22.dp).clip(CircleShape).background(Backdrops.brush(i))
+                                .border(2.dp, if (i == stage) Color.White else Color.White.copy(alpha = 0.15f), CircleShape)
+                                .clickable { stage = i }
+                        )
+                    }
+                }
+            }
+            Segmented(
+                listOf(tr("Look", "الشكل"), tr("Content", "المحتوى"), tr("Region", "اللغة"), tr("More", "المزيد")),
+                tab, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp),
+            ) { tab = it }
             // ---------------------------------------------------------------- controls
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                if (tab == 0) {
                 Section(tr("Style presets", "أنماط جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
@@ -171,6 +200,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                 }
 
+                }
+                if (tab == 1) {
                 Section(tr("Content", "المحتوى")) {
                     RowBase(tr("Color 1", "اللون ١")) { ColorDot(cfg.color1) { colorTarget = 1 } }
                     if (Feat.COLOR2 in f || true) { Divider(); RowBase(tr("Color 2", "اللون ٢")) { ColorDot(cfg.color2) { colorTarget = 2 } } }
@@ -242,12 +273,20 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                 }
 
+                }
+                if (tab == 2) {
                 Section(tr("Region", "المنطقة")) {
                     ChoiceRow(tr("Language", "اللغة"), cfg.language, listOf(Lang.AUTO to tr("Auto", "تلقائي"), Lang.EN to "English", Lang.AR to "العربية")) { cfg = cfg.copy(language = it) }
                     Divider()
                     ChoiceRow(tr("Numerals", "الأرقام"), cfg.numerals, listOf(Numerals.AUTO to tr("Auto", "تلقائي"), Numerals.LATIN to "123", Numerals.ARABIC to "١٢٣")) { cfg = cfg.copy(numerals = it) }
+                    Divider()
+                    ChoiceRow(tr("Arabic calligraphy", "الخط العربي"), cfg.calli, listOf(
+                        0 to tr("Thuluth", "ثلث"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Naskh", "نسخ"), 3 to tr("Kufi", "كوفي"),
+                    )) { cfg = cfg.copy(calli = it) }
                 }
 
+                }
+                if (tab == 3) {
                 Section(tr("Advanced", "متقدم")) {
                     StepperRow(tr("Padding", "الهوامش"), cfg.padding, 0..40, 2) { cfg = cfg.copy(padding = it) }
                     Divider()
@@ -256,15 +295,21 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         Tap.OPEN_APP to tr("Open app…", "فتح تطبيق…"), Tap.NONE to tr("Nothing", "لا شيء"),
                     )) { cfg = cfg.copy(tap = it); if (it == Tap.OPEN_APP) showTapApp = true }
                 }
+                }
                 Spacer(Modifier.height(130.dp))
             }
         }
 
         // ---------------------------------------------------------------- apply
         val locked = Flags.locked(style)
-        Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 18.dp)) {
+        Box(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.96f), Z.bg)))
+                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 14.dp)
+        ) {
             PrimaryButton(
-                if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
+                modifier = Modifier.fillMaxWidth(),
+                text = if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
                 icon = if (locked) Icons.Rounded.Lock else Icons.Rounded.Check,
             ) {
                 when {
