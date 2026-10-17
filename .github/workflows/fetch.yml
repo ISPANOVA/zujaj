@@ -17,7 +17,8 @@ jobs:
           find x -iname "*.ttf" -exec cp {} ../out/ \;
           find x -iname "copyright" | while read f; do cp "$f" "../out/$(echo $f | cut -d/ -f5)-copyright.txt"; done
           cd ..
-          ls -la out
+          curl -sSL -o layla.zip https://fontlibrary.org/assets/downloads/layla-thuluth/51787362b708714d8a4b97fc9eff3c1d/layla-thuluth.zip && mkdir -p out/layla && unzip -o layla.zip -d out/layla || true
+          ls -laR out | head -80
       - run: |
           cd out
           git init -q -b fetched
