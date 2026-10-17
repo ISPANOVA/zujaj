@@ -84,7 +84,7 @@ class RenderAllTest {
             }
         }
         // Arabic numerals variant of every time widget
-        for (st in Catalog.all.filter { it.cat == com.smrh.zujaj.catalog.Cat.DIGITAL || it.cat == com.smrh.zujaj.catalog.Cat.CLOCK }) {
+        for (st in Catalog.all.filter { it.cat == com.smrh.zujaj.catalog.Cat.DIGITAL || it.cat == com.smrh.zujaj.catalog.Cat.CLOCK || it.cat == com.smrh.zujaj.catalog.Cat.PRAYER }) {
             try {
                 val cfg = st.defaultConfig().copy(numerals = com.smrh.zujaj.model.Numerals.ARABIC, language = Lang.AR)
                 val rv = WidgetUpdater.build(ctx, 1, cfg, st, st.shape.dw, st.shape.dh)
