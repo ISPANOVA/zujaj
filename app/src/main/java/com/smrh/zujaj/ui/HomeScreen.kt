@@ -1,6 +1,11 @@
 package com.smrh.zujaj.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -112,25 +117,36 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
         Icons.Rounded.Dashboard to tr("Mine", "ويدجتاتي"),
         Icons.Rounded.Settings to tr("Settings", "الإعدادات"),
     )
-    Column(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF207070C), Color(0xFF07070C))))) {
-        Spacer(Modifier.height(18.dp))
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Z.line))
+    // floating glass capsule; the selected tab grows into a lit pill with its label
+    Box(
+        modifier.fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC07070C), Color(0xF207070C))))
+            .navigationBarsPadding().padding(top = 26.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
         Row(
-            Modifier.fillMaxWidth().background(Color(0xFF07070C)).navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+            Modifier.shadow(24.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
+                .clip(RoundedCornerShape(50))
+                .background(Brush.verticalGradient(listOf(Color(0xF2202028), Color(0xF2121218))))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f))), RoundedCornerShape(50))
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEachIndexed { i, (icon, label) ->
                 val sel = i == tab
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { onTab(i) }.padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Row(
+                    Modifier.animateContentSize().clip(RoundedCornerShape(50))
+                        .background(if (sel) Brush.linearGradient(listOf(accent, accent.copy(alpha = 0.78f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .clickable { onTab(i) }
+                        .padding(horizontal = if (sel) 18.dp else 16.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(
-                        Modifier.clip(RoundedCornerShape(50)).background(if (sel) accent.copy(alpha = 0.18f) else Color.Transparent)
-                            .padding(horizontal = 18.dp, vertical = 5.dp)
-                    ) { Icon(icon, null, tint = if (sel) accent else Z.sub, modifier = Modifier.size(22.dp)) }
-                    Spacer(Modifier.height(3.dp))
-                    Text(label, fontSize = 11.sp, color = if (sel) Z.text else Z.sub, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                    Icon(icon, label, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp))
+                    if (sel) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14110A), maxLines = 1)
+                    }
                 }
             }
         }
@@ -185,29 +201,26 @@ fun collectionTitle(key: String): String = when (key) {
     else -> Cat.valueOf(key).let { if (Prefs.isArabicUi) it.ar else it.en }
 }
 
-/** A widget shown on a mini wallpaper. */
+/** A widget shown on a soft dark stage, name centred under it. */
 @Composable
 fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
-    Column(modifier.clickable(onClick = onClick)) {
+    Column(modifier.clip(RoundedCornerShape(28.dp)).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Backdrops.brush(st.cat.ordinal % 5))
-                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))
-                .padding(if (small) 16.dp else 14.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF0E0E13))))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.02f))), RoundedCornerShape(28.dp))
+                .padding(if (small) 18.dp else 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2f)
-            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (Flags.isNew(st)) NewBadge()
-                if (Flags.isPro(st)) ProBadge()
-            }
         }
         if (showName) {
-            Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(st.name(Prefs.isArabicUi), color = Z.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                if (Prefs.favorites.contains(st.id)) Icon(Icons.Rounded.Favorite, null, tint = LocalAccent.current, modifier = Modifier.size(13.dp))
+            Row(Modifier.padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(st.name(Prefs.isArabicUi), color = Z.text.copy(alpha = 0.86f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (Flags.isPro(st)) ProBadge()
+                else if (Flags.isNew(st)) NewBadge()
             }
-            Text(sizeLabel(st.shape), color = Z.sub, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
         }
     }
 }
@@ -240,9 +253,11 @@ fun DiscoverTab(nav: Nav) {
     val flags by Flags.flags.collectAsState()
     val ver by Prefs.version.collectAsState()
     touch(ver)
+    val accent = LocalAccent.current
     val all = Flags.visible()
+    var chip by rememberSaveable { mutableStateOf("all") }
     val featured = remember(flags) {
-        listOf("clock_arabesque", "prayer_spotlight", "date_calli_full", "media_player", "clock_wide", "digital_neon")
+        listOf("prayer_spotlight", "clock_arabesque", "digital_fade", "date_calli_full", "clock_wide", "digital_neon")
             .mapNotNull { id -> all.firstOrNull { it.id == id } }
     }
     val hour = LocalTime.now().hour
@@ -251,133 +266,153 @@ fun DiscoverTab(nav: Nav) {
         in 12..16 -> tr("Good afternoon", "طاب يومك")
         else -> tr("Good evening", "مساء الخير")
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp)) {
-        // ---- header
+    val cats = Cat.values().filter { c -> all.any { it.cat == c } }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 130.dp)) {
+        // ---- header: greeting + round actions
         item {
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 16.dp, top = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(greet, color = Z.sub, fontSize = 14.sp)
-                    Text(tr("Make your screen yours", "اصنع شاشتك بنفسك"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(greet, color = Z.sub, fontSize = 13.sp)
+                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
                 }
-                Row(
-                    Modifier.clip(RoundedCornerShape(50))
-                        .background(if (pro) Brush.linearGradient(listOf(Color(0xFF2A2210), Color(0xFF1A1508))) else Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC9963A))))
-                        .clickable { nav.go(Screen.Paywall) }.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.WorkspacePremium, null, tint = if (pro) Z.pro else Color(0xFF2A1C05), modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (pro) "PRO ✓" else tr("Go Pro", "اشترك"), color = if (pro) Z.pro else Color(0xFF2A1C05), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            }
-        }
-        // ---- search field
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp).clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.06f)).border(1.dp, Z.line, RoundedCornerShape(18.dp))
-                    .clickable { nav.go(Screen.Search) }.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Rounded.Search, null, tint = Z.sub, modifier = Modifier.size(20.dp))
+                RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
                 Spacer(Modifier.width(10.dp))
-                Text(tr("Search ${all.size} widgets", "ابحث في ${all.size} ويدجت"), color = Z.sub)
+                RoundAction(
+                    Icons.Rounded.WorkspacePremium,
+                    if (pro) Color(0xFF2A2210) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05),
+                ) { nav.go(Screen.Paywall) }
             }
         }
         if (flags.notice.isNotBlank()) item {
-            Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp), radius = 18.dp, alpha = 0.08f) {
+            Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), radius = 18.dp, alpha = 0.08f) {
                 Text(flags.notice, modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
-        // ---- featured pager
-        if (featured.isNotEmpty()) item {
-            val pager = rememberPagerState { featured.size }
-            LaunchedEffect(pager) {
-                while (true) {
-                    delay(4500)
-                    pager.animateScrollToPage((pager.currentPage + 1) % featured.size)
+        // ---- category chips (filter the feed in place)
+        item {
+            val keys = listOf("all", "popular", "new") + cats.map { it.name }
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(keys) { key ->
+                    val sel = key == chip
+                    val cat = Cat.values().firstOrNull { it.name == key }
+                    val icon = cat?.let { catIcon(it) } ?: when (key) { "popular" -> Icons.Rounded.Whatshot; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.GridView }
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50))
+                            .background(if (sel) Z.text else Color.White.copy(alpha = 0.06f))
+                            .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
+                            .clickable { chip = key }
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(icon, null, tint = if (sel) Z.bg else (cat?.let { catColor(it) } ?: accent), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (key == "all") tr("All", "الكل") else collectionTitle(key), fontSize = 13.sp,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = if (sel) Z.bg else Z.text)
+                    }
                 }
             }
-            Column {
-                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { page ->
-                    val st = featured[page]
-                    Box(
-                        Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(30.dp))
-                            .background(Backdrops.brush(page + 1)).clickable { nav.go(Screen.Editor(st.id)) },
-                    ) {
+        }
+        if (chip == "all") {
+            // ---- featured pager
+            if (featured.isNotEmpty()) item {
+                val pager = rememberPagerState { featured.size }
+                LaunchedEffect(pager) {
+                    while (true) {
+                        delay(5000)
+                        pager.animateScrollToPage((pager.currentPage + 1) % featured.size)
+                    }
+                }
+                Column {
+                    HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { page ->
+                        val st = featured[page]
                         Box(
-                            Modifier.fillMaxWidth().padding(
-                                start = if (st.shape == Shape.SMALL) 90.dp else 24.dp,
-                                end = if (st.shape == Shape.SMALL) 90.dp else 24.dp, top = 22.dp,
-                            ),
-                            contentAlignment = Alignment.TopCenter,
-                        ) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.4f) }
-                        Row(
-                            Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAA000000))))
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(32.dp))
+                                .background(Backdrops.brush(page + 1))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(32.dp))
+                                .clickable { nav.go(Screen.Editor(st.id)) },
                         ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(tr("FEATURED", "مميز"), color = LocalAccent.current, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                                Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                            }
-                            Box(Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 14.dp, vertical = 7.dp)) {
-                                Text(tr("Customize", "خصّص"), color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Box(
+                                Modifier.fillMaxWidth().padding(
+                                    start = if (st.shape == Shape.SMALL) 92.dp else 22.dp,
+                                    end = if (st.shape == Shape.SMALL) 92.dp else 22.dp, top = 24.dp,
+                                ),
+                                contentAlignment = Alignment.TopCenter,
+                            ) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.4f) }
+                            Row(
+                                Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC0000000))))
+                                    .padding(start = 22.dp, end = 14.dp, top = 22.dp, bottom = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(tr("FEATURED", "مختارات"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                                    Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                }
+                                Box(Modifier.size(42.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                     }
-                }
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
-                    repeat(featured.size) { i ->
-                        val sel = i == pager.currentPage
-                        Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(if (sel) 18.dp else 6.dp).clip(RoundedCornerShape(50))
-                            .background(if (sel) LocalAccent.current else Color.White.copy(alpha = 0.2f)))
+                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.Center) {
+                        repeat(featured.size) { i ->
+                            val sel = i == pager.currentPage
+                            Box(Modifier.padding(horizontal = 3.dp).height(5.dp).width(if (sel) 20.dp else 5.dp).clip(RoundedCornerShape(50))
+                                .background(if (sel) accent else Color.White.copy(alpha = 0.2f)))
+                        }
                     }
                 }
             }
-        }
-        // ---- collections + categories
-        item {
-            SectionHeader(tr("Browse", "تصفح"), null, null)
-            val chips = listOf("popular", "new", "free") + Cat.values().filter { c -> all.any { it.cat == c } }.map { it.name }
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(chips) { key ->
-                    val list = collection(key)
-                    val cat = Cat.values().firstOrNull { it.name == key }
-                    val color = cat?.let { catColor(it) } ?: when (key) { "popular" -> Color(0xFFE7B75F); "new" -> Color(0xFF3DDC97); else -> Color(0xFF4DB5FF) }
-                    val icon = cat?.let { catIcon(it) } ?: when (key) { "popular" -> Icons.Rounded.WorkspacePremium; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.Favorite }
-                    Column(
-                        Modifier.width(96.dp).clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, Z.line, RoundedCornerShape(22.dp)).clickable { nav.go(Screen.Category(key)) }.padding(vertical = 14.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(
-                            Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
-                                .background(Brush.linearGradient(listOf(color.copy(alpha = 0.9f), color.copy(alpha = 0.45f)))),
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
-                        Spacer(Modifier.height(8.dp))
-                        Text(collectionTitle(key), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${list.size}", fontSize = 11.sp, color = Z.sub)
+            // ---- one shelf per category
+            cats.forEach { cat ->
+                val list = all.filter { it.cat == cat }
+                item(key = "row_${cat.name}") {
+                    SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
+                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        items(list.take(10), key = { it.id }) { st ->
+                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 170.dp else 318.dp)) { nav.go(Screen.Editor(st.id)) }
+                        }
                     }
                 }
             }
-        }
-        // ---- one carousel per category
-        Cat.values().forEach { cat ->
-            val list = all.filter { it.cat == cat }
-            if (list.isEmpty()) return@forEach
-            item(key = "row_${cat.name}") {
-                SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { nav.go(Screen.Category(cat.name)) }
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(list.take(12), key = { it.id }) { st ->
-                        PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 320.dp)) { nav.go(Screen.Editor(st.id)) }
-                    }
+        } else {
+            // ---- filtered feed: a calm vertical showcase
+            val list = collection(chip)
+            val rows = feedRows(list)
+            item {
+                Text(
+                    "${collectionTitle(chip)} · ${list.size}", color = Z.sub, fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 10.dp),
+                )
+            }
+            items(rows.size) { i ->
+                val row = rows[i]
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
+                    if (row.size == 1 && row[0].shape == Shape.SMALL) Spacer(Modifier.weight(1f))
                 }
             }
         }
     }
+}
+
+/** Two small widgets per row, wide ones on their own row. */
+private fun feedRows(list: List<WidgetStyle>): List<List<WidgetStyle>> {
+    val out = ArrayList<List<WidgetStyle>>()
+    for (s in pack(list)) {
+        val last = out.lastOrNull()
+        if (s.shape == Shape.SMALL && last != null && last.size == 1 && last[0].shape == Shape.SMALL) out[out.size - 1] = last + s
+        else out += listOf(s)
+    }
+    return out
+}
+
+@Composable
+private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.size(44.dp).clip(CircleShape).background(bg).border(1.dp, Z.line, CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
 }
 
 // =============================================================================== grids

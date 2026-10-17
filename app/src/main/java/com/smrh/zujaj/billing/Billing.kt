@@ -109,9 +109,15 @@ object Billing {
     }
 
     private fun setPro(v: Boolean) {
-        val changed = Prefs.isPro != v
-        Prefs.isPro = v
-        _pro.value = v
+        Prefs.purchasedPro = v
+        refreshPro()
+    }
+
+    /** Re-evaluates Pro (purchase or redeem code) and refreshes widgets when it changes. */
+    fun refreshPro() {
+        val now = Prefs.isPro
+        val changed = _pro.value != now
+        _pro.value = now
         if (changed) appCtx?.let { WidgetUpdater.updateAll(it) }
     }
 

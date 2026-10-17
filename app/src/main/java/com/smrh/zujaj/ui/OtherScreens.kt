@@ -138,6 +138,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     var showCity by remember { mutableStateOf(false) }
     var taps by remember { mutableIntStateOf(0) }
     var showGate by remember { mutableStateOf(false) }
+    var showRedeem by remember { mutableStateOf(false) }
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
@@ -218,6 +219,10 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 RowBase(tr("How to add widgets", "طريقة إضافة الويدجت"), onClick = { nav.go(Screen.Tutorial) }) {}
             }
             Section(tr("Subscription", "الاشتراك")) {
+                RowBase(tr("Redeem code", "استخدام كود"), sub = codeStatus(), onClick = { showRedeem = true }) {
+                    Text(tr("Enter", "إدخال"), color = LocalAccent.current)
+                }
+                Divider()
                 RowBase(tr("Restore purchases", "استعادة المشتريات"), onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking…", "جارٍ التحقق…"), Toast.LENGTH_SHORT).show() }) {}
                 Divider()
                 RowBase(tr("Manage subscription", "إدارة الاشتراك"), onClick = {
@@ -242,6 +247,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
         }
     }
     if (showGate) AdminGateDialog({ showGate = false }) { showGate = false; nav.go(Screen.Admin) }
+    if (showRedeem) RedeemDialog { showRedeem = false }
     if (showCity) CityPickerDialog({ showCity = false }) { c ->
         Prefs.lat = c.lat; Prefs.lng = c.lng; Prefs.cityName = c.name; Prefs.hasLocation = true
         scope.launch(Dispatchers.IO) { Scheduler.refreshWeatherIfNeeded(ctx, true); WidgetUpdater.updateAll(ctx) }
@@ -256,6 +262,8 @@ fun PaywallScreen(nav: Nav) {
     val pro by Billing.pro.collectAsState()
     val msg by Billing.message.collectAsState()
     var sel by remember { mutableStateOf(Plan.YEARLY) }
+    var showRedeem by remember { mutableStateOf(false) }
+    if (showRedeem) RedeemDialog { showRedeem = false }
     LaunchedEffect(msg) {
         when (msg) {
             "pro_ok" -> { Toast.makeText(ctx, tr("Welcome to Pro ✓", "أهلاً بك في برو ✓"), Toast.LENGTH_LONG).show(); nav.back() }
@@ -319,88 +327,14 @@ fun PaywallScreen(nav: Nav) {
                     val ok = Billing.buy(ctx as Activity, sel)
                     if (!ok) Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show()
                 }
-                TextButton(onClick = { Billing.restore() }) { Text(tr("Restore purchases", "استعادة المشتريات"), color = Z.sub) }
+                Row {
+                    TextButton(onClick = { Billing.restore() }) { Text(tr("Restore purchases", "استعادة المشتريات"), color = Z.sub) }
+                    TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = LocalAccent.current) }
+                }
             }
             Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات تتجدد تلقائياً حتى تلغيها من جوجل بلاي. يمكنك الإلغاء في أي وقت."),
                 color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 12.dp))
             Spacer(Modifier.height(30.dp))
-        }
-    }
-}
-
-// =============================================================================== ADMIN
-@Composable
-fun AdminScreen(nav: Nav) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val auth = Flags.auth()
-    Column(Modifier.fillMaxSize()) {
-        TopBar(tr("Admin dashboard", "لوحة التحكم"), { nav.back() })
-        if (auth == null) {
-            Text(tr("Firebase isn't configured in this build. Add the project keys in res/values/firebase.xml.", "Firebase غير مُعد في هذه النسخة. أضف مفاتيح المشروع في res/values/firebase.xml."),
-                modifier = Modifier.padding(20.dp), color = Z.sub)
-            return
-        }
-        if (!AdminSession.unlocked) { Text(tr("Locked", "مقفول"), modifier = Modifier.padding(20.dp)); return }
-        var user by remember { mutableStateOf(auth.currentUser?.takeIf { AdminSession.isAdminEmail(it.email) }) }
-        var error by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(Unit) {
-            if (user != null) return@LaunchedEffect
-            val r = runCatching {
-                runCatching { auth.signInWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
-                    .recoverCatching { auth.createUserWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
-                    .getOrThrow()
-            }
-            r.onSuccess { user = auth.currentUser }.onFailure { error = it.message }
-        }
-        if (user == null) {
-            Text(error ?: tr("Signing in…", "جارٍ تسجيل الدخول…"), modifier = Modifier.padding(20.dp), color = Z.sub)
-            return
-        }
-        val flags by Flags.flags.collectAsState()
-        var pro by remember(flags) { mutableStateOf((flags.pro ?: Catalog.all.filter { it.pro }.map { it.id }).toSet()) }
-        var fresh by remember(flags) { mutableStateOf((flags.fresh ?: Catalog.all.filter { it.isNew }.map { it.id }).toSet()) }
-        var hidden by remember(flags) { mutableStateOf(flags.hidden.toSet()) }
-        var freeAll by remember(flags) { mutableStateOf(flags.freeAll) }
-        var notice by remember(flags) { mutableStateOf(flags.notice) }
-        var q by remember { mutableStateOf("") }
-        Column(Modifier.padding(horizontal = 14.dp)) {
-            Text("${user?.email} " + if (user?.isEmailVerified == true) "✓" else tr("(email not verified)", "(البريد غير مفعّل)"), color = Z.sub, fontSize = 12.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("Everything free (promo)", "كل شيء مجاني (عرض)"), modifier = Modifier.weight(1f))
-                Switch(freeAll, { freeAll = it }, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current))
-            }
-            OutlinedTextField(notice, { notice = it }, label = { Text(tr("Banner message to all users", "رسالة تظهر لكل المستخدمين")) }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(q, { q = it }, label = { Text(tr("Search widgets", "ابحث عن ويدجت")) }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp))
-            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Text(tr("Widget", "الويدجت"), modifier = Modifier.weight(1f), color = Z.sub, fontSize = 12.sp)
-                Text("Pro", modifier = Modifier.width(58.dp), color = Z.sub, fontSize = 12.sp, textAlign = TextAlign.Center)
-                Text(tr("New", "جديد"), modifier = Modifier.width(58.dp), color = Z.sub, fontSize = 12.sp, textAlign = TextAlign.Center)
-                Text(tr("Hide", "إخفاء"), modifier = Modifier.width(58.dp), color = Z.sub, fontSize = 12.sp, textAlign = TextAlign.Center)
-            }
-        }
-        LazyColumn(Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 14.dp, end = 14.dp, bottom = 100.dp)) {
-            items(Catalog.all.filter { q.isBlank() || it.en.contains(q, true) || it.ar.contains(q) || it.cat.en.contains(q, true) }) { st ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(64.dp)) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1f) }
-                    Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(st.name(Prefs.isArabicUi), fontSize = 13.sp)
-                        Text(if (Prefs.isArabicUi) st.cat.ar else st.cat.en, fontSize = 10.sp, color = Z.sub)
-                    }
-                    Box(Modifier.width(58.dp), contentAlignment = Alignment.Center) { Switch(st.id in pro, { pro = if (it) pro + st.id else pro - st.id }, colors = SwitchDefaults.colors(checkedTrackColor = Z.pro)) }
-                    Box(Modifier.width(58.dp), contentAlignment = Alignment.Center) { Switch(st.id in fresh, { fresh = if (it) fresh + st.id else fresh - st.id }, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current)) }
-                    Box(Modifier.width(58.dp), contentAlignment = Alignment.Center) { Switch(st.id in hidden, { hidden = if (it) hidden + st.id else hidden - st.id }) }
-                }
-            }
-        }
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-            PrimaryButton(tr("Publish to all users", "نشر لكل المستخدمين"), Modifier.fillMaxWidth()) {
-                scope.launch {
-                    val r = runCatching { Flags.save(CatalogFlags(pro.toList(), fresh.toList(), hidden.toList(), freeAll, notice.trim())) }
-                    Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓ — live for everyone", "تم النشر ✓ — ظاهر للجميع الآن") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
-                }
-            }
         }
     }
 }
@@ -515,6 +449,72 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
                     else if (AdminSession.isAdminEmail(email)) { AdminSession.unlock(pass, email); onOk() } else err = true
                 }) { Text(tr("Next", "التالي"), color = LocalAccent.current) }
             }
+        }
+    }
+}
+
+
+// =============================================================================== REDEEM
+fun codeStatus(): String? {
+    val u = Prefs.codeProUntil
+    if (u <= 0) return null
+    if (u == Long.MAX_VALUE) return tr("Pro forever ✓ (${Prefs.codeUsed})", "برو للأبد ✓ (${Prefs.codeUsed})")
+    val d = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(u))
+    return if (u > System.currentTimeMillis()) tr("Pro until $d ✓", "برو لحد $d ✓") else tr("Code ended $d", "الكود انتهى $d")
+}
+
+@Composable
+fun RedeemDialog(onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var code by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1D1A12), Z.surface))).border(1.dp, Z.line, RoundedCornerShape(28.dp)).padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(Z.pro.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(32.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(tr("Redeem a code", "استخدام كود"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(tr("Enter the code you received to unlock Pro", "اكتب الكود اللي وصلك عشان تفتح برو"), color = Z.sub, textAlign = TextAlign.Center, fontSize = 13.sp)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                code, { code = it.uppercase(); msg = null }, singleLine = true, placeholder = { Text("XXXX-XXXX-XXXX") },
+                textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, textAlign = TextAlign.Center, letterSpacing = 1.sp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
+                shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
+            )
+            msg?.let { (t, ok) -> Text(t, color = if (ok) Color(0xFF3DDC97) else Color(0xFFE5484D), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp)) }
+            Spacer(Modifier.height(16.dp))
+            PrimaryButton(if (busy) "…" else tr("Redeem", "تفعيل"), Modifier.fillMaxWidth()) {
+                if (busy || code.isBlank()) return@PrimaryButton
+                busy = true
+                scope.launch {
+                    val r = com.smrh.zujaj.remote.Codes.redeem(ctx, code)
+                    busy = false
+                    msg = when (r) {
+                        is com.smrh.zujaj.remote.RedeemResult.Ok -> {
+                            val d = if (r.until == Long.MAX_VALUE) tr("forever", "للأبد")
+                                else tr("until ", "لحد ") + java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(r.until))
+                            (if (r.restored) tr("Welcome back! Pro restored $d ✓", "أهلاً بيك تاني! البرو رجع $d ✓") else tr("Pro unlocked $d ✓", "تم تفعيل البرو $d ✓")) to true
+                        }
+                        is com.smrh.zujaj.remote.RedeemResult.Fail -> when (r.reason) {
+                            com.smrh.zujaj.remote.RedeemResult.Reason.INVALID -> tr("This code doesn't exist", "الكود ده مش موجود")
+                            com.smrh.zujaj.remote.RedeemResult.Reason.DISABLED -> tr("This code was turned off", "الكود ده اتوقف")
+                            com.smrh.zujaj.remote.RedeemResult.Reason.EXPIRED -> tr("This code has expired", "الكود ده انتهت صلاحيته")
+                            com.smrh.zujaj.remote.RedeemResult.Reason.FULL -> tr("This code reached its limit", "الكود ده اكتمل عدده")
+                            com.smrh.zujaj.remote.RedeemResult.Reason.ALREADY_USED_EXPIRED -> tr("You already used this code and its time ended", "انت استخدمت الكود ده قبل كده ومدته خلصت")
+                            com.smrh.zujaj.remote.RedeemResult.Reason.OFFLINE -> tr("Check your internet and try again", "اتأكد من النت وحاول تاني")
+                        } to false
+                    }
+                    if (r is com.smrh.zujaj.remote.RedeemResult.Ok) WidgetUpdater.updateAll(ctx)
+                }
+            }
+            TextButton(onClick = onDismiss) { Text(tr("Close", "إغلاق"), color = Z.sub) }
         }
     }
 }

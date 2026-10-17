@@ -210,90 +210,17 @@ class RenderCtx(
 
     /** Text using its real glyph bounds to centre (better for big numerals). */
     fun textTight(s0: String, cx: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, spacing: Float = 0f, maxW: Float = 0f, maxH: Float = 0f) {
+        if (font == F.AMIRI && thuluthDeco && font == calliFont && s0.any { it in '\u0621'..'\u064A' }) {
+            Thuluth.draw(this, s0, cx, cy, size, color, maxW, maxH)
+            return
+        }
         val s = withTashkeel(s0, font)
         val p = paint(color, size, font, Paint.Align.LEFT, spacing)
         fitPaint(p, s, maxW, maxH)
         val b = android.graphics.Rect()
         p.getTextBounds(s, 0, s.length, b)
         val width = p.measureText(s)
-        val x = cx - width / 2f
-        val y = cy - b.exactCenterY()
-        canvas.drawText(s, x, y, p)
-        if (font == F.AMIRI && thuluthDeco && font == calliFont && s.any { it in '\u0600'..'\u06FF' }) ornaments(s, p, x, y, color)
-    }
-
-    /**
-     * Sprinkles the small "v" (muhmal) marks and short strokes that Thuluth calligraphers
-     * use to fill the empty spaces around a word. Positions come from the word's own ink,
-     * so they never touch a letter, and they are stable for the same word.
-     */
-    private fun ornaments(s: String, p: Paint, x: Float, y: Float, color: Int) {
-        val b = android.graphics.Rect()
-        p.getTextBounds(s, 0, s.length, b)
-        if (b.width() < 8 || b.height() < 8) return
-        val m = p.textSize * 0.1f                 // mark size
-        val cell = (m * 0.9f).coerceAtLeast(2f)
-        val cols = (b.width() / cell).toInt() + 2
-        val rows = (b.height() / cell).toInt() + 2
-        val mask = Bitmap.createBitmap(cols, rows, Bitmap.Config.ARGB_8888)
-        val mc = Canvas(mask)
-        val sc = 1f / cell
-        mc.scale(sc, sc)
-        mc.translate(-(x + b.left) + cell, -(y + b.top) + cell)
-        val mp = Paint(p).apply { this.color = Color.BLACK; style = Paint.Style.FILL_AND_STROKE; strokeWidth = m * 0.9f }
-        mc.drawText(s, x, y, mp)
-        val px = IntArray(cols * rows)
-        mask.getPixels(px, 0, cols, 0, 0, cols, rows)
-        for (i in px.indices) px[i] = (px[i] ushr 24) and 0xFF
-        mask.recycle()
-        fun ink(cx: Int, cy: Int, r: Int): Boolean {
-            for (yy in cy - r..cy + r) for (xx in cx - r..cx + r) {
-                if (xx !in 0 until cols || yy !in 0 until rows) continue
-                if (px[yy * cols + xx] > 20) return true
-            }
-            return false
-        }
-        // a cell is a candidate if it is free but close to a letter (inside the word's silhouette)
-        val rnd = java.util.Random(s.hashCode().toLong())
-        val cand = mutableListOf<Pair<Int, Int>>()
-        for (yy in 1 until rows - 1) for (xx in 1 until cols - 1) {
-            if (ink(xx, yy, 1)) continue
-            if (!ink(xx, yy, 5)) continue
-            // keep marks in the upper ~75% (calligraphers fill the space above the baseline)
-            if (yy > rows * 0.78f) continue
-            cand += xx to yy
-        }
-        cand.shuffle(rnd)
-        val placed = mutableListOf<Pair<Float, Float>>()
-        val want = (s.count { it.isLetter() } * 1.5f).toInt().coerceIn(5, 12)
-        val minD = m * 2.0f
-        val mark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.color = withAlpha(color, 235); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-        }
-        for ((cxI, cyI) in cand) {
-            if (placed.size >= want) break
-            val mx = x + b.left - cell + (cxI + 0.5f) * cell
-            val my = y + b.top - cell + (cyI + 0.5f) * cell
-            if (placed.any { (ax, ay) -> (ax - mx) * (ax - mx) + (ay - my) * (ay - my) < minD * minD }) continue
-            placed += mx to my
-            canvas.save()
-            canvas.rotate(-14f + rnd.nextFloat() * 10f, mx, my)
-            if (placed.size % 3 == 0) {
-                // short tapered stroke (like a small fatha)
-                mark.strokeWidth = m * 0.22f
-                canvas.drawLine(mx - m * 0.55f, my + m * 0.18f, mx + m * 0.55f, my - m * 0.18f, mark)
-            } else {
-                // the "v" mark: thick right arm, thin left arm
-                val path = Path()
-                path.moveTo(mx - m * 0.42f, my - m * 0.5f)
-                path.lineTo(mx - m * 0.02f, my + m * 0.5f)
-                mark.strokeWidth = m * 0.16f
-                canvas.drawPath(path, mark)
-                mark.strokeWidth = m * 0.26f
-                canvas.drawLine(mx - m * 0.02f, my + m * 0.5f, mx + m * 0.45f, my - m * 0.58f, mark)
-            }
-            canvas.restore()
-        }
+        canvas.drawText(s, cx - width / 2f, cy - b.exactCenterY(), p)
     }
 
     fun fitPaint(p: Paint, s: String, maxW: Float, maxH: Float) {

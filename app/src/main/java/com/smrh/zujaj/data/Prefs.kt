@@ -97,9 +97,22 @@ object Prefs {
         set(v) = put("fahrenheit", v)
 
     // ---------- Pro ----------
-    var isPro: Boolean
+    /** Pro bought through Google Play. */
+    var purchasedPro: Boolean
         get() = sp.getBoolean("pro", false)
         set(v) = put("pro", v)
+    /** Pro granted by a redeem code: epoch ms it ends, Long.MAX_VALUE = forever, 0 = none. */
+    var codeProUntil: Long
+        get() = sp.getLong("code_pro_until", 0L)
+        set(v) = put("code_pro_until", v)
+    var codeUsed: String
+        get() = str("code_used", "")
+        set(v) = put("code_used", v)
+    val codePro: Boolean get() = codeProUntil > System.currentTimeMillis()
+    /** Writing sets the Play purchase flag (kept for tests and older callers). */
+    var isPro: Boolean
+        get() = purchasedPro || codePro
+        set(v) { purchasedPro = v }
     var proPlan: String
         get() = str("pro_plan", "")
         set(v) = put("pro_plan", v)
