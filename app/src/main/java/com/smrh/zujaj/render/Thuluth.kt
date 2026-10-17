@@ -185,12 +185,13 @@ object Thuluth {
             cand += i to j
         }
         cand.shuffle(rnd)
-        val want = (s.count { isLetter(it) } * 3f).toInt().coerceIn(8, 18)
+        val want = (s.count { isLetter(it) } * 2.4f).toInt().coerceIn(7, 14)
         val minD = m * 1.3f
         var n = 0
         for ((i, j) in cand) {
             if (n >= want) break
             val mx = cx(i); val my = cy(j)
+            if (mx < m * 0.7f || my < m * 0.8f || mx > r.w - m * 0.7f || my > r.h - m * 0.8f) continue
             if (placed.any { (ax, ay) -> (ax - mx) * (ax - mx) + (ay - my) * (ay - my) < minD * minD }) continue
             // keep the whole mark off the letters
             if (inkAt(i, j, (m * 0.7f / cell).toInt().coerceAtLeast(1))) continue
@@ -201,7 +202,7 @@ object Thuluth {
             c.rotate(-8f + rnd.nextFloat() * 8f, mx, my)
             when {
                 below && n % 2 == 0 -> smallLetter(c, if (n % 4 == 0) "س" else "ح", mx, my, m, gray, l.p)
-                n % 5 == 2 -> hook(c, mx, my, m, pen)
+                n % 3 == 2 -> hook(c, mx, my, m, pen)
                 else -> vee(c, mx, my, m, pen)
             }
             c.restore()
