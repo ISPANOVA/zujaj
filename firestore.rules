@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'hegazi.creator@gmail.com';
+    }
+    // Everyone can read catalog flags (pro/free/new/hidden status)
+    match /app/catalog {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Redeem codes: anyone can look up one code by name; only the admin can list/create/delete.
+    // A phone may only add 1 to "uses" while creating its own redemption record in the same transaction.
+    match /codes/{code} {
+      allow get: if true;
+      allow list, create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        resource.data.active == true
+        && (resource.data.expiresAt == 0 || request.time.toMillis() < resource.data.expiresAt)
+        && (resource.data.maxUses == 0 || resource.data.uses < resource.data.maxUses)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses', 'lastDevice'])
+        && request.resource.data.uses == resource.data.uses + 1
+        && request.resource.data.lastDevice is string
+        && !exists(/databases/$(database)/documents/codes/$(code)/redemptions/$(request.resource.data.lastDevice))
+        && existsAfter(/databases/$(database)/documents/codes/$(code)/redemptions/$(request.resource.data.lastDevice))
+      );
+      match /redemptions/{dev} {
+        allow get: if true;
+        allow list, update, delete: if isAdmin();
+        allow create: if getAfter(/databases/$(database)/documents/codes/$(code)).data.lastDevice == dev
+          && getAfter(/databases/$(database)/documents/codes/$(code)).data.uses == get(/databases/$(database)/documents/codes/$(code)).data.uses + 1;
+      }
+    }
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -107,9 +107,9 @@ object Thuluth {
 
     // ------------------------------------------------------------------------------- marks
     private fun ornaments(r: RenderCtx, l: Layout, x: Float, y: Float, size: Float, color: Int, s: String) {
-        val m = size * 0.085f
-        val cell = max(m * 0.7f, 2f)
-        val padX = m * 1.2f; val padY = m * 2.2f
+        val m = size * 0.15f
+        val cell = max(m * 0.45f, 2f)
+        val padX = m * 0.9f; val padY = m * 1.5f
         val area = RectF(x + l.bounds.left - padX, y + l.bounds.top - padY, x + l.bounds.right + padX, y + l.bounds.bottom + padY * 0.6f)
         val cols = (area.width() / cell).toInt() + 1
         val rows = (area.height() / cell).toInt() + 1
@@ -119,7 +119,7 @@ object Thuluth {
         val mc = Canvas(mask)
         mc.scale(1f / cell, 1f / cell)
         mc.translate(-area.left, -area.top)
-        val mp = Paint(l.p).apply { this.color = Color.BLACK; style = Paint.Style.FILL_AND_STROKE; strokeWidth = m * 0.8f }
+        val mp = Paint(l.p).apply { this.color = Color.BLACK; style = Paint.Style.FILL_AND_STROKE; strokeWidth = m * 0.45f }
         drawWord(mc, l, x, y, mp)
         val px = IntArray(cols * rows)
         mask.getPixels(px, 0, cols, 0, 0, cols, rows)
@@ -167,8 +167,8 @@ object Thuluth {
                 val x0 = midX + len / 2; val x1 = midX - len / 2
                 // a calligraphic fatha: thin at its ends, full in the middle
                 path.moveTo(x0, bestY + len * 0.1f)
-                path.quadTo(midX, bestY - m * 0.18f, x1, bestY - len * 0.1f)
-                path.quadTo(midX, bestY + m * 0.22f, x0, bestY + len * 0.1f)
+                path.quadTo(midX, bestY - m * 0.16f, x1, bestY - len * 0.1f)
+                path.quadTo(midX, bestY + m * 0.2f, x0, bestY + len * 0.1f)
                 path.close()
                 c.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = gray; style = Paint.Style.FILL })
                 c.drawLine(x0, bestY + len * 0.1f, x1, bestY - len * 0.1f, Paint(pen).apply { strokeWidth = m * 0.12f })
@@ -185,8 +185,8 @@ object Thuluth {
             cand += i to j
         }
         cand.shuffle(rnd)
-        val want = (s.count { isLetter(it) } * 3.2f).toInt().coerceIn(9, 22)
-        val minD = m * 1.75f
+        val want = (s.count { isLetter(it) } * 3f).toInt().coerceIn(8, 18)
+        val minD = m * 1.3f
         var n = 0
         for ((i, j) in cand) {
             if (n >= want) break
@@ -210,7 +210,7 @@ object Thuluth {
 
     /** Curled "v": a hairline left arm and a fuller right arm, both ending in little curls. */
     private fun vee(c: Canvas, x: Float, y: Float, m: Float, pen: Paint) {
-        val h = m * 0.62f
+        val h = m * 0.8f
         val left = Path().apply {
             moveTo(x - m * 0.34f, y - h * 0.62f)
             quadTo(x - m * 0.46f, y - h * 0.95f, x - m * 0.28f, y - h * 0.9f)
