@@ -1,0 +1,26 @@
+name: fetch
+on:
+  push:
+    branches: [fetch]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sudo apt-get update -qq
+          mkdir -p out debs
+          cd debs
+          for p in fonts-arabeyes fonts-kacst fonts-kacst-one; do apt-get download $p || true; done
+          for d in *.deb; do dpkg -x $d x; done
+          find x -iname "*.ttf" -exec cp {} ../out/ \;
+          find x -iname "copyright" | while read f; do cp "$f" "../out/$(echo $f | cut -d/ -f5)-copyright.txt"; done
+          cd ..
+          ls -la out
+      - run: |
+          cd out
+          git init -q -b fetched
+          git config user.email ci@zujaj; git config user.name ci
+          git add -A; git commit -qm fonts
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" fetched
