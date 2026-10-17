@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AllInclusive
@@ -99,6 +101,11 @@ fun AdminScreen(nav: Nav) {
             if (user != null) return@LaunchedEffect
             val r = runCatching {
                 runCatching { auth.signInWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
+                    .recoverCatching {
+                        // first time with email codes: move the account from the old password to the secret key
+                        auth.signInWithEmailAndPassword(AdminSession.email, AdminSession.gatePass).await()
+                        auth.currentUser!!.updatePassword(AdminSession.pass).await()
+                    }
                     .recoverCatching { auth.createUserWithEmailAndPassword(AdminSession.email, AdminSession.pass).await() }
                     .getOrThrow()
             }
@@ -461,7 +468,9 @@ private fun GeneralAdmin(email: String) {
     val flags by Flags.flags.collectAsState()
     var freeAll by remember(flags) { mutableStateOf(flags.freeAll) }
     var notice by remember(flags) { mutableStateOf(flags.notice) }
-    Column(Modifier.fillMaxSize()) {
+    var certs by remember(flags) { mutableStateOf(flags.certs.joinToString("\n")) }
+    var otp by remember(flags) { mutableStateOf(flags.otpUrl) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Section(tr("Promotion", "العروض")) {
             SwitchRow(tr("Everything free", "كل حاجة مجاني"), freeAll, tr("Every Pro widget unlocked for all users", "كل ويدجت البرو مفتوحة لكل المستخدمين")) { freeAll = it }
         }
@@ -469,9 +478,28 @@ private fun GeneralAdmin(email: String) {
             OutlinedTextField(notice, { notice = it }, placeholder = { Text(tr("Shown on the home page (leave empty to hide)", "بتظهر في الصفحة الرئيسية (سيبها فاضية عشان تختفي)")) },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
+        Section(tr("Anti-piracy", "الحماية من التهكير")) {
+            Text(tr("After uploading to Google Play, paste the SHA-256 of the \"App signing key certificate\" (Play Console → Test and release → App integrity). Copies signed with any other key never get Pro.",
+                "بعد ما ترفع على جوجل بلاي، الصق SHA-256 بتاع \"App signing key certificate\" (Play Console ← Test and release ← App integrity). أي نسخة متوقعة بمفتاح تاني مش هتاخد برو أبداً."),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            OutlinedTextField(certs, { certs = it }, placeholder = { Text("AB:CD:…") }, minLines = 2,
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
+            Text(tr("This build: ", "النسخة دي: ") + com.smrh.zujaj.security.Guard.certHashes(ctx).joinToString { it.take(16) + "…" } +
+                (if (com.smrh.zujaj.security.Guard.compromised()) tr(" · ⚠ untrusted", " · ⚠ غير موثوقة") else " · ✓"),
+                color = Z.sub, fontSize = 11.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
+        }
+        Section(tr("Email code for this panel", "كود الإيميل للوحة التحكم")) {
+            Text(tr("Web-app URL of the email-code service. When set, entering the panel needs the password, the email AND a 6-digit code sent to your Gmail.",
+                "رابط خدمة كود الإيميل. لما يتحط، الدخول للوحة محتاج الباسوورد والإيميل وكود من ٦ أرقام بيوصل على الجيميل."),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            OutlinedTextField(otp, { otp = it.trim() }, singleLine = true, placeholder = { Text("https://script.google.com/macros/s/…/exec") },
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
+        }
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch {
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim())) }
+                val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
             }
         }

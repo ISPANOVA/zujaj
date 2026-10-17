@@ -385,7 +385,11 @@ fun pin(ctx: Context, cfg: WidgetConfig, shape: Shape) {
         ctx, token.hashCode(), Intent(ctx, PinReceiver::class.java).putExtra("token", token),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
     )
-    mgr.requestPinAppWidget(ComponentName(ctx, WidgetUpdater.providerFor(shape)), null, cb)
+    val ok = runCatching { mgr.requestPinAppWidget(ComponentName(ctx, WidgetUpdater.providerFor(shape)), null, cb) }.getOrDefault(false)
+    if (!ok) {
+        Prefs.setPending("manual", cfg)
+        Toast.makeText(ctx, tr("Long-press the home screen → Widgets → Zujaj to place it.", "اضغط مطولاً على الشاشة ← الأدوات ← زجاج عشان تحطها."), Toast.LENGTH_LONG).show()
+    }
 }
 
 @Suppress("unused")

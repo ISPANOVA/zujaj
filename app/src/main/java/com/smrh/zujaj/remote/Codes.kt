@@ -127,6 +127,27 @@ object Codes {
         return result
     }
 
+    /**
+     * Re-checks this phone's redemption with the server (on app start). The local value is
+     * replaced by what the server recorded, and a redemption the server doesn't know about
+     * (while its code still exists) is revoked.
+     */
+    suspend fun revalidate(ctx: Context) {
+        val code = Prefs.codeUsed
+        if (code.isBlank() || !Flags.enabled) return
+        runCatching {
+            val ref = col().document(code)
+            val red = ref.collection("redemptions").document(deviceId(ctx)).get().await()
+            if (red.exists()) {
+                val until = red.getLong("until") ?: 0
+                if (until != Prefs.codeProUntil) Prefs.codeProUntil = until
+            } else if (ref.get().await().exists()) {
+                Prefs.codeProUntil = 0
+            }
+            Billing.refreshPro()
+        }
+    }
+
     // ------------------------------------------------------------------ admin
     suspend fun list(): List<RedeemCode> =
         col().orderBy("createdAt", Query.Direction.DESCENDING).get().await().documents.map { parse(it.id, it.data ?: emptyMap()) }

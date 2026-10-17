@@ -31,6 +31,10 @@ data class CatalogFlags(
     val freeAll: Boolean = false,
     val notice: String = "",
     val updatedAt: Long = 0,
+    /** SHA-256 of extra trusted signing certificates (the Google Play app-signing key). */
+    val certs: List<String> = emptyList(),
+    /** Web-app URL of the admin email-code service (tools/admin-otp.gs). */
+    val otpUrl: String = "",
 )
 
 object Flags {
@@ -43,6 +47,7 @@ object Flags {
 
     fun init(ctx: Context) {
         _flags.value = runCatching { json.decodeFromString<CatalogFlags>(Prefs.remoteFlags) }.getOrDefault(CatalogFlags())
+        com.smrh.zujaj.security.Guard.remoteCerts = _flags.value.certs.toSet()
         val apiKey = ctx.getString(R.string.fb_api_key)
         val appId = ctx.getString(R.string.fb_app_id)
         val project = ctx.getString(R.string.fb_project_id)
@@ -53,6 +58,13 @@ object Flags {
                     ctx,
                     FirebaseOptions.Builder().setApiKey(apiKey).setApplicationId(appId).setProjectId(project)
                         .setStorageBucket("$project.appspot.com").build()
+                )
+            }
+            // App Check: once enforced in the Firebase console, only the genuine app from Google Play
+            // (verified by Play Integrity) can talk to the database — modified copies are refused.
+            runCatching {
+                com.google.firebase.appcheck.FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                    com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory.getInstance()
                 )
             }
             enabled = true
@@ -74,7 +86,10 @@ object Flags {
                 freeAll = snap.getBoolean("freeAll") ?: false,
                 notice = snap.getString("notice") ?: "",
                 updatedAt = snap.getLong("updatedAt") ?: 0,
+                certs = (snap.get("certs") as? List<String>) ?: emptyList(),
+                otpUrl = snap.getString("otpUrl") ?: "",
             )
+            com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
             _flags.value = f
             Prefs.remoteFlags = json.encodeToString(f)
         }
@@ -103,6 +118,8 @@ object Flags {
             "hidden" to f.hidden,
             "freeAll" to f.freeAll,
             "notice" to f.notice,
+            "certs" to f.certs,
+            "otpUrl" to f.otpUrl,
             "updatedAt" to System.currentTimeMillis(),
         )
         doc().set(data, SetOptions.merge()).await()

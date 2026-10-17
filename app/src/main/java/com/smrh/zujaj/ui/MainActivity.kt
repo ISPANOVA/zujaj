@@ -85,8 +85,7 @@ open class MainActivity : ComponentActivity() {
         if (i.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) {
             configureId = i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             val shape = WidgetUpdater.shapeOf(this, configureId)
-            // Reconfigure an existing widget → straight to its editor
-            Prefs.widgetConfig(configureId)?.let { return Screen.Editor(it.styleId, configureId, configure = true) }
+            // New or existing (e.g. the ⚙ on a Samsung lock-screen widget): choose ANY design for it
             return Screen.Pick(shape, configureId)
         }
         val edit = i.getIntExtra(EXTRA_EDIT_WIDGET, -1)

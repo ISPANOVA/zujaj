@@ -96,7 +96,7 @@ object Billing {
         for (type in listOf(BillingClient.ProductType.SUBS, BillingClient.ProductType.INAPP)) {
             c.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(type).build()) { result, list ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    list.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }.forEach {
+                    list.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it) }.forEach {
                         any = true
                         acknowledge(it)
                         Prefs.proPlan = it.products.firstOrNull() ?: ""
@@ -133,7 +133,7 @@ object Billing {
     private fun onPurchases(result: BillingResult, purchases: List<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> purchases?.forEach {
-                if (it.purchaseState == Purchase.PurchaseState.PURCHASED) {
+                if (it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it)) {
                     acknowledge(it)
                     Prefs.proPlan = it.products.firstOrNull() ?: ""
                     setPro(true)
@@ -149,6 +149,21 @@ object Billing {
     }
 
     fun consumeMessage() { _message.value = null }
+
+    /** Checks Google's signature on a purchase with the app's Play licensing key (when configured). */
+    private fun genuine(p: Purchase): Boolean {
+        val ctx = appCtx ?: return false
+        val key = ctx.getString(com.smrh.zujaj.R.string.play_license_key).trim()
+        if (key.isEmpty()) return true
+        return runCatching {
+            val pub = java.security.KeyFactory.getInstance("RSA")
+                .generatePublic(java.security.spec.X509EncodedKeySpec(android.util.Base64.decode(key, android.util.Base64.DEFAULT)))
+            val sig = java.security.Signature.getInstance("SHA1withRSA")
+            sig.initVerify(pub)
+            sig.update(p.originalJson.toByteArray())
+            sig.verify(android.util.Base64.decode(p.signature, android.util.Base64.DEFAULT))
+        }.getOrDefault(false) && p.packageName == ctx.packageName
+    }
 
     private fun acknowledge(p: Purchase) {
         if (p.isAcknowledged) return

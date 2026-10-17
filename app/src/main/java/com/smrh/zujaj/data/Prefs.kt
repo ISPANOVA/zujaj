@@ -3,6 +3,7 @@ package com.smrh.zujaj.data
 import android.content.Context
 import android.content.SharedPreferences
 import com.smrh.zujaj.model.WidgetConfig
+import com.smrh.zujaj.security.Guard
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
@@ -17,6 +18,7 @@ object Prefs {
     val version: StateFlow<Int> = _version
 
     fun init(ctx: Context) {
+        Guard.init(ctx)
         sp = ctx.getSharedPreferences("zujaj_settings", Context.MODE_PRIVATE)
         wp = ctx.getSharedPreferences("zujaj_widgets", Context.MODE_PRIVATE)
     }
@@ -97,21 +99,24 @@ object Prefs {
         set(v) = put("fahrenheit", v)
 
     // ---------- Pro ----------
-    /** Pro bought through Google Play. */
+    /** Pro bought through Google Play (sealed against editing, see Guard). */
     var purchasedPro: Boolean
-        get() = sp.getBoolean("pro", false)
-        set(v) = put("pro", v)
+        get() = sp.getBoolean("pro", false) && Guard.verify("pro|1", str("pro_sig", ""))
+        set(v) { sp.edit().putBoolean("pro", v).putString("pro_sig", if (v) Guard.seal("pro|1") else "").apply(); bump() }
     /** Pro granted by a redeem code: epoch ms it ends, Long.MAX_VALUE = forever, 0 = none. */
     var codeProUntil: Long
-        get() = sp.getLong("code_pro_until", 0L)
-        set(v) = put("code_pro_until", v)
+        get() {
+            val u = sp.getLong("code_pro_until", 0L)
+            return if (u > 0 && Guard.verify("code|$u", str("code_sig", ""))) u else 0L
+        }
+        set(v) { sp.edit().putLong("code_pro_until", v).putString("code_sig", if (v > 0) Guard.seal("code|$v") else "").apply(); bump() }
     var codeUsed: String
         get() = str("code_used", "")
         set(v) = put("code_used", v)
     val codePro: Boolean get() = codeProUntil > System.currentTimeMillis()
-    /** Writing sets the Play purchase flag (kept for tests and older callers). */
+    /** Pro is on when bought or redeemed — and never on a tampered copy of the app. */
     var isPro: Boolean
-        get() = purchasedPro || codePro
+        get() = (purchasedPro || codePro) && !Guard.compromised()
         set(v) { purchasedPro = v }
     var proPlan: String
         get() = str("pro_plan", "")

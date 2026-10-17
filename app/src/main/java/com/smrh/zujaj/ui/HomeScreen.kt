@@ -517,12 +517,30 @@ fun SearchScreen(nav: Nav) {
     }
 }
 
-/** Launcher "add widget" flow: choose a style that fits the placed widget size. */
+/**
+ * Launcher / lock-screen "configure" flow: every design is offered for this widget, whatever
+ * size it was placed at (designs scale to fit). The one it shows now is listed first.
+ */
 @Composable
 fun PickScreen(nav: Nav, s: Screen.Pick) {
-    val list = Flags.visible().filter { it.shape == s.shape }
+    var chip by rememberSaveable { mutableStateOf("all") }
+    val current = Prefs.widgetConfig(s.widgetId)?.styleId
+    val all = Flags.visible()
+    val cats = Cat.values().filter { c -> all.any { it.cat == c } }
+    val list = (if (chip == "all") all else all.filter { it.cat.name == chip })
+        .sortedWith(compareBy<WidgetStyle>({ it.id != current }, { it.shape != s.shape }))
     Column(Modifier.fillMaxSize()) {
-        TopBar(tr("Choose a widget", "اختر ويدجت"), null)
-        StyleGrid(list) { st -> nav.go(Screen.Editor(st.id, s.widgetId, configure = true)) }
+        TopBar(tr("Choose any widget", "اختار أي ويدجت"), null)
+        Text(
+            tr("Every design fits this spot — pick one, customise it, then Save.", "كل التصميمات تنفع للمكان ده — اختار واحدة، عدّلها، واضغط حفظ."),
+            color = Z.sub, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp),
+        )
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { ZChip(tr("All", "الكل"), chip == "all") { chip = "all" } }
+            items(cats) { c -> ZChip(if (Prefs.isArabicUi) c.ar else c.en, chip == c.name) { chip = c.name } }
+        }
+        StyleGrid(list) { st ->
+            nav.go(Screen.Editor(st.id, s.widgetId, configure = true))
+        }
     }
 }

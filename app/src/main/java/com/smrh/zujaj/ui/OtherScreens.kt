@@ -216,6 +216,12 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     runCatching { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
                 }) {}
                 Divider()
+                if (com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null) {
+                    RowBase(tr("Auto-start (${com.smrh.zujaj.widget.Oem.brand})", "التشغيل التلقائي (${com.smrh.zujaj.widget.Oem.brand})"),
+                        sub = tr("Turn Zujaj on so widgets never freeze", "فعّل زجاج عشان الويدجت متقفش أبداً"),
+                        onClick = { com.smrh.zujaj.widget.Oem.openAutoStart(ctx) }) {}
+                    Divider()
+                }
                 RowBase(tr("How to add widgets", "طريقة إضافة الويدجت"), onClick = { nav.go(Screen.Tutorial) }) {}
             }
             Section(tr("Subscription", "الاشتراك")) {
@@ -413,6 +419,10 @@ object AdminSession {
         private set
     var email = ""
         private set
+    /** The gate password (used once to move the Firebase account onto the secret key). */
+    var gatePass = ""
+        private set
+    /** Secret Firebase admin key handed out by the email-code service. */
     var pass = ""
         private set
 
@@ -421,38 +431,111 @@ object AdminSession {
 
     fun checkPass(p: String) = sha(p) == PASS_HASH
     fun isAdminEmail(e: String?) = e != null && sha(e.trim().lowercase()) == EMAIL_HASH
-    fun unlock(p: String, e: String) { pass = p; email = e.trim().lowercase(); unlocked = true }
+    fun unlock(p: String, e: String, key: String) { gatePass = p; email = e.trim().lowercase(); pass = key; unlocked = true }
+
+    fun otpUrl(ctx: Context): String = ctx.getString(com.smrh.zujaj.R.string.admin_otp_url).trim()
+        .ifEmpty { com.smrh.zujaj.remote.Flags.flags.value.otpUrl.trim() }
+
+    /** POSTs to the one-time-code service; returns its JSON reply. */
+    suspend fun call(ctx: Context, body: org.json.JSONObject): org.json.JSONObject = withContext(Dispatchers.IO) {
+        val url = otpUrl(ctx)
+        require(url.isNotEmpty()) { "OTP service not configured" }
+        val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        c.requestMethod = "POST"; c.doOutput = true; c.connectTimeout = 15000; c.readTimeout = 30000
+        c.instanceFollowRedirects = true
+        c.setRequestProperty("Content-Type", "application/json")
+        c.outputStream.use { it.write(body.toString().toByteArray()) }
+        var conn = c
+        // Apps Script answers POST with a redirect to the result; follow it with GET
+        var hops = 0
+        while (conn.responseCode in 300..399 && hops++ < 5) {
+            val loc = conn.getHeaderField("Location") ?: break
+            conn = (java.net.URL(loc).openConnection() as java.net.HttpURLConnection).apply { connectTimeout = 15000; readTimeout = 30000 }
+        }
+        org.json.JSONObject(conn.inputStream.bufferedReader().readText())
+    }
 }
 
 @Composable
 fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var step by remember { mutableIntStateOf(0) }
     var pass by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var err by remember { mutableStateOf(false) }
+    var code by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    fun body(action: String) = org.json.JSONObject().put("action", action).put("pass", pass).put("email", email.trim().lowercase())
+    fun sendCode() {
+        busy = true; err = null
+        scope.launch {
+            val r = runCatching { AdminSession.call(ctx, body("send")) }
+            busy = false
+            val j = r.getOrNull()
+            when {
+                j?.optBoolean("ok") == true -> { step = 2; code = "" }
+                j?.optString("err") == "wait" -> { step = 2; err = tr("A code was just sent — check your inbox", "الكود اتبعت من شوية — شوف الإيميل") }
+                j?.optString("err") == "blocked" -> err = tr("Too many attempts. Try again in 15 minutes", "محاولات كتير. جرب بعد ١٥ دقيقة")
+                j != null -> err = tr("Wrong", "غير صحيح")
+                else -> err = tr("No connection", "مفيش اتصال") + (r.exceptionOrNull()?.message?.let { " ($it)" } ?: "")
+            }
+        }
+    }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(Modifier.clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(20.dp)) {
-            Text(if (step == 0) tr("Password", "كلمة المرور") else tr("Email", "البريد الإلكتروني"), style = MaterialTheme.typography.titleMedium)
+            Text(
+                when (step) { 0 -> tr("Password", "كلمة المرور"); 1 -> tr("Email", "البريد الإلكتروني"); else -> tr("Code sent to your email", "الكود اتبعت على إيميلك") },
+                style = MaterialTheme.typography.titleMedium,
+            )
             Spacer(Modifier.height(12.dp))
-            if (step == 0) {
-                OutlinedTextField(pass, { pass = it; err = false }, singleLine = true, isError = err,
+            when (step) {
+                0 -> OutlinedTextField(pass, { pass = it; err = null }, singleLine = true, isError = err != null,
                     visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-            } else {
-                OutlinedTextField(email, { email = it; err = false }, singleLine = true, isError = err, modifier = Modifier.fillMaxWidth())
+                1 -> OutlinedTextField(email, { email = it; err = null }, singleLine = true, isError = err != null, modifier = Modifier.fillMaxWidth())
+                else -> {
+                    OutlinedTextField(code, { code = it.filter { c -> c.isDigit() }.take(6); err = null }, singleLine = true, isError = err != null,
+                        placeholder = { Text("••••••") },
+                        textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center, letterSpacing = 6.sp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth())
+                    TextButton(onClick = { if (!busy) sendCode() }) { Text(tr("Resend code", "ابعت الكود تاني"), color = Z.sub, fontSize = 12.sp) }
+                }
             }
-            if (err) Text(tr("Wrong", "غير صحيح"), color = Color(0xFFE5484D), fontSize = 12.sp)
+            err?.let { Text(it, color = Color(0xFFE5484D), fontSize = 12.sp) }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
                 TextButton(onClick = {
-                    if (step == 0) { if (AdminSession.checkPass(pass)) step = 1 else err = true }
-                    else if (AdminSession.isAdminEmail(email)) { AdminSession.unlock(pass, email); onOk() } else err = true
-                }) { Text(tr("Next", "التالي"), color = LocalAccent.current) }
+                    if (busy) return@TextButton
+                    when (step) {
+                        0 -> if (AdminSession.checkPass(pass)) step = 1 else err = tr("Wrong", "غير صحيح")
+                        1 -> if (!AdminSession.isAdminEmail(email)) err = tr("Wrong", "غير صحيح")
+                            // until the email-code service is set up (Control panel → General), password + email open it
+                            else if (AdminSession.otpUrl(ctx).isEmpty()) { AdminSession.unlock(pass, email, pass); onOk() }
+                            else sendCode()
+                        else -> {
+                            if (code.length != 6) { err = tr("Enter the 6 digits", "اكتب الـ ٦ أرقام"); return@TextButton }
+                            busy = true
+                            scope.launch {
+                                val j = runCatching { AdminSession.call(ctx, body("verify").put("code", code)) }.getOrNull()
+                                busy = false
+                                if (j?.optBoolean("ok") == true && j.optString("key").isNotEmpty()) {
+                                    AdminSession.unlock(pass, email, j.optString("key")); onOk()
+                                } else err = when (j?.optString("err")) {
+                                    "expired" -> tr("Code expired — send a new one", "الكود انتهى — ابعت واحد جديد")
+                                    "wrong" -> tr("Wrong code", "الكود غلط")
+                                    null -> tr("No connection", "مفيش اتصال")
+                                    else -> tr("Wrong", "غير صحيح")
+                                }
+                            }
+                        }
+                    }
+                }) { Text(if (busy) "…" else if (step == 2) tr("Verify", "تأكيد") else tr("Next", "التالي"), color = LocalAccent.current) }
             }
         }
     }
 }
-
 
 // =============================================================================== REDEEM
 fun codeStatus(): String? {

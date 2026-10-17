@@ -87,7 +87,7 @@ object WidgetUpdater {
         Prefs.widgetConfig(id)?.let { return it }
         val shape = shapeOf(ctx, id)
         val pending = Prefs.takePending(null)
-        val cfg = if (pending != null && Catalog.byId(pending.styleId)?.shape == shape) pending
+        val cfg = if (pending != null && Catalog.byId(pending.styleId) != null) pending
         else Catalog.all.first { it.shape == shape }.defaultConfig()
         Prefs.saveWidgetConfig(id, cfg)
         return cfg
@@ -116,9 +116,25 @@ object WidgetUpdater {
 
     internal fun build(ctx: Context, id: Int, cfg: WidgetConfig, style: WidgetStyle, wDp: Float, hDp: Float): RemoteViews {
         val density = ctx.resources.displayMetrics.density
-        val res = Renderer.render(ctx, cfg, wDp, hDp, preview = false)
+        // Any design fits any widget size: when the placed widget's proportions differ a lot from
+        // the design (e.g. a wide design in a square lock-screen slot) it is drawn at its own
+        // proportions, as big as possible, centred in the slot.
+        val aspect = style.shape.dw / style.shape.dh
+        val slot = wDp / hDp
+        var rw = wDp; var rh = hDp
+        if (kotlin.math.abs(kotlin.math.ln(aspect / slot)) > 0.18f) {
+            if (slot > aspect) { rh = hDp; rw = hDp * aspect } else { rw = wDp; rh = wDp / aspect }
+        }
+        val offX = ((wDp - rw) / 2f * density)
+        val offY = ((hDp - rh) / 2f * density)
+        val res = Renderer.render(ctx, cfg, rw, rh, preview = false)
         val k = density / res.scale // bitmap px → device px
         val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
+        if (offX >= 1f || offY >= 1f) {
+            val ox = offX.toInt(); val oy = offY.toInt()
+            rv.setViewPadding(R.id.bg, ox, oy, ox, oy)
+            rv.setViewPadding(R.id.fx, ox, oy, ox, oy)
+        }
         if (Flags.locked(style)) {
             // Pro expired / not owned: show a lock overlay and send taps to the paywall.
             val c = android.graphics.Canvas(res.bitmap)
@@ -142,8 +158,8 @@ object WidgetUpdater {
             rv.setViewVisibility(wrap, View.VISIBLE)
             rv.setViewPadding(
                 wrap,
-                (l * k).toInt().coerceAtLeast(0), (t * k).toInt().coerceAtLeast(0),
-                (wPx - r * k).toInt().coerceAtLeast(0), (hPx - b * k).toInt().coerceAtLeast(0),
+                (offX + l * k).toInt().coerceAtLeast(0), (offY + t * k).toInt().coerceAtLeast(0),
+                (wPx - offX - r * k).toInt().coerceAtLeast(0), (hPx - offY - b * k).toInt().coerceAtLeast(0),
             )
         }
 

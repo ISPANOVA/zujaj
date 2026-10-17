@@ -1,6 +1,7 @@
 package com.smrh.zujaj
 
 import android.app.Application
+import kotlinx.coroutines.launch
 import com.smrh.zujaj.billing.Billing
 import com.smrh.zujaj.data.Prefs
 import com.smrh.zujaj.remote.Flags
@@ -13,5 +14,6 @@ class ZujajApp : Application() {
         Flags.init(this)
         Billing.init(this)
         runCatching { Scheduler.ensure(this) }
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { com.smrh.zujaj.remote.Codes.revalidate(this@ZujajApp) }
     }
 }

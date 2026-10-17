@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Google Play Console → Monetise → Monetisation setup → Licensing: "Base64-encoded RSA public key".
+         When set, every purchase's Google signature is verified before Pro is granted. -->
+    <string name="play_license_key" translatable="false"></string>
+    <!-- Web-app URL of tools/admin-otp.gs (emails the admin a one-time code). -->
+    <string name="admin_otp_url" translatable="false"></string>
+</resources>
