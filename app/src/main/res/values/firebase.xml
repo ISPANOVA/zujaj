@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Firebase project keys for the admin dashboard (leave empty to disable). -->
+<!-- Firebase project keys for the admin dashboard (project zujaj-6737b). -->
 <resources>
-    <string name="fb_api_key" translatable="false"></string>
-    <string name="fb_app_id" translatable="false"></string>
-    <string name="fb_project_id" translatable="false"></string>
+    <string name="fb_api_key" translatable="false">AIzaSyA7IXcf7kFdWAzzN9WMc9wx9E1cUdscVE0</string>
+    <string name="fb_app_id" translatable="false">1:854322022:android:d17c91c296fd2edc3cb6a7</string>
+    <string name="fb_project_id" translatable="false">zujaj-6737b</string>
 </resources>
