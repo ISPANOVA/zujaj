@@ -42,9 +42,6 @@ object Hands {
                         c.drawLine(cx, cy, cx, cy - neck, p)
                         p.strokeWidth = w * (if (which == Which.HOUR) 2.1f else 1.7f)
                         c.drawLine(cx, cy - neck, cx, cy - len, p)
-                        // inner groove for a machined look
-                        val g = Paint(p).apply { color = 0x33000000; strokeWidth = w * 0.45f }
-                        c.drawLine(cx, cy - neck - w * 0.6f, cx, cy - len + w * 0.6f, g)
                     }
                     1 -> { // thick rounded (pixel-like)
                         p.strokeWidth = w * (if (which == Which.HOUR) 2.6f else 2.2f)

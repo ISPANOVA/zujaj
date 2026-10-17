@@ -120,7 +120,7 @@ object PrayerR {
         val x = r.pad + 8 * r.u
         r.text(tm(r, d.next.time), x, r.h * 0.36f, 26 * r.u * r.s1, r.c1, r.sansBold)
         r.liveCountdown(d.next.time, inWord(r), x, r.h * 0.6f, 13 * r.u * r.s2, r.c2)
-        r.textTight(d.next.ar, r.w * 0.68f, r.h * 0.48f, r.h * 0.5f * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = r.h * 0.6f)
+        r.textTight(d.next.ar, r.w * 0.68f, r.h * 0.48f, r.h * 1.0f * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = r.h * 0.66f)
     }
 
     fun minimal(r: RenderCtx) {
@@ -160,7 +160,7 @@ object PrayerR {
         r.canvas.drawArc(rect, -90f, 360f * d.progress, false, r.strokePaint(r.c1, 7 * r.u))
         if (calli) {
             r.text(tm(r, d.next.time), cx, cy - rad * 0.5f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
-            r.textTight(d.next.ar, cx, cy, rad * 0.62f * r.s1, r.c1, r.calliFont, maxW = rad * 1.4f, maxH = rad * 0.7f)
+            r.textTight(d.next.ar, cx, cy, rad * 1.1f * r.s1, r.c1, r.calliFont, maxW = rad * 1.4f, maxH = rad * 0.7f)
         } else {
             r.text(nm(r, d.next), cx, cy - rad * 0.42f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
             r.text(tm(r, d.next.time), cx, cy, 26 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.CENTER)
@@ -176,7 +176,7 @@ object PrayerR {
         Glyphs.weather(r.canvas, w.cond, w.night, x + 12 * r.u, r.pad + 14 * r.u, 26 * r.u)
         r.text(r.n(WeatherRepo.fmt(w.temp)), x + 30 * r.u, r.pad + 14 * r.u, 14 * r.u, r.c1, r.sansMed)
         r.text(tm(r, d.next.time), x, r.pad + 46 * r.u, 22 * r.u * r.s1, r.c1, r.sansBold)
-        r.textTight(Calendars.dayName(r.today, true), r.w * 0.68f, r.pad + 34 * r.u, 60 * r.u * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = 64 * r.u)
+        r.textTight(Calendars.dayName(r.today, true), r.w * 0.68f, r.pad + 34 * r.u, 110 * r.u * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = 64 * r.u)
         strip(r, 0, RectF(r.pad, r.h * 0.5f, r.w - r.pad, r.h * 0.86f))
         r.progressBar(x + 6 * r.u, r.h - r.pad * 0.8f, r.w - 2 * x - 12 * r.u, dayProgress(d), r.c1, withAlpha(r.c1, 40), 3 * r.u)
     }
@@ -187,7 +187,7 @@ object PrayerR {
         r.text(tm(r, d.next.time), x, r.pad + 14 * r.u, 22 * r.u * r.s1, r.c1, r.sansBold)
         r.text(nm(r, d.next), x, r.pad + 36 * r.u, 11 * r.u * r.s2, r.c2, r.sans)
         r.liveCountdown(d.next.time, "", x, r.pad + 54 * r.u, 15 * r.u * r.s1, r.c1)
-        r.textTight(d.next.ar, r.w * 0.68f, r.pad + 36 * r.u, 70 * r.u * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = 76 * r.u)
+        r.textTight(d.next.ar, r.w * 0.68f, r.pad + 36 * r.u, 120 * r.u * r.s1, r.c1, r.calliFont, maxW = r.w * 0.5f, maxH = 76 * r.u)
         strip(r, 0, RectF(r.pad, r.h * 0.5f, r.w - r.pad, r.h * 0.86f))
         r.progressBar(x + 6 * r.u, r.h - r.pad * 0.8f, r.w - 2 * x - 12 * r.u, dayProgress(d), r.c1, withAlpha(r.c1, 40), 3 * r.u)
     }
@@ -251,7 +251,7 @@ object PrayerR {
 
     fun spotlight(r: RenderCtx) {
         val d = day(r)
-        r.textTight(d.next.ar, r.w / 2, r.h * 0.42f, r.h * 0.62f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad - 10 * r.u, maxH = r.h * 0.6f)
+        r.textTight(d.next.ar, r.w / 2, r.h * 0.42f, r.h * 1.2f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad - 10 * r.u, maxH = r.h * 0.62f)
         val line = tm(r, d.next.time)
         r.text(line, r.w / 2 - 6 * r.u, r.h * 0.84f, 13 * r.u * r.s2, r.c1, r.sansBold, Paint.Align.RIGHT)
         r.liveCountdown(d.next.time, inWord(r), r.w / 2 + 6 * r.u, r.h * 0.84f, 12 * r.u * r.s2, r.c2, Paint.Align.LEFT)
