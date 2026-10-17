@@ -94,6 +94,9 @@ private fun WidgetConfig.applyLook(p: WidgetConfig) = copy(
     color1 = p.color1, color2 = p.color2, accent = p.accent, border = p.border,
 )
 
+/** Tab the editor opens on (used by screenshot tests). */
+internal var editorStartTab = 0
+
 @Composable
 fun EditorScreen(nav: Nav, s: Screen.Editor) {
     val ctx = LocalContext.current
@@ -121,7 +124,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         }
     }
 
-    var tab by remember { mutableIntStateOf(0) }
+    // does this design show a live time big enough to take a custom font?
+    val hasTime = remember(style.id) {
+        runCatching {
+            com.smrh.zujaj.render.Renderer.render(ctx, style.defaultConfig().copy(font = ""), style.shape.dw, style.shape.dh, preview = false, density = 1f)
+                .lives.any { it is com.smrh.zujaj.render.LiveClock && it.sizePx >= 18f }
+        }.getOrDefault(false)
+    }
+    var tab by remember(s) { mutableIntStateOf(editorStartTab) }
     var stage by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -202,6 +212,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
 
                 }
                 if (tab == 1) {
+                Section(tr("Numerals", "الأرقام")) { NumeralsSwitch(cfg) { cfg = it } }
+                if (hasTime) Section(tr("Clock font", "خط الساعة")) { ClockFontGrid(cfg, { cfg = it }) { nav.go(Screen.Paywall) } }
                 Section(tr("Content", "المحتوى")) {
                     RowBase(tr("Color 1", "اللون ١")) { ColorDot(cfg.color1) { colorTarget = 1 } }
                     if (Feat.COLOR2 in f || true) { Divider(); RowBase(tr("Color 2", "اللون ٢")) { ColorDot(cfg.color2) { colorTarget = 2 } } }
@@ -278,10 +290,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 Section(tr("Region", "المنطقة")) {
                     ChoiceRow(tr("Language", "اللغة"), cfg.language, listOf(Lang.AUTO to tr("Auto", "تلقائي"), Lang.EN to "English", Lang.AR to "العربية")) { cfg = cfg.copy(language = it) }
                     Divider()
-                    ChoiceRow(tr("Numerals", "الأرقام"), cfg.numerals, listOf(Numerals.AUTO to tr("Auto", "تلقائي"), Numerals.LATIN to "123", Numerals.ARABIC to "١٢٣")) { cfg = cfg.copy(numerals = it) }
+                    ChoiceRow(tr("Numerals", "الأرقام"), if (cfg.numerals == Numerals.ARABIC) Numerals.ARABIC else Numerals.LATIN, listOf(Numerals.LATIN to "123", Numerals.ARABIC to "١٢٣")) { cfg = cfg.copy(numerals = it) }
                     Divider()
                     ChoiceRow(tr("Arabic calligraphy", "الخط العربي"), cfg.calli, listOf(
-                        0 to tr("Thuluth", "ثلث"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Naskh", "نسخ"), 3 to tr("Kufi", "كوفي"),
+                        0 to tr("Thuluth", "ثلث"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Kufi", "كوفي"),
                     )) { cfg = cfg.copy(calli = it) }
                 }
 

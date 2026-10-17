@@ -35,6 +35,7 @@ import com.smrh.zujaj.render.HitAction
 import com.smrh.zujaj.render.LiveAnalog
 import com.smrh.zujaj.render.LiveChrono
 import com.smrh.zujaj.render.LiveClock
+import com.smrh.zujaj.render.LiveFont
 import com.smrh.zujaj.render.Renderer
 import com.smrh.zujaj.ui.MainActivity
 
@@ -151,11 +152,13 @@ object WidgetUpdater {
         for (live in res.lives) {
             when (live) {
                 is LiveClock -> {
-                    val list = Slots.clocks[live.font] ?: continue
-                    val n = used.getOrDefault(live.font, 0)
-                    if (n >= list.size) continue
-                    used[live.font] = n + 1
-                    val (wrap, v) = list[n]
+                    // the requested face, or the plain one of the same digit system when its slots are used up
+                    val fallback = if (live.font.arabic) LiveFont.AR_CAIRO else LiveFont.SANS_BOLD
+                    val face = listOf(live.font, fallback, if (live.font.arabic) LiveFont.AR_CAIRO else LiveFont.SANS)
+                        .firstOrNull { used.getOrDefault(it, 0) < (Slots.clocks[it]?.size ?: 0) } ?: continue
+                    val n = used.getOrDefault(face, 0)
+                    used[face] = n + 1
+                    val (wrap, v) = Slots.clocks.getValue(face)[n]
                     place(wrap, live.rect.left, live.rect.top, live.rect.right, live.rect.bottom)
                     rv.setCharSequence(v, "setFormat12Hour", live.pattern)
                     rv.setCharSequence(v, "setFormat24Hour", live.pattern)
@@ -165,7 +168,7 @@ object WidgetUpdater {
                     rv.setInt(v, "setGravity", live.gravity)
                 }
                 is LiveChrono -> {
-                    val base = if (live.bold) 2 else 0
+                    val base = if (live.arabic) 4 else if (live.bold) 2 else 0
                     val slot = base + (chrono % 2)
                     chrono++
                     val (wrap, v) = Slots.chronos[slot]
@@ -190,6 +193,11 @@ object WidgetUpdater {
                     }
                 }
             }
+        }
+
+        res.fx?.let {
+            rv.setImageViewBitmap(R.id.fx, it)
+            rv.setViewVisibility(R.id.fx, View.VISIBLE)
         }
 
         // Default tap on the background

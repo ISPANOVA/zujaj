@@ -65,6 +65,41 @@ class RenderAllTest {
                 e.printStackTrace()
             }
         }
+        // every clock face through the real widget path (checks centring + digit locking)
+        val dc = Catalog.byId("digital_clock")!!
+        for (f in com.smrh.zujaj.render.LiveFont.entries) {
+            try {
+                val cfg = dc.defaultConfig().copy(font = f.name, numerals = if (f.arabic) com.smrh.zujaj.model.Numerals.ARABIC else com.smrh.zujaj.model.Numerals.LATIN)
+                val rv = WidgetUpdater.build(ctx, 1, cfg, dc, dc.shape.dw, dc.shape.dh)
+                val v = rv.apply(ctx, FrameLayout(ctx))
+                val d = ctx.resources.displayMetrics.density
+                val w = (dc.shape.dw * d).toInt(); val h = (dc.shape.dh * d).toInt()
+                v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                v.layout(0, 0, w, h)
+                val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                v.draw(Canvas(b))
+                save(b, File(out, "f_${f.name.lowercase()}.png"))
+            } catch (e: Throwable) {
+                errors.append("FONT ${f.name}: $e\n")
+            }
+        }
+        // Arabic numerals variant of every time widget
+        for (st in Catalog.all.filter { it.cat == com.smrh.zujaj.catalog.Cat.DIGITAL || it.cat == com.smrh.zujaj.catalog.Cat.CLOCK }) {
+            try {
+                val cfg = st.defaultConfig().copy(numerals = com.smrh.zujaj.model.Numerals.ARABIC, language = Lang.AR)
+                val rv = WidgetUpdater.build(ctx, 1, cfg, st, st.shape.dw, st.shape.dh)
+                val v = rv.apply(ctx, FrameLayout(ctx))
+                val d = ctx.resources.displayMetrics.density
+                val w = (st.shape.dw * d).toInt(); val h = (st.shape.dh * d).toInt()
+                v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                v.layout(0, 0, w, h)
+                val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                v.draw(Canvas(b))
+                save(b, File(out, "wa_${st.id}.png"))
+            } catch (e: Throwable) {
+                errors.append("WIDGET-AR ${st.id}: $e\n")
+            }
+        }
         File(out, "errors.txt").writeText(errors.toString().ifBlank { "OK" })
         println("RENDER ERRORS:\n$errors")
     }

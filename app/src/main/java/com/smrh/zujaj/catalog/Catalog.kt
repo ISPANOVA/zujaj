@@ -118,6 +118,10 @@ object Catalog {
         // ------------------------------------------------------------------ DIGITAL
         WidgetStyle("digital_clock", Cat.DIGITAL, "Digital Clock", "ساعة رقمية", W, popular = true, feats = timeF, upd = none) { DigitalR.clock(it) },
         WidgetStyle("digital_stacked", Cat.DIGITAL, "Digital Stacked", "ساعة مكدسة", S, isNew = true, feats = timeF, upd = none) { DigitalR.stacked(it) },
+        WidgetStyle("digital_fade", Cat.DIGITAL, "Digital Fade", "ساعة متلاشية", W, pro = true, isNew = true, popular = true, feats = timeF + Feat.ACCENT, upd = none) { DigitalR.fadeWide(it) },
+        WidgetStyle("digital_duo", Cat.DIGITAL, "Digital Duo", "ساعة ثنائية", S, isNew = true, feats = timeF + Feat.ACCENT, upd = none) { DigitalR.duo(it) },
+        WidgetStyle("digital_arabic", Cat.DIGITAL, "Arabic Numerals", "ساعة بالأرقام العربية", W, isNew = true, popular = true, feats = timeF, upd = setOf(Upd.DAILY),
+            defaults = { it.copy(numerals = com.smrh.zujaj.model.Numerals.ARABIC, language = com.smrh.zujaj.model.Lang.AR) }) { DigitalR.arabic(it) },
         WidgetStyle("digital_tall", Cat.DIGITAL, "Digital Tall", "ساعة طويلة", S, feats = timeF, upd = none) { DigitalR.tall(it) },
         WidgetStyle("digital_world", Cat.DIGITAL, "Digital World", "توقيت العالم", B, pro = true, feats = timeF + Feat.CITIES, maxItems = 2, upd = none) { DigitalR.worldBanner(it) },
         WidgetStyle("digital_world_split", Cat.DIGITAL, "World Split", "توقيت مزدوج", W, feats = timeF + Feat.CITIES, maxItems = 2, upd = none) { DigitalR.worldSplit(it) },

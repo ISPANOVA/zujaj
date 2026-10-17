@@ -78,8 +78,10 @@ data class WidgetConfig(
     val cities: List<City> = emptyList(),
     val days: List<Long> = emptyList(),
     val variant: Int = 0,
-    /** 0 Thuluth, 1 Ruqaa, 2 Naskh, 3 Kufi */
+    /** 0 Thuluth, 1 Ruqaa, 2 Nastaliq, 3 Kufi */
     val calli: Int = 0,
+    /** Face of the main time (LiveFont name); blank = the design's own. */
+    val font: String = "",
     // Region
     val language: Lang = Lang.AUTO,
     val numerals: Numerals = Numerals.AUTO,

@@ -42,6 +42,7 @@ class UiShotsTest {
             "paywall" to Screen.Paywall,
             "settings" to Screen.Settings,
             "tutorial" to Screen.Tutorial,
+            "editor_font" to Screen.Editor("digital_stacked"),
         )
         rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)
@@ -50,6 +51,7 @@ class UiShotsTest {
             for (ar in listOf(false, true)) {
                 rule.runOnUiThread {
                     Prefs.appLanguage = if (ar) "ar" else "en"
+                    com.smrh.zujaj.ui.editorStartTab = if (name == "editor_font") 1 else 0
                     nav.stack.clear(); nav.stack.add(s)
                 }
                 repeat(6) {

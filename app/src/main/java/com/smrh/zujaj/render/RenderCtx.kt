@@ -27,8 +27,45 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.min
 
-/** Fonts that exist as live TextClock slots in the widget layout. */
-enum class LiveFont { SANS, SANS_BOLD, PLAYFAIR, BODONI, SHOULDERS, OSWALD, CAIRO }
+/**
+ * Fonts that exist as live TextClock slots in the widget layout (res/font/clk_*).
+ * Latin faces always draw 0-9 (even when the phone is in Arabic); AR_* faces always draw ٠-٩.
+ * [kind]: 0 sans · 1 serif · 2 condensed · 3 display — used to pick the matching Arabic face.
+ */
+enum class LiveFont(val f: F, val res: String, val label: String, val kind: Int, val pro: Boolean = false, val slots: Int = 2, val arabic: Boolean = false) {
+    SANS(F.CLK_LABEL, "clk_label", "Manrope", 0, slots = 6),
+    SANS_BOLD(F.CLK_MANROPE, "clk_manrope", "Manrope Bold", 0, slots = 3),
+    ARCHIVO(F.CLK_ARCHIVO, "clk_archivo", "Archivo Black", 0),
+    ANTON(F.CLK_ANTON, "clk_anton", "Anton", 2),
+    BEBAS(F.CLK_BEBAS, "clk_bebas", "Bebas", 2),
+    SHOULDERS(F.CLK_SHOULDERS, "clk_shoulders", "Shoulders", 2),
+    OSWALD(F.CLK_OSWALD, "clk_oswald", "Oswald Light", 2),
+    PLAYFAIR(F.CLK_PLAYFAIR, "clk_playfair", "Playfair", 1),
+    BODONI(F.CLK_BODONI, "clk_bodoni", "Bodoni", 1),
+    DMSERIF(F.CLK_DMSERIF, "clk_dmserif", "DM Serif", 1),
+    ABRIL(F.CLK_ABRIL, "clk_abril", "Abril", 1, pro = true),
+    COMFORTAA(F.CLK_COMFORTAA, "clk_comfortaa", "Comfortaa", 0),
+    RIGHTEOUS(F.CLK_RIGHTEOUS, "clk_righteous", "Righteous", 3),
+    SYNE(F.CLK_SYNE, "clk_syne", "Syne", 3, pro = true),
+    UNBOUNDED(F.CLK_UNBOUNDED, "clk_unbounded", "Unbounded", 3, pro = true),
+    ORBITRON(F.CLK_ORBITRON, "clk_orbitron", "Orbitron", 3, pro = true),
+    MICHROMA(F.CLK_MICHROMA, "clk_michroma", "Michroma", 3, pro = true),
+    POIRET(F.CLK_POIRET, "clk_poiret", "Poiret", 3, pro = true),
+    SIXCAPS(F.CLK_SIXCAPS, "clk_sixcaps", "Six Caps", 2, pro = true),
+    AR_CAIRO(F.CLK_AR_CAIRO, "clk_ar_cairo", "القاهرة", 0, slots = 8, arabic = true),
+    AR_AMIRI(F.CLK_AR_AMIRI, "clk_ar_amiri", "أميري", 1, arabic = true),
+    AR_KUFI(F.CLK_AR_KUFI, "clk_ar_kufi", "كوفي", 2, arabic = true),
+    AR_RAKKAS(F.CLK_AR_RAKKAS, "clk_ar_rakkas", "رقاص", 3, pro = true, arabic = true);
+
+    fun toArabic(): LiveFont = if (arabic) this else when (kind) { 1 -> AR_AMIRI; 2 -> AR_KUFI; 3 -> AR_RAKKAS; else -> AR_CAIRO }
+    fun toLatin(): LiveFont = if (!arabic) this else when (this) { AR_AMIRI -> PLAYFAIR; AR_KUFI -> OSWALD; AR_RAKKAS -> RIGHTEOUS; else -> SANS_BOLD }
+
+    companion object {
+        fun byName(n: String): LiveFont? = entries.firstOrNull { it.name == n }
+        val latinChoices get() = entries.filter { !it.arabic && it != SANS }
+        val arabicChoices get() = entries.filter { it.arabic }
+    }
+}
 
 data class HandStyle(
     val kind: Int = 0, // 0 thin classic, 1 thick rounded, 2 tapered, 3 line+ring
@@ -65,6 +102,7 @@ data class LiveChrono(
     val target: Long,
     val prefix: String,
     val bold: Boolean = false,
+    val arabic: Boolean = false,
 ) : Live()
 
 data class LiveAnalog(override val rect: RectF, val hands: HandStyle, val zone: String?) : Live()
@@ -124,9 +162,9 @@ class RenderCtx(
     val s2 get() = cfg.size2 / 100f
 
     /** Main UI font for normal labels depending on language. */
-    val sans: F get() = if (ar) F.CAIRO else F.SANS
-    val sansBold: F get() = if (ar) F.CAIRO_BOLD else F.SANS_BOLD
-    val sansMed: F get() = if (ar) F.CAIRO_BOLD else F.SANS_MED
+    val sans: F get() = if (ar || arDigits) F.CAIRO else F.SANS
+    val sansBold: F get() = if (ar || arDigits) F.CAIRO_BOLD else F.SANS_BOLD
+    val sansMed: F get() = if (ar || arDigits) F.CAIRO_BOLD else F.SANS_MED
 
     fun t(en: String, arS: String) = if (ar) arS else en
     fun n(s: String) = if (arDigits) Calendars.toArabicDigits(s) else s
@@ -136,7 +174,9 @@ class RenderCtx(
     fun tf(f: F): Typeface = Fonts.get(context, f)
 
     /** Calligraphy face chosen by the user for Arabic display words. */
-    val calliFont: F get() = when (cfg.calli) { 1 -> F.RUQAA; 2 -> F.AMIRI; 3 -> F.KUFI; else -> F.THULUTH }
+    val calliFont: F get() = when (cfg.calli) { 1 -> F.RUQAA; 2 -> F.THULUTH; 3 -> F.KUFI; else -> F.AMIRI }
+    /** Thuluth look = bold naskh + full tashkeel + the small decorative marks of the script. */
+    private val thuluthDeco get() = cfg.calli == 0
     private fun withTashkeel(s: String, font: F) =
         if (font == F.THULUTH || font == F.AMIRI) Calendars.tashkeel(s) else s
 
@@ -176,7 +216,84 @@ class RenderCtx(
         val b = android.graphics.Rect()
         p.getTextBounds(s, 0, s.length, b)
         val width = p.measureText(s)
-        canvas.drawText(s, cx - width / 2f, cy - b.exactCenterY(), p)
+        val x = cx - width / 2f
+        val y = cy - b.exactCenterY()
+        canvas.drawText(s, x, y, p)
+        if (font == F.AMIRI && thuluthDeco && font == calliFont && s.any { it in '\u0600'..'\u06FF' }) ornaments(s, p, x, y, color)
+    }
+
+    /**
+     * Sprinkles the small "v" (muhmal) marks and short strokes that Thuluth calligraphers
+     * use to fill the empty spaces around a word. Positions come from the word's own ink,
+     * so they never touch a letter, and they are stable for the same word.
+     */
+    private fun ornaments(s: String, p: Paint, x: Float, y: Float, color: Int) {
+        val b = android.graphics.Rect()
+        p.getTextBounds(s, 0, s.length, b)
+        if (b.width() < 8 || b.height() < 8) return
+        val m = p.textSize * 0.075f                // mark size
+        val cell = (m * 0.9f).coerceAtLeast(2f)
+        val cols = (b.width() / cell).toInt() + 2
+        val rows = (b.height() / cell).toInt() + 2
+        val mask = Bitmap.createBitmap(cols, rows, Bitmap.Config.ARGB_8888)
+        val mc = Canvas(mask)
+        val sc = 1f / cell
+        mc.scale(sc, sc)
+        mc.translate(-(x + b.left) + cell, -(y + b.top) + cell)
+        val mp = Paint(p).apply { this.color = Color.BLACK; style = Paint.Style.FILL_AND_STROKE; strokeWidth = m * 0.9f }
+        mc.drawText(s, x, y, mp)
+        val px = IntArray(cols * rows)
+        mask.getPixels(px, 0, cols, 0, 0, cols, rows)
+        for (i in px.indices) px[i] = (px[i] ushr 24) and 0xFF
+        mask.recycle()
+        fun ink(cx: Int, cy: Int, r: Int): Boolean {
+            for (yy in cy - r..cy + r) for (xx in cx - r..cx + r) {
+                if (xx !in 0 until cols || yy !in 0 until rows) continue
+                if (px[yy * cols + xx] > 20) return true
+            }
+            return false
+        }
+        // a cell is a candidate if it is free but close to a letter (inside the word's silhouette)
+        val rnd = java.util.Random(s.hashCode().toLong())
+        val cand = mutableListOf<Pair<Int, Int>>()
+        for (yy in 1 until rows - 1) for (xx in 1 until cols - 1) {
+            if (ink(xx, yy, 1)) continue
+            if (!ink(xx, yy, 4)) continue
+            // keep marks in the upper ~75% (calligraphers fill the space above the baseline)
+            if (yy > rows * 0.78f) continue
+            cand += xx to yy
+        }
+        cand.shuffle(rnd)
+        val placed = mutableListOf<Pair<Float, Float>>()
+        val want = (s.count { it.isLetter() } * 0.9f).toInt().coerceIn(3, 9)
+        val minD = m * 2.4f
+        val mark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = withAlpha(color, 235); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        }
+        for ((cxI, cyI) in cand) {
+            if (placed.size >= want) break
+            val mx = x + b.left - cell + (cxI + 0.5f) * cell
+            val my = y + b.top - cell + (cyI + 0.5f) * cell
+            if (placed.any { (ax, ay) -> (ax - mx) * (ax - mx) + (ay - my) * (ay - my) < minD * minD }) continue
+            placed += mx to my
+            canvas.save()
+            canvas.rotate(-14f + rnd.nextFloat() * 10f, mx, my)
+            if (placed.size % 3 == 0) {
+                // short tapered stroke (like a small fatha)
+                mark.strokeWidth = m * 0.22f
+                canvas.drawLine(mx - m * 0.55f, my + m * 0.18f, mx + m * 0.55f, my - m * 0.18f, mark)
+            } else {
+                // the "v" mark: thick right arm, thin left arm
+                val path = Path()
+                path.moveTo(mx - m * 0.42f, my - m * 0.5f)
+                path.lineTo(mx - m * 0.02f, my + m * 0.5f)
+                mark.strokeWidth = m * 0.16f
+                canvas.drawPath(path, mark)
+                mark.strokeWidth = m * 0.26f
+                canvas.drawLine(mx - m * 0.02f, my + m * 0.5f, mx + m * 0.45f, my - m * 0.58f, mark)
+            }
+            canvas.restore()
+        }
     }
 
     fun fitPaint(p: Paint, s: String, maxW: Float, maxH: Float) {
@@ -231,15 +348,14 @@ class RenderCtx(
         return n(f.format(Date()))
     }
 
-    fun liveFontToF(f: LiveFont) = when (f) {
-        LiveFont.SANS -> F.SANS_MED
-        LiveFont.SANS_BOLD -> F.SANS_BOLD
-        LiveFont.PLAYFAIR -> F.PLAYFAIR
-        LiveFont.BODONI -> F.BODONI
-        LiveFont.SHOULDERS -> F.SHOULDERS
-        LiveFont.OSWALD -> F.OSWALD_LIGHT
-        LiveFont.CAIRO -> F.CAIRO_BOLD
+    /** Final face for a live text: user's font for the main time, then Arabic/Latin digits. */
+    fun resolveFont(font: LiveFont, size: Float): LiveFont {
+        var f = font
+        if (size >= 18 * u) LiveFont.byName(cfg.font)?.let { f = it }
+        return if (arDigits) f.toArabic() else f.toLatin()
     }
+
+    fun liveFontToF(f: LiveFont) = f.f
 
     /** Time pattern honoring the 12/24h setting. */
     fun hm(): String = if (cfg.hour24) "HH:mm" else "hh:mm"
@@ -255,7 +371,8 @@ class RenderCtx(
         color: Int = c1, align: Paint.Align = Paint.Align.CENTER, zone: String? = null,
         maxW: Float = 0f, spacing: Float = 0f, sample: String? = null,
     ) {
-        val f = liveFontToF(font)
+        val lf = resolveFont(font, size)
+        val f = lf.f
         val shown = fmt(pattern, zone)
         val measureStr = sample ?: shown
         var sz = size
@@ -271,17 +388,62 @@ class RenderCtx(
             Paint.Align.RIGHT -> cx - width
             else -> cx - width / 2
         }
-        val lineH = (fm.descent - fm.ascent) * 1.05f
-        val rect = RectF(left, cy - lineH / 2, left + width, cy + lineH / 2)
+        // Numbers are centred on their real ink (lining digits), not on the font's line box,
+        // so the time sits exactly in the middle instead of drifting down.
+        val numeric = measureStr.all { it.isDigit() || it == ':' || it == ' ' || it == '.' }
+        val baseline = if (numeric) {
+            val b = android.graphics.Rect()
+            p.getTextBounds("0123456789", 0, 10, b)
+            cy - b.exactCenterY()
+        } else cy - (fm.ascent + fm.descent) / 2f
+        val lineH = (fm.descent - fm.ascent)
+        // TextView (includeFontPadding=false, centre gravity) puts the baseline at boxTop + (boxH - lineH)/2 - ascent
+        val boxH = lineH * 1.06f
+        val top = baseline + fm.ascent - (boxH - lineH) / 2f
+        val rect = RectF(left, top, left + width, top + boxH)
         if (preview) {
-            canvas.drawText(shown, cx, cy - (fm.ascent + fm.descent) / 2f, p)
+            canvas.drawText(shown, cx, baseline, p)
         } else {
             val g = when (align) {
                 Paint.Align.LEFT -> Gravity.START
                 Paint.Align.RIGHT -> Gravity.END
                 else -> Gravity.CENTER_HORIZONTAL
             } or Gravity.CENTER_VERTICAL
-            lives += LiveClock(rect, font, sz, color, g, pattern, zone, spacing + cfg.spacing / 100f)
+            lives += LiveClock(rect, lf, sz, color, g, pattern, zone, spacing + cfg.spacing / 100f)
+        }
+    }
+
+    // ------------------------------------------------------------------ foreground effects
+    /** Overlay drawn above live text (e.g. a fade). Only created when a widget asks for it. */
+    var fx: Bitmap? = null
+        private set
+    var fxClip: Path? = null
+
+    /**
+     * Fades whatever is under [r] (including live clocks) towards [to] from top to bottom.
+     * Works because the overlay sits above the TextClocks in the widget layout.
+     */
+    fun fade(r: RectF, to: Int, from: Float = 0f, until: Float = 1f) {
+        val c = if (preview) canvas else {
+            val b = fx ?: Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888).also { fx = it }
+            Canvas(b).also { cv -> fxClip?.let { cv.clipPath(it) } }
+        }
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val y0 = r.top + r.height() * from
+        val y1 = r.top + r.height() * until
+        p.shader = LinearGradient(0f, y0, 0f, y1, withAlpha(to, 0), to, Shader.TileMode.CLAMP)
+        c.drawRect(r.left, y0, r.right, r.bottom, p)
+    }
+
+    /** The colour of the widget background behind y, when it is an opaque-ish fill; null otherwise. */
+    fun bgColorAt(y: Float): Int? {
+        if (!cfg.bg) return null
+        val a = cfg.bgAlpha.coerceIn(0, 100) * 255 / 100
+        return when (cfg.fill) {
+            com.smrh.zujaj.model.Fill.SOLID -> withAlpha(cfg.bgColor, a)
+            com.smrh.zujaj.model.Fill.GRADIENT -> withAlpha(mix(cfg.bgColor, cfg.bgColor2, (y / h).coerceIn(0f, 1f) * 0.5f + 0.25f), a)
+            com.smrh.zujaj.model.Fill.AURORA -> withAlpha(cfg.bgColor, a)
+            else -> null
         }
     }
 
@@ -314,7 +476,7 @@ class RenderCtx(
                 Paint.Align.RIGHT -> Gravity.END
                 else -> Gravity.CENTER_HORIZONTAL
             } or Gravity.CENTER_VERTICAL
-            lives += LiveChrono(RectF(l, cy - lineH / 2, l + width, cy + lineH / 2), size, color, g, target, prefix, bold)
+            lives += LiveChrono(RectF(l, cy - lineH / 2, l + width, cy + lineH / 2), size, color, g, target, prefix, bold, arDigits)
         }
     }
 

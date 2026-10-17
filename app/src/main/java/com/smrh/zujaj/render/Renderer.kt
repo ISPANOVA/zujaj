@@ -22,7 +22,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
-class RenderResult(val bitmap: Bitmap, val lives: List<Live>, val hits: List<Hit>, val scale: Float)
+class RenderResult(val bitmap: Bitmap, val lives: List<Live>, val hits: List<Hit>, val scale: Float, val fx: Bitmap? = null)
 
 object Renderer {
     /** Max bitmap side in px pushed to the launcher (keeps RemoteViews memory small). */
@@ -46,12 +46,13 @@ object Renderer {
         val rc = RenderCtx(ctx, bmp, style, cfg, preview, scale, data)
         drawBackground(rc)
         val save = rc.canvas.save()
-        rc.canvas.clipPath(Path().roundRect(RectF(0f, 0f, rc.w, rc.h), cornerPx(rc)))
+        rc.fxClip = Path().roundRect(RectF(0f, 0f, rc.w, rc.h), cornerPx(rc))
+        rc.canvas.clipPath(rc.fxClip!!)
         runCatching { style.draw(rc) }.onFailure { e ->
             rc.text("⚠ ${e.javaClass.simpleName}", rc.w / 2, rc.h / 2, 12 * rc.u, Color.WHITE, F.SANS, Paint.Align.CENTER)
         }
         rc.canvas.restoreToCount(save)
-        return RenderResult(bmp, rc.lives, rc.hits, scale)
+        return RenderResult(bmp, rc.lives, rc.hits, scale, rc.fx)
     }
 
     fun cornerPx(rc: RenderCtx) = min(rc.cfg.corner * rc.u, min(rc.w, rc.h) / 2f)
