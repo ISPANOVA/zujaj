@@ -34,7 +34,7 @@ object Renderer {
      */
     fun render(
         ctx: Context, cfg: WidgetConfig, wDp: Float, hDp: Float, preview: Boolean,
-        density: Float = ctx.resources.displayMetrics.density, data: RenderData = RenderData(),
+        density: Float = ctx.resources.displayMetrics.density, data: RenderData = RenderData(), bake: Boolean = false,
     ): RenderResult {
         val style = Catalog.byId(cfg.styleId) ?: Catalog.all.first()
         var scale = density
@@ -44,6 +44,7 @@ object Renderer {
         val bh = max(1, (hDp * scale).toInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         val rc = RenderCtx(ctx, bmp, style, cfg, preview, scale, data)
+        rc.bakeLive = bake
         drawBackground(rc)
         val save = rc.canvas.save()
         rc.fxClip = Path().roundRect(RectF(0f, 0f, rc.w, rc.h), cornerPx(rc))

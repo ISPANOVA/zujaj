@@ -2,6 +2,7 @@ package com.smrh.zujaj.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -114,6 +115,19 @@ object WidgetUpdater {
         mgr.updateAppWidget(id, views)
     }
 
+    /** Lock-screen hosts don't load app fonts, so Arabic-Indic digits must be drawn into the image. */
+    fun isKeyguard(ctx: Context, id: Int): Boolean = runCatching {
+        AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
+            .getInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, -1) == AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD
+    }.getOrDefault(false)
+
+    /** True when the phone's own clock digits differ from what this widget wants and the host ignores our fonts. */
+    fun needsBake(ctx: Context, id: Int, cfg: WidgetConfig): Boolean {
+        val wantArabic = cfg.numerals == com.smrh.zujaj.model.Numerals.ARABIC
+        val systemArabic = runCatching { android.icu.text.DecimalFormatSymbols.getInstance(android.icu.util.ULocale.getDefault()).digits[0] != '0' }.getOrDefault(false)
+        return wantArabic != systemArabic && isKeyguard(ctx, id)
+    }
+
     private fun resetSlots(rv: RemoteViews) {
         Slots.clocks.values.forEach { list -> list.forEach { (w, _) -> rv.setViewVisibility(w, View.GONE) } }
         Slots.chronos.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setChronometer(v, 0L, null, false) }
@@ -136,7 +150,9 @@ object WidgetUpdater {
         }
         val offX = ((wDp - rw) / 2f * density)
         val offY = ((hDp - rh) / 2f * density)
-        val res = Renderer.render(ctx, cfg, rw, rh, preview = false)
+        val bake = needsBake(ctx, id, cfg)
+        val res = Renderer.render(ctx, cfg, rw, rh, preview = false, bake = bake)
+        if (bake) Scheduler.minuteTick(ctx)
         val k = density / res.scale // bitmap px → device px
         val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
         // Some hosts (Samsung lock screen, many launchers) REAPPLY new RemoteViews on top of the

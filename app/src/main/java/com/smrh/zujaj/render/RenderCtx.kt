@@ -135,6 +135,12 @@ class RenderCtx(
     val w = bitmap.width.toFloat()
     val h = bitmap.height.toFloat()
     val lives = mutableListOf<Live>()
+    /**
+     * Draw live texts into the picture instead of using TextClock/Chronometer. Used where the
+     * host ignores the app's fonts (Samsung lock screen) but Arabic-Indic digits are wanted;
+     * those widgets are then redrawn every minute.
+     */
+    var bakeLive = false
     val hits = mutableListOf<Hit>()
 
     /** One "design unit": scales the nominal design (dp) to the real widget size. */
@@ -337,7 +343,7 @@ class RenderCtx(
         val boxH = lineH * 1.06f
         val top = baseline + fm.ascent - (boxH - lineH) / 2f
         val rect = RectF(left, top, left + width, top + boxH)
-        if (preview) {
+        if (preview || bakeLive) {
             canvas.drawText(shown, cx, baseline, p)
         } else {
             val g = when (align) {
@@ -395,9 +401,10 @@ class RenderCtx(
             canvas.drawText(s, x, cy - (fm.ascent + fm.descent) / 2f, p)
             return
         }
-        val shown = prefix + n(String.format(Locale.US, "%d:%02d:%02d", left / 3600, (left % 3600) / 60, left % 60))
+        val shown = if (bakeLive) ((left + 59) / 60).let { m -> prefix + n(String.format(Locale.US, "%d:%02d", m / 60, m % 60)) }
+            else prefix + n(String.format(Locale.US, "%d:%02d:%02d", left / 3600, (left % 3600) / 60, left % 60))
         val fm = p.fontMetrics
-        if (preview) {
+        if (preview || bakeLive) {
             canvas.drawText(shown, x, cy - (fm.ascent + fm.descent) / 2f, p)
         } else {
             val width = p.measureText(shown) * 1.2f + 6 * u

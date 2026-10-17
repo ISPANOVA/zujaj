@@ -142,6 +142,14 @@ class SystemEventsReceiver : BroadcastReceiver() {
         Prefs.init(context)
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED, Intent.ACTION_POWER_DISCONNECTED -> WidgetUpdater.updateCategory(context, "system")
+            Scheduler.MINUTE -> {
+                // redraw only widgets whose time is drawn into the picture (they reschedule the tick)
+                WidgetUpdater.allIds(context).forEach { id ->
+                    val cfg = Prefs.widgetConfig(id) ?: return@forEach
+                    if (WidgetUpdater.needsBake(context, id, cfg)) runCatching { WidgetUpdater.update(context, id) }
+                }
+                return
+            }
             else -> WidgetUpdater.updateAll(context)
         }
         Scheduler.ensure(context)
@@ -160,6 +168,17 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 
 object Scheduler {
     private const val TICK = "com.smrh.zujaj.TICK"
+    const val MINUTE = "com.smrh.zujaj.MINUTE"
+
+    /** Next whole minute (non-waking: only delivered while the phone is awake, e.g. on the lock screen). */
+    fun minuteTick(ctx: Context) = runCatching {
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val now = System.currentTimeMillis()
+        val t = now - now % 60_000 + 60_500
+        val pi = PendingIntent.getBroadcast(ctx, 8, Intent(ctx, SystemEventsReceiver::class.java).setAction(MINUTE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        am.set(AlarmManager.RTC, t, pi)
+    }
 
     fun ensure(ctx: Context) {
         val req = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES).build()
