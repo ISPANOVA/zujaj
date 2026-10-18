@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smrh.zujaj.BuildConfig
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Check
 import com.smrh.zujaj.R
 import com.smrh.zujaj.data.Prefs
 import com.smrh.zujaj.remote.Flags
