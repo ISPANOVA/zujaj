@@ -146,10 +146,11 @@ class SystemEventsReceiver : BroadcastReceiver() {
                 // redraw only widgets whose time is drawn into the picture (they reschedule the tick)
                 WidgetUpdater.allIds(context).forEach { id ->
                     val cfg = Prefs.widgetConfig(id) ?: return@forEach
-                    if (WidgetUpdater.needsBake(context, id, cfg)) runCatching { WidgetUpdater.update(context, id) }
+                    if (WidgetUpdater.bakes(context, id, cfg)) runCatching { WidgetUpdater.update(context, id) }
                 }
                 return
             }
+            Scheduler.PRO_END -> { com.smrh.zujaj.billing.Billing.refreshPro(); WidgetUpdater.updateAll(context) }
             else -> WidgetUpdater.updateAll(context)
         }
         Scheduler.ensure(context)
@@ -160,6 +161,14 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Prefs.init(applicationContext)
         Scheduler.refreshWeatherIfNeeded(applicationContext)
+        // Pro: re-check the code and the Play subscription every few hours (without opening the app)
+        val now = System.currentTimeMillis()
+        if (now - Prefs.getString("pro_check").toLongOrNull().let { it ?: 0L } > 3 * 3600_000L) {
+            Prefs.setString("pro_check", now.toString())
+            runCatching { com.smrh.zujaj.remote.Codes.revalidate(applicationContext) }
+            runCatching { com.smrh.zujaj.billing.Billing.recheck() }
+        }
+        com.smrh.zujaj.billing.Billing.refreshPro()
         WidgetUpdater.updateAll(applicationContext)
         Scheduler.scheduleAlarms(applicationContext)
         Result.success()
@@ -169,6 +178,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 object Scheduler {
     private const val TICK = "com.smrh.zujaj.TICK"
     const val MINUTE = "com.smrh.zujaj.MINUTE"
+    const val PRO_END = "com.smrh.zujaj.PRO_END"
 
     /** Next whole minute (non-waking: only delivered while the phone is awake, e.g. on the lock screen). */
     fun minuteTick(ctx: Context) = runCatching {
@@ -177,7 +187,7 @@ object Scheduler {
         val t = now - now % 60_000 + 60_500
         val pi = PendingIntent.getBroadcast(ctx, 8, Intent(ctx, SystemEventsReceiver::class.java).setAction(MINUTE),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        am.set(AlarmManager.RTC, t, pi)
+        am.setWindow(AlarmManager.RTC, t, 1_500, pi)
     }
 
     fun ensure(ctx: Context) {
@@ -213,5 +223,10 @@ object Scheduler {
         val pi = PendingIntent.getBroadcast(ctx, 7, Intent(ctx, SystemEventsReceiver::class.java).setAction(TICK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         am.setAndAllowWhileIdle(AlarmManager.RTC, t, pi)
+        // lock Pro widgets the moment a redeem code's time runs out
+        val until = Prefs.codeProUntil
+        val pe = PendingIntent.getBroadcast(ctx, 9, Intent(ctx, SystemEventsReceiver::class.java).setAction(PRO_END),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        if (until > System.currentTimeMillis() && until != Long.MAX_VALUE) am.setAndAllowWhileIdle(AlarmManager.RTC, until + 1_000, pe) else am.cancel(pe)
     }
 }

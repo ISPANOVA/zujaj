@@ -83,6 +83,15 @@ data class WidgetConfig(
     /** Ornament (stars + rule) around Kufi display words; off by default. */
     val ornament: Boolean = false,
     val ornColor: Int = 0xFFE7B75F.toInt(),
+    // Per-part colours (Prayer Hub)
+    val accent2: Int = 0xFF7B4BB5.toInt(),
+    val minGrad: Boolean = true,
+    val dayColor: Int = 0xFFFFFFFF.toInt(),
+    val hijriColor: Int = 0xFFFFFFFF.toInt(),
+    val nameColor: Int = 0xFFB9A6E0.toInt(),
+    val timeColor: Int = 0xFFFFFFFF.toInt(),
+    val nextColor: Int = 0xFFF2865E.toInt(),
+    val lineColor: Int = 0x55B9A6E0,
     /** Face of the main time (LiveFont name); blank = the design's own. */
     val font: String = "",
     // Region

@@ -256,4 +256,93 @@ object PrayerR {
         r.text(line, r.w / 2 - 6 * r.u, r.h * 0.84f, 13 * r.u * r.s2, r.c1, r.sansBold, Paint.Align.RIGHT)
         r.liveCountdown(d.next.time, inWord(r), r.w / 2 + 6 * r.u, r.h * 0.84f, 12 * r.u * r.s2, r.c2, Paint.Align.LEFT)
     }
+
+    // ------------------------------------------------------------------ hub
+    /**
+     * Everything in one: a big clock (hours plain, minutes in a gradient), the day in calligraphy,
+     * Hijri + Gregorian dates, a divider and all six times with the next one highlighted.
+     * Every part has its own colour (Editor → Content → Colours).
+     */
+    fun hub(r: RenderCtx) {
+        val c = r.cfg
+        val left = r.pad
+        val right = r.w - r.pad
+        val split = r.w * 0.60f
+
+        // ---- clock
+        val top = r.h * 0.07f
+        val clockBottom = r.h * 0.60f
+        val font = r.resolveFont(LiveFont.BEBAS, 60 * r.u)
+        val sample = "00:00"
+        val p = r.paint(c.color1, 100f, font.f)
+        fun widest(pp: Paint) = ('0'..'9').maxOf { d -> pp.measureText(sample.map { if (it.isDigit()) d else it }.joinToString("")) }
+        val ink = android.graphics.Rect(); p.getTextBounds("0123456789", 0, 10, ink)
+        val maxW = split - left - 6 * r.u
+        val maxH = (clockBottom - top) * c.size1 / 100f
+        p.textSize = 100f * minOf(maxW / widest(p), maxH / ink.height())
+        p.getTextBounds("0123456789", 0, 10, ink)
+        val cyClock = (top + clockBottom) / 2
+        val base = cyClock - ink.exactCenterY()
+        val hhFmt = java.text.SimpleDateFormat(if (c.hour24) "HH" else "hh", java.util.Locale.US)
+        val now = java.util.Date(r.now.toInstant().toEpochMilli())
+        val hh = r.n(hhFmt.format(now))
+        val mm = r.n(java.text.SimpleDateFormat("mm", java.util.Locale.US).format(now))
+        // fixed slots so the colon never jumps: each pair gets the widest two-digit width
+        val pairW = ('0'..'9').maxOf { d -> p.measureText(r.n("$d$d")) }
+        val colonW = p.measureText(":")
+        val total = pairW * 2 + colonW
+        val x0 = left + (maxW - total) / 2 + 3 * r.u
+        val colonX = x0 + pairW
+        val minX = colonX + colonW
+        val baked = r.preview || r.bakeLive
+        run {
+            if (baked) {
+                p.textAlign = Paint.Align.RIGHT
+                r.canvas.drawText(hh, colonX, base, p)
+            } else r.liveTime(if (c.hour24) "HH" else "hh", colonX, cyClock, p.textSize, LiveFont.BEBAS, c.color1, Paint.Align.RIGHT, maxW = pairW * 1.02f, sample = "00")
+            p.textAlign = Paint.Align.LEFT
+            p.shader = null
+            r.canvas.drawText(":", colonX, base, p.apply { color = c.color1 })
+            if (baked) {
+                val mw = p.measureText(mm)
+                p.shader = if (c.minGrad) android.graphics.LinearGradient(minX, 0f, minX + mw, 0f, c.accent, c.accent2, android.graphics.Shader.TileMode.CLAMP) else null
+                p.color = c.accent
+                r.canvas.drawText(mm, minX, base, p)
+                p.shader = null
+            } else r.liveTime("mm", minX, cyClock, p.textSize, LiveFont.BEBAS, c.accent, Paint.Align.LEFT, maxW = pairW * 1.02f, sample = "00")
+        }
+
+        // ---- day in calligraphy (right side, sits a little low like the reference)
+        val d = r.today
+        r.textTight(Calendars.dayName(d, true), (split + right) / 2, r.h * 0.40f, r.h * 0.30f * c.size2 / 100f,
+            c.dayColor, r.calliFont, maxW = right - split, maxH = r.h * 0.30f)
+
+        // ---- dates
+        val dateY = r.h * 0.665f
+        val h = Calendars.hijri(d)
+        val hij = if (r.ar) "${r.n(h.day)} ${Calendars.hijriMonth(h.month, true)} ${r.n(h.year)}" else "${h.day} ${Calendars.hijriMonth(h.month, false)} ${h.year}"
+        val greg = if (r.ar) "${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, true)} ${r.n(d.year)}" else "${Calendars.monthName(d.monthValue, false)} ${d.dayOfMonth}, ${d.year}"
+        val ds = 12.5f * r.u
+        r.text(greg, x0, dateY, ds, c.color2, r.sans, Paint.Align.LEFT, maxW = split - x0 - 4 * r.u)
+        r.text(hij, right - 6 * r.u, dateY, ds, c.hijriColor, r.sans, Paint.Align.RIGHT, maxW = right - split)
+
+        // ---- divider
+        val lineY = r.h * 0.745f
+        r.canvas.drawLine(left + 4 * r.u, lineY, right - 4 * r.u, lineY, r.strokePaint(c.lineColor, 1.2f * r.u))
+
+        // ---- six times (Fajr first in reading order)
+        val all = day(r)
+        val list = if (r.ar) all.list.reversed() else all.list
+        val nextKey = all.next.key
+        val cw = (right - left) / list.size
+        for ((i, pr) in list.withIndex()) {
+            val cx = left + cw * (i + 0.5f)
+            val isNext = pr.key == nextKey
+            r.text(nm(r, pr), cx, r.h * 0.825f, 11 * r.u, if (isNext) c.nextColor else c.nameColor, r.sans, Paint.Align.CENTER, maxW = cw * 0.94f)
+            r.text(tm12(r, pr.time), cx, r.h * 0.915f, 13 * r.u, if (isNext) c.nextColor else c.timeColor, r.sansBold, Paint.Align.CENTER, maxW = cw * 0.94f)
+        }
+    }
+
+    /** "5:32" — no leading zero, like the reference. */
+    private fun tm12(r: RenderCtx, ms: Long) = r.n(SimpleDateFormat(if (r.cfg.hour24) "H:mm" else "h:mm", java.util.Locale.US).format(Date(ms)))
 }

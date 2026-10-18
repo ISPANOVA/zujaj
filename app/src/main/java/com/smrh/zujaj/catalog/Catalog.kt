@@ -28,26 +28,26 @@ enum class Shape(val cols: Int, val rows: Int, val dw: Float, val dh: Float) {
     LARGE(4, 3, 340f, 250f),
 }
 
-enum class Cat(val en: String, val ar: String) {
-    CLOCK("Clock", "ساعات"),
-    DIGITAL("Digital", "رقمية"),
-    DATE("Date", "التاريخ"),
-    WEATHER("Weather", "الطقس"),
-    PRAYER("Prayer", "الصلاة"),
-    ISLAMIC("Islamic", "إسلامي"),
-    MEDIA("Media", "الميديا"),
-    PHOTO("Photo", "صور"),
-    COUNTERS("Counters", "عدادات"),
-    APPS("Apps", "تطبيقات"),
-    PEOPLE("People", "أشخاص"),
-    SEARCH("Search", "بحث"),
-    SYSTEM("System", "النظام"),
-    QUOTES("Quotes", "اقتباسات"),
-    TOOLS("Tools", "أدوات"),
+enum class Cat(val en: String, val ar: String, val tags: String = "") {
+    CLOCK("Clock", "ساعات", "clock time watch analog hour ساعه ساعة وقت الوقت عقارب"),
+    DIGITAL("Digital", "رقمية", "clock time digital hour ساعه ساعة رقمي رقميه الوقت"),
+    DATE("Date", "التاريخ", "date calendar day month year hijri تاريخ تقويم يوم شهر سنه هجري ميلادي"),
+    WEATHER("Weather", "الطقس", "weather temperature rain sun forecast طقس الطقس جو حراره حرارة مطر"),
+    PRAYER("Prayer", "الصلاة", "prayer salah salat namaz adhan azan athan صلاه صلاة الصلاه اذان أذان مواقيت"),
+    ISLAMIC("Islamic", "إسلامي", "islamic quran dhikr azkar tasbih islam اسلامي قران قرآن اذكار أذكار تسبيح ذكر"),
+    MEDIA("Media", "الميديا", "music media song songs player audio spotify youtube anghami sound podcast موسيقى موسيقي مزيكا اغاني أغاني اغنيه أغنية مشغل ميديا صوت"),
+    PHOTO("Photo", "صور", "photo photos picture pictures image gallery صور صوره صورة معرض"),
+    COUNTERS("Counters", "عدادات", "counter countdown days timer event عداد عد تنازلي ايام أيام مناسبه"),
+    APPS("Apps", "تطبيقات", "apps app shortcut shortcuts launcher تطبيقات تطبيق اختصارات"),
+    PEOPLE("People", "أشخاص", "people contacts contact call friends اشخاص أشخاص جهات اتصال مكالمه"),
+    SEARCH("Search", "بحث", "search google bar بحث جوجل"),
+    SYSTEM("System", "النظام", "system battery storage ram نظام بطاريه بطارية ذاكره مساحه"),
+    QUOTES("Quotes", "اقتباسات", "quote quotes text note اقتباس اقتباسات نص كلام ملاحظه"),
+    TOOLS("Tools", "أدوات", "tools torch flashlight calculator wifi camera alarm ادوات أدوات كشاف حاسبه واي فاي كاميرا منبه"),
 }
 
 /** Extra editor controls a style needs (beyond the common ones). */
-enum class Feat { COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
+enum class Feat { HUB, COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
 
 /** What makes a widget need refreshing. */
 enum class Upd { DAILY, PRAYER, WEATHER, MEDIA, SYSTEM, PHOTO, NONE }
@@ -65,10 +65,25 @@ class WidgetStyle(
     val maxItems: Int = 0,
     val upd: Set<Upd> = setOf(Upd.DAILY),
     val defaults: (WidgetConfig) -> WidgetConfig = { it },
+    /** Time drawn into the picture (redrawn each minute) — e.g. for gradient digits. */
+    val bakeTime: (WidgetConfig) -> Boolean = { false },
     val draw: (RenderCtx) -> Unit,
 ) {
     fun name(ar: Boolean) = if (ar) this.ar else en
     fun defaultConfig(): WidgetConfig = defaults(WidgetConfig(styleId = id))
+}
+
+/** Loose search: English/Arabic names, category and keywords (e.g. "music" → media widgets). */
+object WidgetSearch {
+    private fun norm(s: String) = s.lowercase().replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
+        .replace('ة', 'ه').replace('ى', 'ي').replace("\u0640", "").filter { it !in '\u064B'..'\u0652' }
+
+    fun matches(st: WidgetStyle, q0: String): Boolean {
+        val q = norm(q0.trim())
+        if (q.isEmpty()) return true
+        val hay = norm("${st.en} ${st.ar} ${st.id.replace('_', ' ')} ${st.cat.en} ${st.cat.ar} ${st.cat.tags}")
+        return q.split(' ').filter { it.isNotBlank() }.all { w -> hay.contains(w) || hay.split(' ').any { it.startsWith(w) } }
+    }
 }
 
 object Catalog {
@@ -178,6 +193,11 @@ object Catalog {
         WidgetStyle("prayer_detail", Cat.PRAYER, "Prayer Detail", "تفاصيل الصلاة", W, feats = prayerF, upd = pU) { PrayerR.detail(it) },
         WidgetStyle("prayer_list", Cat.PRAYER, "Prayer List", "قائمة الصلوات", L, pro = true, feats = prayerF, upd = pU) { PrayerR.list(it) },
         WidgetStyle("prayer_spotlight", Cat.PRAYER, "Prayer Spotlight", "الصلاة بالخط الكبير", W, pro = true, isNew = true, popular = true, feats = prayerF, upd = pU) { PrayerR.spotlight(it) },
+        WidgetStyle("prayer_hub", Cat.PRAYER, "Prayer Hub", "لوحة الصلاة", L, isNew = true, popular = true,
+            feats = setOf(Feat.HUB, Feat.HOUR24), upd = pU,
+            defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF2A0E6E.toInt(), bgColor2 = 0xFF4A1A92.toInt(), border = false,
+                color1 = 0xFFFFFFFF.toInt(), color2 = 0xFFB9A6E0.toInt(), accent = 0xFFF2865E.toInt(), calli = 3) },
+            bakeTime = { it.minGrad }) { PrayerR.hub(it) },
         WidgetStyle("prayer_tiles", Cat.PRAYER, "Prayer Tiles", "مربعات الصلاة", L, pro = true, isNew = true, feats = prayerF, upd = pU) { PrayerR.tiles(it) },
 
         // ------------------------------------------------------------------ ISLAMIC (new)

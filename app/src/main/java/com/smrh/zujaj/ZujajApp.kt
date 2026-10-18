@@ -14,6 +14,9 @@ class ZujajApp : Application() {
         Flags.init(this)
         Billing.init(this)
         runCatching { Scheduler.ensure(this) }
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { com.smrh.zujaj.remote.Codes.revalidate(this@ZujajApp) }
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            com.smrh.zujaj.remote.Codes.revalidate(this@ZujajApp)
+            com.smrh.zujaj.remote.Codes.watch(this@ZujajApp)
+        }
     }
 }

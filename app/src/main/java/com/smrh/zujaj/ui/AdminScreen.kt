@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
@@ -275,6 +277,7 @@ private fun WidgetAdminRow(st: WidgetStyle, isPro: Boolean, isNew: Boolean, isHi
 // =============================================================================== codes
 @Composable
 private fun CodesAdmin() {
+    var usersOf by remember { mutableStateOf<String?>(null) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val ar = Prefs.isArabicUi
@@ -367,14 +370,16 @@ private fun CodesAdmin() {
                 onCopy = { copy(ctx, c.code); Toast.makeText(ctx, tr("Copied", "اتنسخ"), Toast.LENGTH_SHORT).show() },
                 onActive = { a -> scope.launch { runCatching { Codes.setActive(c.code, a) }; reload++ } },
                 onDelete = { confirmDelete = c.code },
+                onUsers = { usersOf = c.code },
             )
         }
     }
+    usersOf?.let { code -> CodeUsersDialog(code, { usersOf = null; reload++ }) }
     confirmDelete?.let { c ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text(tr("Delete $c?", "حذف $c؟")) },
-            text = { Text(tr("People who already redeemed it keep their Pro time.", "اللي استخدموه قبل كده هيفضل معاهم البرو لحد مدته.")) },
+            text = { Text(tr("People who already redeemed it keep their Pro time. To take Pro away, use Users → Revoke everyone first.", "اللي استخدموه قبل كده هيفضل معاهم البرو لحد مدته. لو عايز تشيله منهم، ادخل على «المستخدمين» ← «إلغاء للكل» الأول.")) },
             confirmButton = { TextButton(onClick = { confirmDelete = null; scope.launch { runCatching { Codes.delete(c) }; reload++ } }) { Text(tr("Delete", "حذف"), color = Color(0xFFE5484D)) } },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(tr("Cancel", "إلغاء")) } },
             containerColor = Z.surface,
@@ -405,7 +410,7 @@ private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, onCl
 }
 
 @Composable
-private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> Unit, onDelete: () -> Unit) {
+private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> Unit, onDelete: () -> Unit, onUsers: () -> Unit) {
     val ar = Prefs.isArabicUi
     val expired = c.expiresAt in 1 until System.currentTimeMillis()
     val full = c.maxUses > 0 && c.uses >= c.maxUses
@@ -451,10 +456,86 @@ private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> U
             Switch(c.active, onActive, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current))
             Spacer(Modifier.width(8.dp))
             Text(tr("Enabled", "مفعّل"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = onUsers) {
+                Icon(Icons.Rounded.Groups, null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp)); Text(tr("Users", "المستخدمين"), color = LocalAccent.current, fontSize = 13.sp)
+            }
             IconButton(onClick = onCopy) { Icon(Icons.Rounded.ContentCopy, null, tint = Z.text) }
             IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, null, tint = Color(0xFFE5484D)) }
         }
     }
+}
+
+/** Phones that used a code: see when, until when, and take Pro away (or give it back). */
+@Composable
+private fun CodeUsersDialog(code: String, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var list by remember { mutableStateOf<List<Codes.Redemption>?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    var confirmAll by remember { mutableStateOf(false) }
+    LaunchedEffect(reload) { runCatching { Codes.redemptions(code) }.onSuccess { list = it; err = null }.onFailure { err = it.message } }
+    val df = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
+    fun act(block: suspend () -> Unit) { busy = true; scope.launch { val r = runCatching { block() }; busy = false
+        if (r.isFailure) Toast.makeText(ctx, r.exceptionOrNull()?.message ?: "Error", Toast.LENGTH_LONG).show(); reload++ } }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Users of", "مستخدمين") + " " + code, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)
+                    list?.let { l -> Text(tr("${l.count { !it.revoked }} active · ${l.count { it.revoked }} revoked", "${l.count { !it.revoked }} شغال · ${l.count { it.revoked }} ملغي"), color = Z.sub, fontSize = 12.sp) }
+                }
+                IconButton(onClick = { reload++ }) { Icon(Icons.Rounded.Refresh, null, tint = Z.sub) }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (err != null) Text(err ?: "", color = Color(0xFFE5484D), fontSize = 12.sp)
+            if (list == null && err == null) Text(tr("Loading…", "جارٍ التحميل…"), color = Z.sub)
+            if (list?.isEmpty() == true) Text(tr("Nobody used this code yet", "محدش استخدم الكود ده لسه"), color = Z.sub, modifier = Modifier.padding(vertical = 20.dp))
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f)) {
+                items(list ?: emptyList(), key = { it.device }) { r ->
+                    val ended = !r.revoked && r.until != Long.MAX_VALUE && r.until < System.currentTimeMillis()
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.05f)).padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(r.model, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(tr("used ", "استخدمه ") + (if (r.at > 0) df.format(Date(r.at)) else "—"), color = Z.sub, fontSize = 11.sp)
+                            Text(
+                                when {
+                                    r.revoked -> tr("Revoked", "ملغي")
+                                    r.until == Long.MAX_VALUE -> tr("Pro forever", "برو للأبد")
+                                    ended -> tr("Ended ", "انتهى ") + df.format(Date(r.until))
+                                    else -> tr("Pro until ", "برو لحد ") + df.format(Date(r.until))
+                                },
+                                color = when { r.revoked -> Color(0xFFE5484D); ended -> Z.sub; else -> Color(0xFF3DDC97) }, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (r.revoked) TextButton(enabled = !busy, onClick = { act { Codes.restore(code, r) } }) { Text(tr("Restore", "رجّعه"), color = Color(0xFF3DDC97)) }
+                        else if (!ended) TextButton(enabled = !busy, onClick = { act { Codes.revoke(code, r) } }) { Text(tr("Revoke", "إلغاء"), color = Color(0xFFE5484D)) }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if ((list?.count { !it.revoked } ?: 0) > 0)
+                    TextButton(enabled = !busy, onClick = { confirmAll = true }) { Text(tr("Revoke everyone", "إلغاء للكل"), color = Color(0xFFE5484D), fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text(tr("Close", "قفل"), color = Z.sub) }
+            }
+        }
+    }
+    if (confirmAll) AlertDialog(
+        onDismissRequest = { confirmAll = false },
+        title = { Text(tr("Revoke $code for everyone?", "إلغاء $code للكل؟")) },
+        text = { Text(tr("Everyone who used it loses Pro and the code is turned off. You can restore people one by one later.",
+            "كل اللي استخدموه هيتشال منهم البرو والكود هيتقفل. تقدر ترجّع أي حد بعدين واحد واحد.")) },
+        confirmButton = { TextButton(onClick = { confirmAll = false; act { Codes.revokeAll(code) } }) { Text(tr("Revoke all", "إلغاء للكل"), color = Color(0xFFE5484D)) } },
+        dismissButton = { TextButton(onClick = { confirmAll = false }) { Text(tr("Cancel", "إلغاء")) } },
+        containerColor = Z.surface,
+    )
 }
 
 private fun copy(ctx: Context, s: String) {

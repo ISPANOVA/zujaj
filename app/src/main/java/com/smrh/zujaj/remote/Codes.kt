@@ -123,6 +123,8 @@ object Codes {
             Prefs.codeProUntil = maxOf(Prefs.codeProUntil, result.until)
             Prefs.codeUsed = code
             Billing.refreshPro()
+            watch(ctx)
+            com.smrh.zujaj.widget.Scheduler.scheduleAlarms(ctx)
         }
         return result
     }
@@ -175,10 +177,62 @@ object Codes {
         ref.delete().await()
     }
 
-    suspend fun redemptions(code: String): List<Pair<String, Long>> =
+    /** One phone that redeemed a code (as the admin sees it). */
+    data class Redemption(val device: String, val model: String, val at: Long, val until: Long, val revoked: Boolean, val prevUntil: Long)
+
+    suspend fun redemptions(code: String): List<Redemption> =
         col().document(code).collection("redemptions").get().await().documents.map {
-            (it.getString("model") ?: it.id.take(6)) to (it.getLong("at") ?: 0)
+            Redemption(it.id, it.getString("model") ?: it.id.take(6), it.getLong("at") ?: 0, it.getLong("until") ?: 0,
+                it.getBoolean("revoked") ?: false, it.getLong("prevUntil") ?: 0)
+        }.sortedByDescending { it.at }
+
+    /**
+     * Takes Pro away from one phone. The record stays (with until = 0) so the same phone can't
+     * redeem the code again, and older app versions drop Pro the next time they open.
+     */
+    suspend fun revoke(code: String, r: Redemption) {
+        col().document(code).collection("redemptions").document(r.device)
+            .update(mapOf("until" to 0L, "revoked" to true, "prevUntil" to (if (r.revoked) r.prevUntil else r.until))).await()
+    }
+
+    /** Gives a revoked phone its time back. */
+    suspend fun restore(code: String, r: Redemption) {
+        col().document(code).collection("redemptions").document(r.device)
+            .update(mapOf("until" to r.prevUntil, "revoked" to false)).await()
+    }
+
+    suspend fun revokeAll(code: String) {
+        val list = redemptions(code).filter { !it.revoked }
+        list.chunked(400).forEach { part ->
+            val b = db().batch()
+            part.forEach { r ->
+                b.update(col().document(code).collection("redemptions").document(r.device),
+                    mapOf("until" to 0L, "revoked" to true, "prevUntil" to r.until))
+            }
+            b.commit().await()
         }
+        setActive(code, false)
+    }
+
+    // ------------------------------------------------------------------ live watch
+    private var watchReg: com.google.firebase.firestore.ListenerRegistration? = null
+
+    /** Follows this phone's redemption live, so a revoke from the control panel applies within seconds. */
+    fun watch(ctx: Context) {
+        val code = Prefs.codeUsed
+        watchReg?.remove(); watchReg = null
+        if (code.isBlank() || !Flags.enabled) return
+        val app = ctx.applicationContext
+        watchReg = col().document(code).collection("redemptions").document(deviceId(app)).addSnapshotListener { snap, err ->
+            if (err != null || snap == null) return@addSnapshotListener
+            val until = if (snap.exists()) snap.getLong("until") ?: 0 else Prefs.codeProUntil
+            if (until != Prefs.codeProUntil) {
+                Prefs.codeProUntil = until
+                Billing.refreshPro()
+                com.smrh.zujaj.widget.Scheduler.scheduleAlarms(app)
+            }
+        }
+    }
 
     fun randomCode(): String {
         val abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

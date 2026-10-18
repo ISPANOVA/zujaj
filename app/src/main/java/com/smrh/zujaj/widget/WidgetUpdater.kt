@@ -128,6 +128,10 @@ object WidgetUpdater {
         return wantArabic != systemArabic && isKeyguard(ctx, id)
     }
 
+    /** Widgets whose time is drawn into the picture and redrawn every minute. */
+    fun bakes(ctx: Context, id: Int, cfg: WidgetConfig): Boolean =
+        needsBake(ctx, id, cfg) || (Catalog.byId(cfg.styleId)?.bakeTime?.invoke(cfg) == true)
+
     private fun resetSlots(rv: RemoteViews) {
         Slots.clocks.values.forEach { list -> list.forEach { (w, _) -> rv.setViewVisibility(w, View.GONE) } }
         Slots.chronos.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setChronometer(v, 0L, null, false) }
@@ -137,12 +141,56 @@ object WidgetUpdater {
         rv.setImageViewBitmap(R.id.fx, null)
     }
 
+    /** The widget blurred behind a dark veil, a crown and "Pro ended — tap to renew". */
+    fun lockedPicture(ctx: Context, src: android.graphics.Bitmap): android.graphics.Bitmap {
+        val bw = src.width; val bh = src.height
+        // cheap blur: shrink a lot, then scale back up with filtering (twice for smoothness)
+        val small = android.graphics.Bitmap.createScaledBitmap(src, (bw / 14).coerceAtLeast(2), (bh / 14).coerceAtLeast(2), true)
+        val mid = android.graphics.Bitmap.createScaledBitmap(small, (bw / 4).coerceAtLeast(2), (bh / 4).coerceAtLeast(2), true)
+        val out = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(out)
+        // keep the original rounded shape: draw the blur only where the widget has pixels
+        val shape = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        c.drawBitmap(src, 0f, 0f, shape)
+        shape.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+        shape.isFilterBitmap = true
+        c.drawBitmap(mid, null, android.graphics.Rect(0, 0, bw, bh), shape)
+        shape.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_ATOP)
+        shape.color = 0xA60B0B12.toInt(); shape.isFilterBitmap = false
+        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), shape)
+        val ar = Prefs.isArabicUi
+        val m = minOf(bw, bh).toFloat()
+        val s = m * 0.16f
+        val gold = 0xFFE7B75F.toInt()
+        val cy = bh / 2f
+        val font = com.smrh.zujaj.render.Fonts.get(ctx, if (ar) com.smrh.zujaj.render.F.CAIRO_BOLD else com.smrh.zujaj.render.F.SANS_BOLD)
+        val title = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt(); textSize = m * 0.10f; textAlign = android.graphics.Paint.Align.CENTER; typeface = font
+        }
+        val sub = android.graphics.Paint(title).apply { color = 0xFFCFCFD6.toInt(); textSize = m * 0.072f }
+        val t1 = if (ar) "انتهى البرو" else "Pro ended"
+        val t2 = if (ar) "اضغط للتجديد" else "Tap to renew"
+        val maxW = bw * 0.86f
+        if (title.measureText(t1) > maxW) title.textSize *= maxW / title.measureText(t1)
+        if (sub.measureText(t2) > maxW) sub.textSize *= maxW / sub.measureText(t2)
+        val total = s * 1.1f + title.textSize * 1.3f + sub.textSize * 1.5f
+        var y = cy - total / 2
+        // crown inside a soft gold circle
+        c.drawCircle(bw / 2f, y + s * 0.55f, s * 0.78f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0x33E7B75F })
+        Glyphs.crown(c, bw / 2f, y + s * 0.55f, s * 0.75f, gold)
+        y += s * 1.1f + title.textSize * 1.05f
+        c.drawText(t1, bw / 2f, y, title)
+        y += sub.textSize * 1.5f
+        c.drawText(t2, bw / 2f, y, sub)
+        return out
+    }
+
     internal fun build(ctx: Context, id: Int, cfg: WidgetConfig, style: WidgetStyle, wDp: Float, hDp: Float): RemoteViews {
         val density = ctx.resources.displayMetrics.density
         // Any design fits any widget size: when the placed widget's proportions differ a lot from
         // the design (e.g. a wide design in a square lock-screen slot) it is drawn at its own
         // proportions, as big as possible, centred in the slot.
-        val bake = needsBake(ctx, id, cfg)
+        val bake = needsBake(ctx, id, cfg) || style.bakeTime(cfg)
         val res = Renderer.renderFitted(ctx, cfg, wDp, hDp, bake = bake)
         if (bake) Scheduler.minuteTick(ctx)
         val k = density / res.scale // bitmap px → device px
@@ -155,16 +203,7 @@ object WidgetUpdater {
         rv.setViewPadding(R.id.fx, 0, 0, 0, 0)
         if (Flags.locked(style)) {
             // Pro expired / not owned: show a lock overlay and send taps to the paywall.
-            val c = android.graphics.Canvas(res.bitmap)
-            c.drawColor(0x99000000.toInt())
-            val s = minOf(res.bitmap.width, res.bitmap.height) * 0.22f
-            Glyphs.crown(c, res.bitmap.width / 2f, res.bitmap.height / 2f - s * 0.3f, s, 0xFFE7B75F.toInt())
-            val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = 0xFFFFFFFF.toInt(); textSize = s * 0.42f; textAlign = android.graphics.Paint.Align.CENTER
-                typeface = com.smrh.zujaj.render.Fonts.get(ctx, com.smrh.zujaj.render.F.SANS_BOLD)
-            }
-            c.drawText(if (Prefs.isArabicUi) "برو" else "PRO", res.bitmap.width / 2f, res.bitmap.height / 2f + s * 0.75f, p)
-            rv.setImageViewBitmap(R.id.bg, res.bitmap)
+            rv.setImageViewBitmap(R.id.bg, lockedPicture(ctx, res.bitmap))
             rv.setOnClickPendingIntent(R.id.bg, activity(ctx, id * 100 + 97, appMain(ctx, "paywall")))
             return rv
         }

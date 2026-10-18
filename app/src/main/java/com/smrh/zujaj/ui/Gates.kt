@@ -99,6 +99,7 @@ fun AppGates() {
         f.noticeOnce && f.notice.isNotBlank() && seen != f.notice -> GateDialog(
             tr("Message", "رسالة"), f.notice, tr("OK", "تمام"), { seen = f.notice; Prefs.setString("notice_seen", f.notice) }, null, null,
         )
+        else -> BatteryIntro()
     }
 }
 
@@ -115,5 +116,92 @@ private fun GateDialog(title: String, body: String, ok: String, onOk: () -> Unit
                 TextButton(onClick = onOk) { Text(ok, color = LocalAccent.current, fontWeight = FontWeight.Bold) }
             }
         }
+    }
+}
+
+// ------------------------------------------------------------------ first run: keep widgets alive
+private fun ignoringBattery(ctx: android.content.Context): Boolean = runCatching {
+    (ctx.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(ctx.packageName)
+}.getOrDefault(true)
+
+/** Shown once on first launch: battery "Unrestricted" + the brand's auto-start, so widgets never freeze. */
+@Composable
+fun BatteryIntro() {
+    val ctx = LocalContext.current
+    var done by remember { mutableStateOf(Prefs.getString("bat_intro") == "1") }
+    if (done) return
+    // wait until the splash has gone
+    var ready by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(1700); ready = true }
+    if (!ready) return
+    val oem = remember { com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null }
+    var battOk by remember { mutableStateOf(ignoringBattery(ctx)) }
+    var autoTapped by remember { mutableStateOf(false) }
+    // re-check when the user comes back from Settings
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) battOk = ignoringBattery(ctx) }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    fun finish() { Prefs.setString("bat_intro", "1"); done = true }
+    LaunchedEffect(Unit) { if (battOk && !oem) finish() }
+    if (battOk && !oem) return
+    val gold = Color(0xFFE7B75F)
+    androidx.compose.ui.window.Dialog(onDismissRequest = { finish() }) {
+        Column(
+            Modifier.clip(RoundedCornerShape(30.dp))
+                .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1E1A10), Z.surface, Z.surface)))
+                .padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(72.dp).clip(RoundedCornerShape(24.dp)).background(gold.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.BatteryChargingFull, null, tint = gold, modifier = Modifier.size(38.dp))
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(tr("Keep your widgets alive", "خلّي الويدجت شغالة على طول"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            Text(tr("Some phones pause apps to save battery, so the clock and prayer times can freeze. Two quick steps fix it:",
+                "بعض التليفونات بتوقف التطبيقات عشان توفّر البطارية، فالساعة ومواقيت الصلاة ممكن تقف. خطوتين سريعين يحلّوها:"),
+                color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Spacer(Modifier.height(18.dp))
+            StepRow(1, tr("Battery: Unrestricted", "البطارية: بدون قيود"),
+                tr("App info → Battery → Unrestricted", "معلومات التطبيق ← البطارية ← غير مقيّد"), battOk) {
+                runCatching {
+                    ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }.onFailure { runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+            }
+            if (oem) {
+                Spacer(Modifier.height(10.dp))
+                StepRow(2, tr("Auto-start (${com.smrh.zujaj.widget.Oem.brand})", "التشغيل التلقائي (${com.smrh.zujaj.widget.Oem.brand})"),
+                    tr("Turn Zujaj on in the list", "فعّل زجاج في القايمة"), autoTapped) {
+                    autoTapped = true; com.smrh.zujaj.widget.Oem.openAutoStart(ctx)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            PrimaryButton(if (battOk) tr("Done", "تمام") else tr("Continue", "متابعة"), Modifier.fillMaxWidth()) { finish() }
+            TextButton(onClick = { finish() }) { Text(tr("Later (Settings → Battery)", "بعدين (من الإعدادات ← البطارية)"), color = Z.sub, fontSize = 12.sp) }
+        }
+    }
+}
+
+@Composable
+private fun StepRow(n: Int, title: String, sub: String, ok: Boolean, onClick: () -> Unit) {
+    val gold = Color(0xFFE7B75F)
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.05f))
+            .clickable(onClick = onClick).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(30.dp).clip(RoundedCornerShape(50)).background(if (ok) Color(0xFF3DDC97).copy(alpha = 0.18f) else gold.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+            if (ok) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null, tint = Color(0xFF3DDC97), modifier = Modifier.size(18.dp))
+            else Text("$n", color = gold, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(sub, color = Z.sub, fontSize = 12.sp)
+        }
+        Text(if (ok) tr("Done", "تم") else tr("Open", "افتح"), color = if (ok) Color(0xFF3DDC97) else gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }

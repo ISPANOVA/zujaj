@@ -89,6 +89,12 @@ object Billing {
         }
     }
 
+    /** Background re-check with Google Play (from the refresh worker), so an ended subscription locks Pro widgets. */
+    fun recheck() {
+        val c = client ?: return
+        if (c.isReady) restore() else connect()
+    }
+
     fun restore() {
         val c = client ?: return
         var any = false

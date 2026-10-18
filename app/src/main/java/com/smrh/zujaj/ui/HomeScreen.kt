@@ -527,9 +527,7 @@ fun SearchScreen(nav: Nav) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     val all = Flags.visible()
-    val res = if (q.isBlank()) emptyList() else all.filter {
-        it.en.contains(q, true) || it.ar.contains(q) || it.cat.en.contains(q, true) || it.cat.ar.contains(q)
-    }
+    val res = if (q.isBlank()) emptyList() else all.filter { com.smrh.zujaj.catalog.WidgetSearch.matches(it, q) }
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Search", "بحث"), { nav.back() })
         OutlinedTextField(
