@@ -267,55 +267,55 @@ object PrayerR {
         val c = r.cfg
         val left = r.pad
         val right = r.w - r.pad
-        val split = r.w * 0.60f
 
-        // ---- clock
-        val top = r.h * 0.07f
+        // ---- clock: hours, colon and minutes set tight together (each glyph by its real ink)
+        val top = r.h * 0.035f
         val clockBottom = r.h * 0.60f
         val font = r.resolveFont(LiveFont.BEBAS, 60 * r.u)
-        val sample = "00:00"
-        val p = r.paint(c.color1, 100f, font.f)
-        fun widest(pp: Paint) = ('0'..'9').maxOf { d -> pp.measureText(sample.map { if (it.isDigit()) d else it }.joinToString("")) }
-        val ink = android.graphics.Rect(); p.getTextBounds("0123456789", 0, 10, ink)
-        val maxW = split - left - 6 * r.u
-        val maxH = (clockBottom - top) * c.size1 / 100f
-        p.textSize = 100f * minOf(maxW / widest(p), maxH / ink.height())
-        p.getTextBounds("0123456789", 0, 10, ink)
-        val cyClock = (top + clockBottom) / 2
-        val base = cyClock - ink.exactCenterY()
         val hhFmt = java.text.SimpleDateFormat(if (c.hour24) "HH" else "hh", java.util.Locale.US)
         val now = java.util.Date(r.now.toInstant().toEpochMilli())
         val hh = r.n(hhFmt.format(now))
         val mm = r.n(java.text.SimpleDateFormat("mm", java.util.Locale.US).format(now))
-        // fixed slots so the colon never jumps: each pair gets the widest two-digit width
-        val pairW = ('0'..'9').maxOf { d -> p.measureText(r.n("$d$d")) }
-        val colonW = p.measureText(":")
-        val total = pairW * 2 + colonW
-        val x0 = left + (maxW - total) / 2 + 3 * r.u
-        val colonX = x0 + pairW
-        val minX = colonX + colonW
+        val p = r.paint(c.color1, 100f, font.f)
+        val ink = android.graphics.Rect(); p.getTextBounds("0123456789", 0, 10, ink)
+        fun inkW(t: String): Pair<Float, Float> { val b = android.graphics.Rect(); p.getTextBounds(t, 0, t.length, b); return b.left.toFloat() to b.width().toFloat() }
+        val gapK = 0.045f // space each side of the colon, in em
+        // widest possible pair keeps the layout steady minute to minute
+        val pairW = ('0'..'9').maxOf { d -> inkW(r.n("$d$d")).second }
+        val colon = inkW(":")
+        fun totalW() = pairW * 2 + colon.second + 2 * gapK * p.textSize
+        val maxW = r.w * 0.62f - r.pad
+        val maxH = (clockBottom - top) * c.size1 / 100f
+        p.textSize = 100f * minOf(maxW / totalW(), maxH / ink.height())
+        p.getTextBounds("0123456789", 0, 10, ink)
+        val (hL, hW) = inkW(hh); val (mL, mW) = inkW(mm); val (cL, cW) = inkW(":")
+        val pw = ('0'..'9').maxOf { d -> inkW(r.n("$d$d")).second }
+        val gap = gapK * p.textSize
+        val cyClock = (top + clockBottom) / 2
+        val base = cyClock - ink.exactCenterY()
+        val x0 = r.pad + 2 * r.u
+        val colonL = x0 + pw + gap            // ink left of the colon
+        val minL = colonL + cW + gap          // ink left of the minutes
+        val clockRight = minL + pw
         val baked = r.preview || r.bakeLive
-        run {
-            if (baked) {
-                p.textAlign = Paint.Align.RIGHT
-                r.canvas.drawText(hh, colonX, base, p)
-            } else r.liveTime(if (c.hour24) "HH" else "hh", colonX, cyClock, p.textSize, LiveFont.BEBAS, c.color1, Paint.Align.RIGHT, maxW = pairW * 1.02f, sample = "00")
-            p.textAlign = Paint.Align.LEFT
+        if (baked) {
+            r.canvas.drawText(hh, colonL - gap - hW - hL, base, p)   // hours end right before the colon
+            r.canvas.drawText(":", colonL - cL, base, p)
+            p.shader = if (c.minGrad) android.graphics.LinearGradient(minL, 0f, minL + mW, 0f, c.accent, c.accent2, android.graphics.Shader.TileMode.CLAMP) else null
+            p.color = c.accent
+            r.canvas.drawText(mm, minL - mL, base, p)
             p.shader = null
-            r.canvas.drawText(":", colonX, base, p.apply { color = c.color1 })
-            if (baked) {
-                val mw = p.measureText(mm)
-                p.shader = if (c.minGrad) android.graphics.LinearGradient(minX, 0f, minX + mw, 0f, c.accent, c.accent2, android.graphics.Shader.TileMode.CLAMP) else null
-                p.color = c.accent
-                r.canvas.drawText(mm, minX, base, p)
-                p.shader = null
-            } else r.liveTime("mm", minX, cyClock, p.textSize, LiveFont.BEBAS, c.accent, Paint.Align.LEFT, maxW = pairW * 1.02f, sample = "00")
+        } else {
+            r.canvas.drawText(":", colonL - cL, base, p)
+            r.liveTime(if (c.hour24) "HH" else "hh", colonL - gap, cyClock, p.textSize, LiveFont.BEBAS, c.color1, Paint.Align.RIGHT, sample = "00")
+            r.liveTime("mm", minL, cyClock, p.textSize, LiveFont.BEBAS, c.accent, Paint.Align.LEFT, sample = "00")
         }
 
-        // ---- day in calligraphy (right side, sits a little low like the reference)
+        // ---- day in calligraphy, centred on the same line as the clock
         val d = r.today
-        r.textTight(Calendars.dayName(d, true), (split + right) / 2, r.h * 0.40f, r.h * 0.30f * c.size2 / 100f,
-            c.dayColor, r.calliFont, maxW = right - split, maxH = r.h * 0.30f)
+        val dayL = clockRight + 10 * r.u
+        r.textTight(Calendars.dayName(d, true), (dayL + right) / 2, cyClock, ink.height() * 0.9f * c.size2 / 100f,
+            c.dayColor, r.calliFont, maxW = right - dayL, maxH = ink.height() * 0.95f)
 
         // ---- dates
         val dateY = r.h * 0.665f
@@ -323,8 +323,8 @@ object PrayerR {
         val hij = if (r.ar) "${r.n(h.day)} ${Calendars.hijriMonth(h.month, true)} ${r.n(h.year)}" else "${h.day} ${Calendars.hijriMonth(h.month, false)} ${h.year}"
         val greg = if (r.ar) "${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, true)} ${r.n(d.year)}" else "${Calendars.monthName(d.monthValue, false)} ${d.dayOfMonth}, ${d.year}"
         val ds = 12.5f * r.u
-        r.text(greg, x0, dateY, ds, c.color2, r.sans, Paint.Align.LEFT, maxW = split - x0 - 4 * r.u)
-        r.text(hij, right - 6 * r.u, dateY, ds, c.hijriColor, r.sans, Paint.Align.RIGHT, maxW = right - split)
+        r.text(greg, x0, dateY, ds, c.color2, r.sans, Paint.Align.LEFT, maxW = r.w * 0.45f)
+        r.text(hij, right - 4 * r.u, dateY, ds, c.hijriColor, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.45f)
 
         // ---- divider
         val lineY = r.h * 0.745f
