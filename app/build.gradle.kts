@@ -13,7 +13,7 @@ android {
         applicationId = "com.smrh.zujaj"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.0"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -102,6 +102,8 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    // a library pulls in fragment 1.1.0, which Play reports as outdated — force the current one
+    implementation("androidx.fragment:fragment-ktx:1.8.6")
 
     implementation("com.batoulapps.adhan:adhan:1.2.1")
 
