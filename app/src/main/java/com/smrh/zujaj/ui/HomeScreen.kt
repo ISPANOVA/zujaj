@@ -4,6 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -156,13 +159,14 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
             items.forEachIndexed { i, (icon, label) ->
                 val sel = i == tab
                 Row(
-                    Modifier.animateContentSize().clip(RoundedCornerShape(50))
+                    Modifier.animateContentSize(androidx.compose.animation.core.spring(dampingRatio = 0.62f, stiffness = 420f)).clip(RoundedCornerShape(50))
                         .background(if (sel) Brush.linearGradient(listOf(accent, accent.copy(alpha = 0.78f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
                         .clickable { onTab(i) }
                         .padding(horizontal = if (sel) 18.dp else 16.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(icon, label, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp))
+                    val bounce by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.12f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 500f), label = "b")
+                    Icon(icon, label, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp).graphicsLayer { scaleX = bounce; scaleY = bounce })
                     if (sel) {
                         Spacer(Modifier.width(8.dp))
                         Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14110A), maxLines = 1)
@@ -285,7 +289,7 @@ fun DiscoverTab(nav: Nav) {
     val all = Flags.visible()
     var chip by rememberSaveable { mutableStateOf("all") }
     val featured = remember(flags) {
-        listOf("prayer_spotlight", "clock_arabesque", "digital_fade", "date_calli_full", "clock_wide", "digital_neon")
+        listOf("calli_lawn", "prayer_hub", "prayer_journey", "clock_neon", "cal_hijri_grid", "w_today_tomorrow", "prayer_spotlight", "calli_between")
             .mapNotNull { id -> all.firstOrNull { it.id == id } }
     }
     val hour = LocalTime.now().hour
@@ -298,11 +302,20 @@ fun DiscoverTab(nav: Nav) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 130.dp)) {
         // ---- header: greeting + round actions
         item {
-            Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 16.dp, top = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            // slow drifting aurora behind the greeting
+            val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "aurora")
+            val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
+            Box(Modifier.fillMaxWidth().drawBehind {
+                val w = size.width; val h = size.height
+                drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(w * (0.15f + 0.5f * t), h * 0.2f), radius = w * 0.55f), radius = w * 0.55f, center = androidx.compose.ui.geometry.Offset(w * (0.15f + 0.5f * t), h * 0.2f))
+                drawCircle(Brush.radialGradient(listOf(Color(0xFF7C6CF2).copy(alpha = 0.16f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(w * (0.9f - 0.4f * t), h * 0.6f), radius = w * 0.5f), radius = w * 0.5f, center = androidx.compose.ui.geometry.Offset(w * (0.9f - 0.4f * t), h * 0.6f))
+            }) {
+            Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 16.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(greet, color = Z.sub, fontSize = 13.sp)
-                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false,
+                    Text(tr("Zujaj", "زجاج"), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false,
                         letterSpacing = if (Prefs.isArabicUi) 0.sp else (-0.5).sp)
+                    Text(tr("${all.size} widgets · made to be yours", "${all.size} ويدجت · صمّمها على مزاجك"), color = Z.sub, fontSize = 12.sp, maxLines = 1)
                 }
                 RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
                 Spacer(Modifier.width(10.dp))
@@ -310,6 +323,7 @@ fun DiscoverTab(nav: Nav) {
                     Icons.Rounded.WorkspacePremium,
                     if (pro) Color(0xFF2A2210) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05),
                 ) { nav.go(Screen.Paywall) }
+            }
             }
         }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item {
@@ -354,8 +368,11 @@ fun DiscoverTab(nav: Nav) {
                 Column {
                     HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { page ->
                         val st = featured[page]
+                        val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
                         Box(
-                            Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(32.dp))
+                            Modifier.fillMaxWidth().height(280.dp)
+                                .graphicsLayer { val k = 1f - 0.07f * kotlin.math.abs(off); scaleX = k; scaleY = k; alpha = 1f - 0.35f * kotlin.math.abs(off) }
+                                .clip(RoundedCornerShape(32.dp))
                                 .background(Backdrops.brush(page + 1))
                                 .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(32.dp))
                                 .clickable { nav.go(Screen.Editor(st.id)) },
@@ -392,6 +409,18 @@ fun DiscoverTab(nav: Nav) {
                     }
                 }
             }
+            // ---- browse by category: colourful tiles
+            item(key = "cats") {
+                Column {
+                    SectionHeader(tr("Browse", "تصفح الأقسام"), null, null)
+                    androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
+                        androidx.compose.foundation.lazy.grid.GridCells.Fixed(2), Modifier.fillMaxWidth().height(156.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(cats.size) { i -> CategoryTile(cats[i], all.count { it.cat == cats[i] }, i) { chip = cats[i].name } }
+                    }
+                }
+            }
             // ---- one shelf per category
             cats.forEach { cat ->
                 val list = all.filter { it.cat == cat }
@@ -399,9 +428,14 @@ fun DiscoverTab(nav: Nav) {
                     Column(Modifier.animateItem()) {
                     SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        items(list.take(10), key = { it.id }) { st ->
+                        items(list.take(12).size, key = { list[it].id }) { idx ->
+                            val st = list[idx]
+                            val shown = remember { androidx.compose.animation.core.Animatable(0f) }
+                            LaunchedEffect(Unit) { delay((idx * 60L).coerceAtMost(300L)); shown.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 220f)) }
                             // every card in a shelf has the same height so rows line up calmly
-                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 300.dp), stage = 168.dp) { nav.go(Screen.Editor(st.id)) }
+                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 300.dp)
+                                .graphicsLayer { alpha = shown.value; translationX = (1f - shown.value) * 60.dp.toPx() * (if (Prefs.isArabicUi) -1 else 1) },
+                                stage = 168.dp) { nav.go(Screen.Editor(st.id)) }
                         }
                     }
                     }
@@ -441,6 +475,31 @@ private fun feedRows(list: List<WidgetStyle>): List<List<WidgetStyle>> {
         else out += listOf(s)
     }
     return out
+}
+
+@Composable
+private fun CategoryTile(cat: Cat, count: Int, i: Int, onClick: () -> Unit) {
+    val c = catColor(cat)
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.94f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 600f), label = "cat")
+    Row(
+        Modifier.width(176.dp).fillMaxHeight().graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(c.copy(alpha = 0.26f), c.copy(alpha = 0.06f))))
+            .border(1.dp, c.copy(alpha = 0.22f), RoundedCornerShape(22.dp))
+            .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(c.copy(alpha = 0.28f)), contentAlignment = Alignment.Center) {
+            Icon(catIcon(cat), null, tint = c, modifier = Modifier.size(21.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(if (Prefs.isArabicUi) cat.ar else cat.en, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(tr("$count widgets", "$count ويدجت"), color = Z.sub, fontSize = 11.sp, maxLines = 1)
+        }
+    }
 }
 
 @Composable

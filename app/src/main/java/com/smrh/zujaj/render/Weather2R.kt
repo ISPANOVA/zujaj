@@ -110,8 +110,8 @@ object Weather2R {
         for ((i, d) in ds.withIndex()) {
             val y = r.pad * 0.7f + rowH * (i + 0.5f)
             r.text(dayLabel(r, d, i == 0), r.w - r.pad, y, 9 * r.u, r.c1, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.22f)
-            r.text(r.n("${(d.rain * 10).toInt() / 10.0}") + r.t("mm", "مم"), r.w * 0.68f, y, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
-            Kit.slider(r, r.w * 0.25f, y, r.w * 0.34f, (d.rain / mx).toFloat().coerceAtLeast(0.04f), r.accent, withAlpha(r.c1, 26), 3 * r.u, 0f)
+            r.text(r.n("${(d.rain * 10).toInt() / 10.0}"), r.w * 0.66f, y, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
+            Kit.slider(r, r.w * 0.24f, y, r.w * 0.3f, (d.rain / mx).toFloat().coerceAtLeast(0.04f), r.accent, withAlpha(r.c1, 26), 3 * r.u, 0f)
             r.text("${t(r, d.hi)}", r.pad, y, 9 * r.u, r.c1, r.sansMed)
         }
     }

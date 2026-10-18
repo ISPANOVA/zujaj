@@ -94,7 +94,7 @@ object CalliR {
         Kit.calli(r, dayAr(r), r.w / 2, r.h * 0.34f, r.h * 0.6f, withAlpha(r.c1, 26), maxW = r.w * 1.1f, maxH = r.h * 0.62f)
         Kit.clock(r, r.w / 2, r.h * 0.34f, 44 * r.u * r.s1, LiveFont.SANS_BOLD, maxW = r.w * 0.8f, maxH = r.h * 0.3f,
             pattern = if (r.cfg.hour24) "HH:mm" else "hh:mm a")
-        r.text(Kit.dayName(r, false).uppercase().let { if (r.ar) Kit.dayName(r, true) else it.lowercase().replaceFirstChar { c -> c.uppercase() } },
+        r.text(if (r.ar) Kit.hijri(r) else Kit.dayName(r, false),
             r.pad + 6 * r.u, r.h * 0.72f, 15 * r.u, r.c1, r.sansMed, spacing = 0.08f, maxW = r.w * 0.45f)
         r.text(Kit.greg(r), r.pad + 6 * r.u, r.h * 0.86f, 11 * r.u, r.c2, r.sans, maxW = r.w * 0.45f)
         Kit.calli(r, dayAr(r), r.w * 0.75f, r.h * 0.78f, r.h * 0.26f * r.s2, r.c1, maxW = r.w * 0.42f, maxH = r.h * 0.26f)
@@ -162,7 +162,7 @@ object CalliR {
             r.c1, withAlpha(r.c1, 70), maxW = r.w * 0.5f, maxH = r.h * 0.6f)
         Kit.calli(r, dayAr(r), r.w * 0.76f, r.h * 0.3f, r.h * 0.16f, r.c1, maxW = r.w * 0.4f, maxH = r.h * 0.16f)
         r.textTight(r.n(r.today.dayOfMonth), r.w * 0.76f, r.h * 0.5f, 30 * r.u * r.s2, r.c1, r.sansBold)
-        r.text(Kit.hijriShort(r), r.w * 0.76f, r.h * 0.64f, 8.5f * r.u, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w * 0.4f)
+        r.text(Kit.hijriShort(r), r.w * 0.76f, r.h * 0.64f, 8.5f * r.u, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w * 0.3f)
         Kit.line(r, left, r.h * 0.77f, r.w - left, r.h * 0.77f, withAlpha(r.c1, 30))
         val nx = Kit.day(r).next
         Kit.countdown(r, left, r.h * 0.88f, 11 * r.u, r.c1, prefix = "")
@@ -212,8 +212,8 @@ object CalliR {
         Kit.clock(r, r.pad + 4 * r.u, r.h * 0.5f, 60 * r.u * r.s1, LiveFont.BEBAS, align = Paint.Align.LEFT, maxW = r.w * 0.5f, maxH = r.h * 0.52f)
         val cx = r.w * 0.76f
         for (i in 2 downTo 0) {
-            val a = listOf(255, 110, 45)[i]
-            Kit.calli(r, dayAr(r), cx, r.h * (0.5f - i * 0.13f), r.h * 0.26f * r.s2, withAlpha(r.accent, a), maxW = r.w * 0.44f, maxH = r.h * 0.26f)
+            val a = listOf(255, 70, 22)[i]
+            Kit.calli(r, dayAr(r), cx + i * 4 * r.u, r.h * (0.52f - i * 0.2f), r.h * 0.24f * r.s2, withAlpha(r.accent, a), maxW = r.w * 0.42f, maxH = r.h * 0.24f)
         }
         val nx = Kit.day(r).next
         r.text(Kit.pName(r, nx), r.w * 0.5f, r.h * 0.88f, 11 * r.u, r.accent, r.sansBold, Paint.Align.LEFT)
@@ -253,7 +253,7 @@ object CalliR {
         }
         Kit.gradText(r, Kit.bakedTime(r), r.w / 2, r.h * 0.5f, r.h * 0.6f * r.s1, r.resolveFont(LiveFont.BEBAS, 60 * r.u).f,
             r.c1, withAlpha(r.c1, 10), maxW = r.w * 0.6f, maxH = r.h * 0.56f)
-        Kit.calli(r, dayAr(r), r.w / 2, r.h * 0.6f, r.h * 0.34f * r.s2, withAlpha(r.accent, 220), maxW = r.w * 0.82f, maxH = r.h * 0.34f, color2 = r.c2)
+        Kit.calli(r, dayAr(r), r.w * 0.62f, r.h * 0.68f, r.h * 0.3f * r.s2, withAlpha(r.accent, 230), maxW = r.w * 0.6f, maxH = r.h * 0.3f, color2 = r.c2)
         r.text(Kit.greg(r) + "  |  " + Kit.hijri(r), r.w / 2, r.h * 0.9f, 10 * r.u, r.c1, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
     }
 
