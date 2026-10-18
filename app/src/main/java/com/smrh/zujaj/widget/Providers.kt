@@ -101,7 +101,7 @@ class ActionReceiver : BroadcastReceiver() {
                     "dec" -> cfg.copy(counter = (cfg.counter - 1).coerceAtLeast(0))
                     "reset" -> cfg.copy(counter = 0)
                     else -> cfg
-                }
+                }.let { c -> if (cmd == "tasbeeh" && arg == "inc") { val d = LocalDate.now().toEpochDay(); if (d in c.days) c else c.copy(days = (c.days + d).takeLast(400)) } else c }
                 Prefs.saveWidgetConfig(id, next)
                 if (cmd == "tasbeeh" && arg == "inc" && next.goal > 0 && next.counter % next.goal == 0) vibrate(context)
                 WidgetUpdater.update(context, id)
@@ -115,6 +115,28 @@ class ActionReceiver : BroadcastReceiver() {
                 WidgetUpdater.update(context, id)
             }
             "torch" -> toggleTorch(context)
+            "ringer" -> {
+                val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val target = when (arg) {
+                    "silent" -> AudioManager.RINGER_MODE_SILENT
+                    "vibrate" -> AudioManager.RINGER_MODE_VIBRATE
+                    "normal" -> AudioManager.RINGER_MODE_NORMAL
+                    else -> when (am.ringerMode) { AudioManager.RINGER_MODE_NORMAL -> AudioManager.RINGER_MODE_VIBRATE; AudioManager.RINGER_MODE_VIBRATE -> AudioManager.RINGER_MODE_SILENT; else -> AudioManager.RINGER_MODE_NORMAL }
+                }
+                val ok = runCatching { am.ringerMode = target }.isSuccess && am.ringerMode == target
+                if (!ok) {
+                    // silent needs "Do not disturb" access on newer Android
+                    runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    Toast.makeText(context, if (Prefs.isArabicUi) "اسمح لزجاج بالوصول لوضع عدم الإزعاج" else "Allow Zujaj Do Not Disturb access", Toast.LENGTH_LONG).show()
+                }
+                WidgetUpdater.updateAll(context)
+            }
+            "focus" -> {
+                val cfg = Prefs.widgetConfig(id) ?: return
+                val next = if (arg == "start") cfg.copy(targetMillis = System.currentTimeMillis() + cfg.goal.coerceIn(1, 180) * 60_000L) else cfg.copy(targetMillis = 0L)
+                Prefs.saveWidgetConfig(id, next)
+                WidgetUpdater.update(context, id)
+            }
         }
     }
 

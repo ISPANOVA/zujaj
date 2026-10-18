@@ -27,9 +27,24 @@ data class Weather(
     val humidity: Double = 0.0,
     val wind: Double = 0.0,
     val updated: Long,
+    /** Next ~24 h, hourly. */
+    val hours: List<HourF> = emptyList(),
+    /** Today + next days (local dates). */
+    val days: List<DayF> = emptyList(),
+    val rainMm: Double = 0.0,
 ) {
     val cond: Cond get() = WeatherRepo.condOf(symbol)
     val night: Boolean get() = symbol.endsWith("_night")
+}
+
+@Serializable
+data class HourF(val time: Long, val temp: Double, val symbol: String, val rain: Double = 0.0) {
+    val cond: Cond get() = WeatherRepo.condOf(symbol)
+}
+
+@Serializable
+data class DayF(val epochDay: Long, val hi: Double, val lo: Double, val symbol: String, val rain: Double = 0.0) {
+    val cond: Cond get() = WeatherRepo.condOf(symbol)
 }
 
 @Serializable
@@ -38,7 +53,14 @@ private data class WeatherCache(val items: List<Weather> = emptyList())
 object WeatherRepo {
     private val json = Json { ignoreUnknownKeys = true }
 
-    val sample = Weather("Cairo", 30.04, 31.23, 28.0, 31.0, 19.0, "fair_day", 40.0, 3.0, System.currentTimeMillis())
+    val sample: Weather get() {
+        val now = System.currentTimeMillis()
+        val today = java.time.LocalDate.now().toEpochDay()
+        val syms = listOf("clearsky_day", "fair_day", "partlycloudy_day", "cloudy", "lightrain", "fair_day", "clearsky_day", "fair_night")
+        val hours = (0 until 24).map { i -> HourF(now - now % 3_600_000 + i * 3_600_000L, 28 + 5 * kotlin.math.sin(i / 3.8), syms[i % syms.size], if (i in 9..11) 0.6 else 0.0) }
+        val days = (0 until 7).map { i -> DayF(today + i, 31.0 + listOf(0, 2, -1, -3, 1, 3, 0)[i], 19.0 + listOf(0, 1, -1, 0, 2, 1, 0)[i], syms[(i * 3) % 6], if (i == 3) 4.0 else 0.0) }
+        return Weather("Cairo", 30.04, 31.23, 28.0, 31.0, 19.0, "fair_day", 40.0, 3.0, now, hours, days, 0.0)
+    }
     val sample2 = Weather("Dubai", 25.2, 55.27, 33.0, 36.0, 27.0, "clearsky_day", 50.0, 4.0, System.currentTimeMillis())
 
     private fun load(): List<Weather> =
@@ -106,7 +128,29 @@ object WeatherRepo {
             else (o["data"]!!.jsonObject["instant"]!!.jsonObject["details"]!!.jsonObject["air_temperature"]
                 ?.jsonPrimitive?.double)
         }
-        val w = Weather(name, lat, lng, temp, temps.maxOrNull() ?: temp, temps.minOrNull() ?: temp, symbol, hum, wind, System.currentTimeMillis())
+        // hourly (next 24h) and per-day summaries
+        val zone = java.time.ZoneId.systemDefault()
+        val hours = mutableListOf<HourF>()
+        val byDay = linkedMapOf<Long, MutableList<Triple<Double, String, Double>>>()
+        for (e in series) {
+            val o = e.jsonObject
+            val t = OffsetDateTime.parse(o["time"]!!.jsonPrimitive.content)
+            val d = o["data"]!!.jsonObject
+            val tt = d["instant"]!!.jsonObject["details"]!!.jsonObject["air_temperature"]?.jsonPrimitive?.double ?: continue
+            val nx = (d["next_1_hours"] ?: d["next_6_hours"])?.jsonObject
+            val sym = nx?.get("summary")?.jsonObject?.get("symbol_code")?.jsonPrimitive?.content ?: ""
+            val rain = nx?.get("details")?.jsonObject?.get("precipitation_amount")?.jsonPrimitive?.double ?: 0.0
+            if (!t.isAfter(start.plusHours(24)) && d["next_1_hours"] != null) hours += HourF(t.toInstant().toEpochMilli(), tt, sym.ifEmpty { symbol }, rain)
+            val day = t.atZoneSameInstant(zone).toLocalDate().toEpochDay()
+            byDay.getOrPut(day) { mutableListOf() } += Triple(tt, sym, rain)
+        }
+        val days = byDay.entries.take(8).map { (day, l) ->
+            // prefer a midday symbol, else the most common
+            val sym = l.map { it.second }.filter { it.isNotEmpty() }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: symbol
+            DayF(day, l.maxOf { it.first }, l.minOf { it.first }, sym, l.sumOf { it.third })
+        }
+        val w = Weather(name, lat, lng, temp, temps.maxOrNull() ?: temp, temps.minOrNull() ?: temp, symbol, hum, wind, System.currentTimeMillis(),
+            hours.take(24), days, hours.take(24).sumOf { it.rain })
         save(w)
         w
     }.getOrNull()

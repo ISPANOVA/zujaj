@@ -75,6 +75,9 @@ import com.smrh.zujaj.widget.Scheduler
 import com.smrh.zujaj.widget.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -269,7 +272,7 @@ fun PaywallScreen(nav: Nav) {
     val msg by Billing.message.collectAsState()
     var sel by remember { mutableStateOf(Plan.YEARLY) }
     var showRedeem by remember { mutableStateOf(false) }
-    if (showRedeem) RedeemDialog { showRedeem = false }
+    if (showRedeem) RedeemDialog { showRedeem = false; if (com.smrh.zujaj.data.Prefs.isPro) nav.back() }
     LaunchedEffect(msg) {
         when (msg) {
             "pro_ok" -> { Toast.makeText(ctx, tr("Welcome to Pro ✓", "أهلاً بك في برو ✓"), Toast.LENGTH_LONG).show(); nav.back() }
@@ -607,52 +610,106 @@ fun RedeemDialog(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var msg by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    var success by remember { mutableStateOf<String?>(null) }
+    // close by itself a moment after the celebration
+    LaunchedEffect(success) { if (success != null) { kotlinx.coroutines.delay(2800); onDismiss() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1D1A12), Z.surface))).border(1.dp, Z.line, RoundedCornerShape(28.dp)).padding(22.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Box(
+            Modifier.clip(RoundedCornerShape(30.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1F1A10), Z.surface))).border(1.dp, Z.line, RoundedCornerShape(30.dp)),
         ) {
-            Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(Z.pro.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(32.dp))
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(tr("Redeem a code", "استخدام كود"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(tr("Enter the code you received to unlock Pro", "اكتب الكود اللي وصلك عشان تفتح برو"), color = Z.sub, textAlign = TextAlign.Center, fontSize = 13.sp)
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                code, { code = it.uppercase(); msg = null }, singleLine = true, placeholder = { Text("XXXX-XXXX-XXXX") },
-                textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, textAlign = TextAlign.Center, letterSpacing = 1.sp),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
-                shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-            )
-            msg?.let { (t, ok) -> Text(t, color = if (ok) Color(0xFF3DDC97) else Color(0xFFE5484D), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp)) }
-            Spacer(Modifier.height(16.dp))
-            PrimaryButton(if (busy) "…" else tr("Redeem", "تفعيل"), Modifier.fillMaxWidth()) {
-                if (busy || code.isBlank()) return@PrimaryButton
-                busy = true
-                scope.launch {
-                    val r = com.smrh.zujaj.remote.Codes.redeem(ctx, code)
-                    busy = false
-                    msg = when (r) {
-                        is com.smrh.zujaj.remote.RedeemResult.Ok -> {
-                            val d = if (r.until == Long.MAX_VALUE) tr("forever", "للأبد")
-                                else tr("until ", "لحد ") + java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(r.until))
-                            (if (r.restored) tr("Welcome back! Pro restored $d ✓", "أهلاً بيك تاني! البرو رجع $d ✓") else tr("Pro unlocked $d ✓", "تم تفعيل البرو $d ✓")) to true
-                        }
-                        is com.smrh.zujaj.remote.RedeemResult.Fail -> when (r.reason) {
-                            com.smrh.zujaj.remote.RedeemResult.Reason.INVALID -> tr("This code doesn't exist", "الكود ده مش موجود")
-                            com.smrh.zujaj.remote.RedeemResult.Reason.DISABLED -> tr("This code was turned off", "الكود ده اتوقف")
-                            com.smrh.zujaj.remote.RedeemResult.Reason.EXPIRED -> tr("This code has expired", "الكود ده انتهت صلاحيته")
-                            com.smrh.zujaj.remote.RedeemResult.Reason.FULL -> tr("This code reached its limit", "الكود ده اكتمل عدده")
-                            com.smrh.zujaj.remote.RedeemResult.Reason.ALREADY_USED_EXPIRED -> tr("You already used this code and its time ended", "انت استخدمت الكود ده قبل كده ومدته خلصت")
-                            com.smrh.zujaj.remote.RedeemResult.Reason.OFFLINE -> tr("Check your internet and try again", "اتأكد من النت وحاول تاني")
-                        } to false
+            androidx.compose.animation.AnimatedContent(success, transitionSpec = {
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.9f))
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)))
+            }, label = "redeem") { done ->
+                if (done != null) ProUnlocked(done) else Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(Z.pro.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(32.dp))
                     }
-                    if (r is com.smrh.zujaj.remote.RedeemResult.Ok) WidgetUpdater.updateAll(ctx)
+                    Spacer(Modifier.height(12.dp))
+                    Text(tr("Redeem a code", "استخدام كود"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(tr("Enter the code you received to unlock Pro", "اكتب الكود اللي وصلك عشان تفتح برو"), color = Z.sub, textAlign = TextAlign.Center, fontSize = 13.sp)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        code, { code = it.uppercase(); msg = null }, singleLine = true, placeholder = { Text("XXXX-XXXX-XXXX") },
+                        textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, textAlign = TextAlign.Center, letterSpacing = 1.sp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
+                        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
+                    )
+                    msg?.let { Text(it, color = Color(0xFFE5484D), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp)) }
+                    Spacer(Modifier.height(16.dp))
+                    PrimaryButton(if (busy) "…" else tr("Redeem", "تفعيل"), Modifier.fillMaxWidth()) {
+                        if (busy || code.isBlank()) return@PrimaryButton
+                        busy = true
+                        scope.launch {
+                            val r = com.smrh.zujaj.remote.Codes.redeem(ctx, code)
+                            busy = false
+                            when (r) {
+                                is com.smrh.zujaj.remote.RedeemResult.Ok -> {
+                                    val d = if (r.until == Long.MAX_VALUE) tr("Forever", "للأبد")
+                                        else tr("Until ", "لحد ") + java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(r.until))
+                                    WidgetUpdater.updateAll(ctx)
+                                    success = d
+                                }
+                                is com.smrh.zujaj.remote.RedeemResult.Fail -> msg = when (r.reason) {
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.INVALID -> tr("This code doesn't exist", "الكود ده مش موجود")
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.DISABLED -> tr("This code was turned off", "الكود ده اتوقف")
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.EXPIRED -> tr("This code has expired", "الكود ده انتهت صلاحيته")
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.FULL -> tr("This code reached its limit", "الكود ده اكتمل عدده")
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.ALREADY_USED_EXPIRED -> tr("You already used this code and its time ended", "انت استخدمت الكود ده قبل كده ومدته خلصت")
+                                    com.smrh.zujaj.remote.RedeemResult.Reason.OFFLINE -> tr("Check your internet and try again", "اتأكد من النت وحاول تاني")
+                                }
+                            }
+                        }
+                    }
+                    TextButton(onClick = onDismiss) { Text(tr("Close", "إغلاق"), color = Z.sub) }
                 }
             }
-            TextButton(onClick = onDismiss) { Text(tr("Close", "إغلاق"), color = Z.sub) }
+        }
+    }
+}
+
+/** Celebration shown when Pro turns on: glowing crown, gold confetti and the end date. */
+@Composable
+fun ProUnlocked(until: String) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "pro")
+    val glow by t.animateFloat(0.55f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "g")
+    val pop = remember { androidx.compose.animation.core.Animatable(0.3f) }
+    val fall = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 260f)) }
+        fall.animateTo(1f, androidx.compose.animation.core.tween(2600, easing = androidx.compose.animation.core.LinearEasing))
+    }
+    val pieces = remember { List(36) { Triple(kotlin.random.Random.nextFloat(), kotlin.random.Random.nextFloat() * 0.5f, kotlin.random.Random.nextInt(4)) } }
+    Box(Modifier.fillMaxWidth().height(330.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val cols = listOf(Color(0xFFE7B75F), Color(0xFFFFE3A3), Color(0xFFF2865E), Color.White)
+            pieces.forEach { (x, delay, c) ->
+                val p = ((fall.value - delay) / (1 - delay)).coerceIn(0f, 1f)
+                if (p > 0f) {
+                    val y = -20f + p * (size.height + 40f)
+                    val xx = x * size.width + kotlin.math.sin(p * 9 + x * 20) * 18f
+                    rotate(p * 540f + x * 90f, androidx.compose.ui.geometry.Offset(xx, y)) {
+                        drawRect(cols[c].copy(alpha = 1f - p * 0.6f), topLeft = androidx.compose.ui.geometry.Offset(xx - 4f, y - 7f), size = androidx.compose.ui.geometry.Size(8f, 14f))
+                    }
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+            Box(
+                Modifier.size(96.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Brush.radialGradient(listOf(Z.pro.copy(alpha = 0.55f * glow), Z.pro.copy(alpha = 0.08f)))),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(54.dp)) }
+            Spacer(Modifier.height(18.dp))
+            Text(tr("Pro is on!", "البرو اتفعّل!"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Z.pro)
+            Spacer(Modifier.height(6.dp))
+            Text(tr("Every widget is unlocked", "كل الويدجتات بقت مفتوحة"), color = Z.text, fontSize = 14.sp)
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.clip(RoundedCornerShape(50)).background(Z.pro.copy(alpha = 0.14f)).padding(horizontal = 14.dp, vertical = 6.dp)) {
+                Text(until, color = Z.pro, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            }
         }
     }
 }

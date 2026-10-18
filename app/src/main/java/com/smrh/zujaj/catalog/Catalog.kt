@@ -29,6 +29,7 @@ enum class Shape(val cols: Int, val rows: Int, val dw: Float, val dh: Float) {
 }
 
 enum class Cat(val en: String, val ar: String, val tags: String = "") {
+    CALLI("Calligraphy", "الخط العربي", "calligraphy thuluth arabic day kufi خط عربي ثلث كوفي يوم مزخرف"),
     CLOCK("Clock", "ساعات", "clock time watch analog hour ساعه ساعة وقت الوقت عقارب"),
     DIGITAL("Digital", "رقمية", "clock time digital hour ساعه ساعة رقمي رقميه الوقت"),
     DATE("Date", "التاريخ", "date calendar day month year hijri تاريخ تقويم يوم شهر سنه هجري ميلادي"),
@@ -43,6 +44,9 @@ enum class Cat(val en: String, val ar: String, val tags: String = "") {
     SEARCH("Search", "بحث", "search google bar بحث جوجل"),
     SYSTEM("System", "النظام", "system battery storage ram نظام بطاريه بطارية ذاكره مساحه"),
     QUOTES("Quotes", "اقتباسات", "quote quotes text note اقتباس اقتباسات نص كلام ملاحظه"),
+    HABITS("Habits", "العادات", "habit habits streak tracker routine عادات عاده متابعة"),
+    NOTES("Notes", "ملاحظات", "note notes sticky memo todo ملاحظه ملاحظات مذكره"),
+    FOCUS("Focus", "تركيز", "focus pomodoro timer study تركيز مذاكره مؤقت"),
     TOOLS("Tools", "أدوات", "tools torch flashlight calculator wifi camera alarm ادوات أدوات كشاف حاسبه واي فاي كاميرا منبه"),
 }
 
@@ -100,6 +104,16 @@ object Catalog {
     private val mU = setOf(Upd.MEDIA)
     private val sysU = setOf(Upd.SYSTEM)
     private val none = setOf(Upd.NONE)
+    private val cF = setOf(Feat.ACCENT, Feat.COLOR2, Feat.HOUR24, Feat.SIZE2)
+    private val cD: (WidgetConfig) -> WidgetConfig = { it.copy(calli = 3, accent = 0xFFE7B75F.toInt()) }
+    private val pF = setOf(Feat.COLOR2, Feat.HOUR24, Feat.ACCENT)
+    private val mint: (WidgetConfig) -> WidgetConfig = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF0E2420.toInt(), bgColor2 = 0xFF143A33.toInt(), accent = 0xFF3DDCB5.toInt()) }
+    private val tF = setOf(Feat.GOAL, Feat.TEXT, Feat.ACCENT)
+    private val hF = setOf(Feat.TITLE, Feat.ACCENT)
+    private val hD: (WidgetConfig) -> WidgetConfig = { it.copy(title = "", accent = 0xFF34C759.toInt()) }
+    private val nF = setOf(Feat.TITLE, Feat.TEXT, Feat.ACCENT)
+    private val fF = setOf(Feat.TITLE, Feat.GOAL, Feat.ACCENT)
+    private val fD: (WidgetConfig) -> WidgetConfig = { it.copy(goal = 25, accent = 0xFFE5484D.toInt()) }
 
     private fun glass(c: WidgetConfig) = c.copy(fill = Fill.GLASS, texture = Texture.NOISE)
     private fun aurora(c: WidgetConfig) = c.copy(fill = Fill.AURORA, bgColor = 0xFF0E0E16.toInt(), bgColor2 = 0xFF4C3BCF.toInt(), accent = 0xFFE8478B.toInt())
@@ -286,6 +300,109 @@ object Catalog {
         WidgetStyle("tutorials", Cat.TOOLS, "Tutorials", "الشرح", S, upd = none) { ToolsR.tutorials(it) },
         WidgetStyle("sun_times", Cat.TOOLS, "Sun Arc", "الشروق والغروب", W, isNew = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = pU) { ToolsR.sunArc(it) },
         WidgetStyle("quick_toggles", Cat.TOOLS, "Quick Actions", "اختصارات سريعة", B, isNew = true, upd = none) { ToolsR.quick(it) },
+        // ------------------------------------------------------------------ CALLIGRAPHY
+        WidgetStyle("calli_lawn", Cat.CALLI, "Lawn", "لون", W, isNew = true, popular = true, feats = cF, defaults = cD, bakeTime = { true }) { CalliR.lawn(it) },
+        WidgetStyle("calli_laiha", Cat.CALLI, "Laiha", "لائحة", W, pro = true, isNew = true, feats = cF, defaults = cD, bakeTime = { true }) { CalliR.laiha(it) },
+        WidgetStyle("calli_countdown", Cat.CALLI, "Calligraphy Countdown", "عد الصلاة بالخط", W, isNew = true, feats = cF, defaults = cD) { CalliR.countdown(it) },
+        WidgetStyle("calli_ascend", Cat.CALLI, "Ascend", "صعود", W, pro = true, isNew = true, feats = cF, defaults = cD) { CalliR.ascend(it) },
+        WidgetStyle("calli_between", Cat.CALLI, "Between the Digits", "بين الأرقام", W, isNew = true, popular = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFE5674F.toInt()) }) { CalliR.between(it) },
+        WidgetStyle("calli_aura", Cat.CALLI, "Aura", "هالة", S, isNew = true, feats = cF, defaults = cD) { CalliR.aura(it) },
+        WidgetStyle("calli_rukn", Cat.CALLI, "Rukn", "ركن", S, pro = true, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFE7B75F.toInt()) }) { CalliR.rukn(it) },
+        WidgetStyle("calli_khatt", Cat.CALLI, "Khatt", "خط", W, pro = true, isNew = true, feats = cF, defaults = cD) { CalliR.khatt(it) },
+        WidgetStyle("calli_obelisk", Cat.CALLI, "Obelisk", "مسلّة", S, pro = true, isNew = true, feats = cF, defaults = cD, bakeTime = { true }) { CalliR.obelisk(it) },
+        WidgetStyle("calli_column", Cat.CALLI, "Column", "عمود", S, isNew = true, feats = cF, defaults = cD) { CalliR.column(it) },
+        WidgetStyle("calli_big_day", Cat.CALLI, "Big Day", "اليوم الكبير", W, isNew = true, feats = cF, defaults = cD) { CalliR.bigDay(it) },
+        WidgetStyle("calli_vertical", Cat.CALLI, "Vertical Day", "اليوم العمودي", S, pro = true, isNew = true, feats = cF, defaults = cD) { CalliR.vertical(it) },
+        WidgetStyle("calli_satr", Cat.CALLI, "Satr", "سطر", W, pro = true, isNew = true, feats = cF + Feat.TEXT, defaults = { it.copy(calli = 3, text = "صلِّ على النبي") }) { CalliR.satr(it) },
+        WidgetStyle("calli_calendar_day", Cat.CALLI, "Calendar Day", "يوم التقويم", S, isNew = true, feats = cF, defaults = cD) { CalliR.calendarDay(it) },
+        WidgetStyle("calli_echo", Cat.CALLI, "Echo", "صدى", W, pro = true, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFE58A3C.toInt()) }) { CalliR.echo(it) },
+        WidgetStyle("calli_blossom", Cat.CALLI, "Blossom", "زهر", W, pro = true, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFF27BA7.toInt()) }, bakeTime = { true }) { CalliR.blossom(it) },
+        WidgetStyle("calli_mirage", Cat.CALLI, "Mirage", "سراب", W, pro = true, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFB9A6E0.toInt()) }, bakeTime = { true }) { CalliR.mirage(it) },
+        WidgetStyle("calli_day_number", Cat.CALLI, "Day Number", "رقم اليوم", S, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFE7B75F.toInt()) }) { CalliR.dayNumber(it) },
+        WidgetStyle("calli_noqta", Cat.CALLI, "Noqta", "نقطة", S, isNew = true, feats = cF, defaults = { it.copy(numerals = com.smrh.zujaj.model.Numerals.ARABIC, accent = 0xFF2FC4A5.toInt()) }) { CalliR.noqta(it) },
+        WidgetStyle("calli_desert", Cat.CALLI, "Desert", "الصحراء", W, pro = true, isNew = true, feats = cF, defaults = { it.copy(calli = 3, accent = 0xFFD9A441.toInt(), color1 = 0xFFF3E3C2.toInt()) }) { Fancy2R.desert(it) },
+        // ------------------------------------------------------------------ PRAYER (more)
+        WidgetStyle("prayer_journey", Cat.PRAYER, "Prayer Journey", "رحلة الصلاة", W, isNew = true, popular = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DDCB5.toInt()) }) { Prayer2R.journey(it) },
+        WidgetStyle("prayer_mashrabiya", Cat.PRAYER, "Mashrabiya", "مشربية", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF1A120B.toInt(), bgColor2 = 0xFF3A2614.toInt(), accent = 0xFFD9A05B.toInt(), calli = 3) }) { Prayer2R.mashrabiya(it) },
+        WidgetStyle("prayer_mint_box", Cat.PRAYER, "Mint Box", "صندوق النعناع", S, isNew = true, feats = pF, upd = pU, defaults = mint) { Prayer2R.mintBox(it) },
+        WidgetStyle("prayer_column", Cat.PRAYER, "Prayer Column", "عمود الصلاة", S, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt()) }) { Prayer2R.column(it) },
+        WidgetStyle("prayer_midnight", Cat.PRAYER, "Midnight", "منتصف الليل", W, isNew = true, feats = pF, upd = pU, defaults = mint) { Prayer2R.midnight(it) },
+        WidgetStyle("prayer_ahead", Cat.PRAYER, "Ahead", "القادمة", W, isNew = true, feats = pF, upd = pU) { Prayer2R.ahead(it) },
+        WidgetStyle("prayer_timeline", Cat.PRAYER, "Timeline", "الخط الزمني", L, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.timeline(it) },
+        WidgetStyle("prayer_mint_full", Cat.PRAYER, "Mint Full", "النعناع الكامل", L, pro = true, isNew = true, feats = pF, upd = pU + Upd.WEATHER, defaults = mint) { Prayer2R.mintFull(it) },
+        WidgetStyle("prayer_serene", Cat.PRAYER, "Serene", "هدوء", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFFC9CCD1.toInt(), bgColor2 = 0xFF9DA2A9.toInt(), color1 = 0xFF1B1B1F.toInt(), color2 = 0xFF4A4D55.toInt(), accent = 0xFF1F8A70.toInt()) }) { Prayer2R.serene(it) },
+        WidgetStyle("prayer_ledger", Cat.PRAYER, "Ledger", "الدفتر", W, isNew = true, feats = pF, upd = pU, defaults = { it.copy(bgColor = 0xFFF7F3EC.toInt(), color1 = 0xFF2A2420.toInt(), color2 = 0xFF8A8079.toInt(), accent = 0xFFD8654A.toInt(), border = false) }) { Prayer2R.ledger(it) },
+        WidgetStyle("prayer_ruler", Cat.PRAYER, "Ruler", "المسطرة", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.ruler(it) },
+        WidgetStyle("prayer_flip", Cat.PRAYER, "Flip", "قلّاب", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE5484D.toInt(), calli = 3) }) { Prayer2R.flip(it) },
+        WidgetStyle("prayer_hilal", Cat.PRAYER, "Hilal", "هلال", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.hilal(it) },
+        WidgetStyle("prayer_day_pass", Cat.PRAYER, "Day Pass", "تذكرة اليوم", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF5B8DEF.toInt()) }) { Prayer2R.dayPass(it) },
+        WidgetStyle("prayer_relay", Cat.PRAYER, "Relay", "تتابع", W, isNew = true, feats = pF, upd = pU) { Prayer2R.relay(it) },
+        WidgetStyle("prayer_mosaic", Cat.PRAYER, "Mosaic", "فسيفساء", L, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DB4DC.toInt()) }) { Prayer2R.mosaic(it) },
+        WidgetStyle("prayer_aurora_grid", Cat.PRAYER, "Prayer Aurora", "شفق الصلاة", W, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DDCB5.toInt()) }) { Prayer2R.auroraGrid(it) },
+        WidgetStyle("prayer_temple", Cat.PRAYER, "Temple of Hours", "معبد الساعات", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.temple(it) },
+        WidgetStyle("prayer_next_small", Cat.PRAYER, "Next Prayer", "الصلاة التالية", S, isNew = true, feats = pF, upd = pU) { Prayer2R.nextSmall(it) },
+        // ------------------------------------------------------------------ DATE (more)
+        WidgetStyle("cal_seven", Cat.DATE, "Seven", "سبعة", W, isNew = true, feats = setOf(Feat.COLOR2)) { Cal2R.seven(it) },
+        WidgetStyle("cal_progress", Cat.DATE, "Progress", "التقدم", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFF6E8BF0.toInt(), color2 = 0xFFD9A05B.toInt()) }) { Cal2R.progress(it) },
+        WidgetStyle("cal_weekband", Cat.DATE, "Weekband", "شريط الأسبوع", W, pro = true, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFB7E34A.toInt(), calli = 3) }) { Cal2R.weekband(it) },
+        WidgetStyle("cal_fraction", Cat.DATE, "Fraction", "كسر", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFF3DDCB5.toInt()) }) { Cal2R.fraction(it) },
+        WidgetStyle("cal_hijri_grid", Cat.DATE, "Hijri Calendar", "التقويم الهجري", W, pro = true, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = setOf(Upd.DAILY, Upd.WEATHER), defaults = { it.copy(accent = 0xFF5B8DEF.toInt(), calli = 3) }) { Cal2R.hijriCalendar(it) },
+        WidgetStyle("cal_rem", Cat.DATE, "Month Grid", "شبكة الشهر", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFE5484D.toInt()) }) { Cal2R.remCalendar(it) },
+        WidgetStyle("cal_constellation", Cat.DATE, "Constellation", "كوكبة", W, pro = true, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Cal2R.constellation(it) },
+        WidgetStyle("cal_terminal", Cat.DATE, "Terminal", "الطرفية", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFF3DDC6B.toInt()) }, bakeTime = { true }) { Cal2R.terminal(it) },
+        WidgetStyle("cal_arc", Cat.DATE, "Arc", "قوس", W, pro = true, isNew = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.WEATHER), defaults = { it.copy(accent = 0xFF7B7BF0.toInt()) }) { Cal2R.arc(it) },
+        // ------------------------------------------------------------------ CLOCK (graphic)
+        WidgetStyle("clock_overlap", Cat.DIGITAL, "Overlap", "تقاطع", W, pro = true, isNew = true, feats = timeF + Feat.ACCENT, upd = none, defaults = { it.copy(bgColor = 0xFFF4EFE6.toInt(), color1 = 0xFF1B1B1F.toInt(), color2 = 0xFF4C6EF5.toInt(), accent = 0xFFF06A5B.toInt(), border = false) }) { Fancy2R.overlap(it) },
+        WidgetStyle("clock_chrome", Cat.DIGITAL, "Chrome", "كروم", S, isNew = true, feats = timeF, upd = setOf(Upd.WEATHER), bakeTime = { true }) { Fancy2R.chrome(it) },
+        WidgetStyle("clock_forms", Cat.DIGITAL, "Forms", "أشكال", S, pro = true, isNew = true, feats = timeF + Feat.ACCENT, upd = none, defaults = { it.copy(color2 = 0xFFF2C14E.toInt(), accent = 0xFFE5674F.toInt(), color1 = 0xFFF4EFE6.toInt()) }) { Fancy2R.forms(it) },
+        WidgetStyle("clock_neon", Cat.DIGITAL, "Neon Pulse", "نبض نيون", S, isNew = true, popular = true, feats = timeF + Feat.ACCENT, upd = none, defaults = { it.copy(accent = 0xFFFF3DAE.toInt(), color2 = 0xFF8B5CF6.toInt()) }, bakeTime = { true }) { Fancy2R.neon(it) },
+        WidgetStyle("clock_dot_rings", Cat.DIGITAL, "Dot Rings", "حلقات النقاط", W, pro = true, isNew = true, feats = timeF + Feat.ACCENT, upd = none, defaults = { it.copy(bgColor = 0xFF0C0C0E.toInt()) }, bakeTime = { true }) { Fancy2R.dotRings(it) },
+        WidgetStyle("clock_galaxy", Cat.DIGITAL, "Galaxy", "مجرة", S, isNew = true, feats = timeF + Feat.ACCENT, upd = none) { Fancy2R.galaxy(it) },
+        // ------------------------------------------------------------------ WEATHER (forecast)
+        WidgetStyle("w_today_tomorrow", Cat.WEATHER, "Today & Tomorrow", "اليوم وبكرة", W, isNew = true, upd = wU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF3D8BDB.toInt(), bgColor2 = 0xFF7BB6EE.toInt(), color2 = 0xFFE3EEFA.toInt(), border = false) }) { Weather2R.todayTomorrow(it) },
+        WidgetStyle("w_next_hours", Cat.WEATHER, "Next Hours", "الساعات الجاية", B, isNew = true, upd = wU) { Weather2R.nextHours(it) },
+        WidgetStyle("w_temp_curve", Cat.WEATHER, "Temperature Curve", "منحنى الحرارة", W, isNew = true, feats = setOf(Feat.ACCENT), upd = wU, defaults = { it.copy(accent = 0xFFB7E34A.toInt()) }) { Weather2R.tempCurve(it) },
+        WidgetStyle("w_rain_week", Cat.WEATHER, "Rain This Week", "أمطار الأسبوع", S, pro = true, isNew = true, feats = setOf(Feat.ACCENT), upd = wU, defaults = { it.copy(accent = 0xFFF2A93B.toInt()) }) { Weather2R.rainWeek(it) },
+        WidgetStyle("w_week_columns", Cat.WEATHER, "Week Columns", "أعمدة الأسبوع", W, pro = true, isNew = true, feats = setOf(Feat.ACCENT), upd = wU, defaults = { it.copy(accent = 0xFFF2C14E.toInt(), color2 = 0xFF3DDC97.toInt()) }) { Weather2R.weekColumns(it) },
+        WidgetStyle("w_week_glance", Cat.WEATHER, "Week at a Glance", "الأسبوع بنظرة", B, isNew = true, upd = wU) { Weather2R.weekGlance(it) },
+        WidgetStyle("w_five_days", Cat.WEATHER, "Five Days", "خمس أيام", S, isNew = true, upd = wU) { Weather2R.fiveDays(it) },
+        WidgetStyle("w_hourly_curve", Cat.WEATHER, "Hourly Curve", "منحنى الساعات", W, pro = true, isNew = true, upd = wU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF3D8BDB.toInt(), bgColor2 = 0xFF7BB6EE.toInt(), color2 = 0xFFE3EEFA.toInt(), border = false) }) { Weather2R.hourlyCurve(it) },
+        WidgetStyle("w_hours_days", Cat.WEATHER, "Hours & Days", "ساعات وأيام", W, isNew = true, upd = wU) { Weather2R.hoursDays(it) },
+        WidgetStyle("w_now_ahead", Cat.WEATHER, "Now & Days Ahead", "الآن والأيام الجاية", W, pro = true, isNew = true, upd = wU) { Weather2R.nowAhead(it) },
+        WidgetStyle("w_horizon", Cat.WEATHER, "Horizon", "الأفق", W, isNew = true, feats = setOf(Feat.ACCENT), upd = wU + pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.horizon(it) },
+        // ------------------------------------------------------------------ ISLAMIC (tasbih)
+        WidgetStyle("tasbih_beads", Cat.ISLAMIC, "Tasbih Beads", "سبحة الخرز", S, isNew = true, popular = true, feats = tF, upd = none, defaults = { it.copy(goal = 33, text = "سبحان الله", accent = 0xFFE58A3C.toInt(), calli = 3) }) { Tasbih2R.beads(it) },
+        WidgetStyle("tasbih_ring", Cat.ISLAMIC, "Tasbih Ring", "حلقة التسبيح", S, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 99, text = "سبحان الله", accent = 0xFF2FC4A5.toInt(), calli = 3) }) { Tasbih2R.ring(it) },
+        WidgetStyle("tasbih_calendar", Cat.ISLAMIC, "Tasbih Calendar", "تقويم التسبيح", W, pro = true, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 99, text = "سبحان الله", accent = 0xFF5B9BF0.toInt(), calli = 3) }) { Tasbih2R.calendar(it) },
+        WidgetStyle("tasbih_stats", Cat.ISLAMIC, "Tasbih Stats", "إحصاء التسبيح", W, pro = true, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 33, text = "سبحان الله", accent = 0xFFB07BF0.toInt(), calli = 3) }) { Tasbih2R.stats(it) },
+        WidgetStyle("tasbih_bars", Cat.ISLAMIC, "Tasbih Bars", "أعمدة التسبيح", W, pro = true, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 33, text = "سبحان الله", accent = 0xFF8B6CF0.toInt(), calli = 3) }) { Tasbih2R.bars(it) },
+        // ------------------------------------------------------------------ HABITS
+        WidgetStyle("habit_card", Cat.HABITS, "Habit", "عادة", S, isNew = true, popular = true, feats = hF, defaults = hD) { Life2R.habit(it) },
+        WidgetStyle("habit_ring", Cat.HABITS, "Habit Ring", "حلقة العادة", S, isNew = true, feats = hF, defaults = hD) { Life2R.habitRing(it) },
+        WidgetStyle("habit_mini", Cat.HABITS, "Habit Mini", "عادة صغيرة", S, isNew = true, feats = hF, defaults = hD) { Life2R.habitMini(it) },
+        WidgetStyle("habit_strip", Cat.HABITS, "Habit Strip", "شريط العادة", B, isNew = true, feats = hF, defaults = hD) { Life2R.habitStrip(it) },
+        WidgetStyle("habit_month", Cat.HABITS, "Habit Month", "شهر العادة", S, pro = true, isNew = true, feats = hF, defaults = hD) { Life2R.habitWeek(it) },
+        WidgetStyle("habit_pills", Cat.HABITS, "Habit Pills", "كبسولة العادة", W, pro = true, isNew = true, feats = hF, defaults = hD) { Life2R.habitPills(it) },
+        // ------------------------------------------------------------------ NOTES
+        WidgetStyle("note_card", Cat.NOTES, "Note", "ملاحظة", S, isNew = true, feats = nF, upd = none, defaults = { it.copy(accent = 0xFFF2C14E.toInt(), tap = com.smrh.zujaj.model.Tap.EDIT) }) { Life2R.note(it) },
+        WidgetStyle("note_sticky", Cat.NOTES, "Sticky Note", "ورقة لاصقة", S, isNew = true, popular = true, feats = nF, upd = none, defaults = { it.copy(accent = 0xFFF2C14E.toInt(), tap = com.smrh.zujaj.model.Tap.EDIT) }) { Life2R.sticky(it) },
+        WidgetStyle("note_strip", Cat.NOTES, "Note Strip", "شريط ملاحظة", B, isNew = true, feats = nF, upd = none, defaults = { it.copy(accent = 0xFFF2C14E.toInt(), tap = com.smrh.zujaj.model.Tap.EDIT) }) { Life2R.noteStrip(it) },
+        WidgetStyle("note_big", Cat.NOTES, "Big Note", "ملاحظة كبيرة", W, pro = true, isNew = true, feats = nF, upd = none, defaults = { it.copy(tap = com.smrh.zujaj.model.Tap.EDIT) }) { Life2R.bigNote(it) },
+        WidgetStyle("note_list", Cat.NOTES, "Notes List", "قائمة ملاحظات", W, isNew = true, feats = nF, upd = none, defaults = { it.copy(accent = 0xFFF2C14E.toInt(), tap = com.smrh.zujaj.model.Tap.EDIT) }) { Life2R.notesList(it) },
+        // ------------------------------------------------------------------ FOCUS
+        WidgetStyle("focus_card", Cat.FOCUS, "Focus", "تركيز", S, isNew = true, feats = fF, upd = none, defaults = fD) { Life2R.focus(it) },
+        WidgetStyle("focus_centre", Cat.FOCUS, "Focus Centre", "مركز التركيز", S, isNew = true, feats = fF, upd = none, defaults = fD) { Life2R.focusCentre(it) },
+        WidgetStyle("focus_board", Cat.FOCUS, "Focus Board", "لوحة التركيز", W, pro = true, isNew = true, feats = fF, upd = none, defaults = fD) { Life2R.focusBoard(it) },
+        // ------------------------------------------------------------------ TOOLS (more)
+        WidgetStyle("t_volume_slider", Cat.TOOLS, "Volume Slider", "شريط الصوت", S, isNew = true, upd = sysU) { Tools2R.volumeSlider(it) },
+        WidgetStyle("t_volume_keys", Cat.TOOLS, "Volume Keys", "أزرار الصوت", S, isNew = true, upd = sysU) { Tools2R.volumeKeys(it) },
+        WidgetStyle("t_sound_mode", Cat.TOOLS, "Sound Mode", "وضع الصوت", S, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = sysU, defaults = { it.copy(accent = 0xFF4C8DF6.toInt()) }) { Tools2R.soundMode(it) },
+        WidgetStyle("t_sound_buttons", Cat.TOOLS, "Sound Buttons", "أزرار الرنين", B, pro = true, isNew = true, feats = setOf(Feat.ACCENT), upd = sysU, defaults = { it.copy(accent = 0xFF4C8DF6.toInt()) }) { Tools2R.soundButtons(it) },
+        WidgetStyle("t_floating_keys", Cat.TOOLS, "Floating Keys", "مفاتيح عائمة", B, isNew = true, feats = setOf(Feat.ACCENT), upd = sysU, defaults = { it.copy(accent = 0xFF4C8DF6.toInt()) }) { Tools2R.floatingKeys(it) },
+        WidgetStyle("t_torch", Cat.TOOLS, "Torch", "الكشاف", S, isNew = true, upd = none) { Tools2R.torch(it) },
+        WidgetStyle("t_quick_tools", Cat.TOOLS, "Quick Tools", "أدوات سريعة", B, isNew = true, upd = none) { Tools2R.quickTools(it) },
+        WidgetStyle("t_search_tools", Cat.SEARCH, "Search & Tools", "البحث والأدوات", W, pro = true, isNew = true, feats = setOf(Feat.ACCENT), upd = none, defaults = { it.copy(accent = 0xFFE5674F.toInt()) }) { Tools2R.searchTools(it) },
+        WidgetStyle("t_around_me", Cat.TOOLS, "Around Me", "حولي", W, pro = true, isNew = true, upd = none) { Tools2R.aroundMe(it) },
     )
 
     private val map = all.associateBy { it.id }
