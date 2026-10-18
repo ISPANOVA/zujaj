@@ -35,6 +35,13 @@ data class CatalogFlags(
     val certs: List<String> = emptyList(),
     /** Web-app URL of the admin email-code service (tools/admin-otp.gs). */
     val otpUrl: String = "",
+    /** true = the message pops up once per phone; false = it stays on the home page. */
+    val noticeOnce: Boolean = false,
+    /** Newest versionCode on Google Play (0 = no update prompt). */
+    val latestCode: Long = 0,
+    /** Older copies can't be used until they update. */
+    val forceUpdate: Boolean = false,
+    val updateNote: String = "",
 )
 
 object Flags {
@@ -88,6 +95,10 @@ object Flags {
                 updatedAt = snap.getLong("updatedAt") ?: 0,
                 certs = (snap.get("certs") as? List<String>) ?: emptyList(),
                 otpUrl = snap.getString("otpUrl") ?: "",
+                noticeOnce = snap.getBoolean("noticeOnce") ?: false,
+                latestCode = snap.getLong("latestCode") ?: 0,
+                forceUpdate = snap.getBoolean("forceUpdate") ?: false,
+                updateNote = snap.getString("updateNote") ?: "",
             )
             com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
             _flags.value = f
@@ -120,6 +131,10 @@ object Flags {
             "notice" to f.notice,
             "certs" to f.certs,
             "otpUrl" to f.otpUrl,
+            "noticeOnce" to f.noticeOnce,
+            "latestCode" to f.latestCode,
+            "forceUpdate" to f.forceUpdate,
+            "updateNote" to f.updateNote,
             "updatedAt" to System.currentTimeMillis(),
         )
         doc().set(data, SetOptions.merge()).await()

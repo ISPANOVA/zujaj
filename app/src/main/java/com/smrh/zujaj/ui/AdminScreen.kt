@@ -46,6 +46,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -462,6 +463,7 @@ private fun copy(ctx: Context, s: String) {
 
 // =============================================================================== general
 @Composable
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 private fun GeneralAdmin(email: String) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -470,12 +472,32 @@ private fun GeneralAdmin(email: String) {
     var notice by remember(flags) { mutableStateOf(flags.notice) }
     var certs by remember(flags) { mutableStateOf(flags.certs.joinToString("\n")) }
     var otp by remember(flags) { mutableStateOf(flags.otpUrl) }
+    var once by remember(flags) { mutableStateOf(flags.noticeOnce) }
+    var latest by remember(flags) { mutableStateOf(if (flags.latestCode > 0) flags.latestCode.toString() else "") }
+    var force by remember(flags) { mutableStateOf(flags.forceUpdate) }
+    var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Section(tr("Promotion", "العروض")) {
             SwitchRow(tr("Everything free", "كل حاجة مجاني"), freeAll, tr("Every Pro widget unlocked for all users", "كل ويدجت البرو مفتوحة لكل المستخدمين")) { freeAll = it }
         }
         Section(tr("Message to all users", "رسالة لكل المستخدمين")) {
             OutlinedTextField(notice, { notice = it }, placeholder = { Text(tr("Shown on the home page (leave empty to hide)", "بتظهر في الصفحة الرئيسية (سيبها فاضية عشان تختفي)")) },
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(false to tr("Always on home", "دايماً في الرئيسية"), true to tr("Pop-up once", "تظهر مرة واحدة بس")).forEach { (v, l) ->
+                    FilterChip(once == v, { once = v }, label = { Text(l) })
+                }
+            }
+        }
+        Section(tr("App update", "تحديث التطبيق")) {
+            Text(tr("Latest version code on Google Play. Phones with an older copy get asked to update. This phone: ${com.smrh.zujaj.BuildConfig.VERSION_CODE}",
+                "رقم آخر إصدار (versionCode) على جوجل بلاي. اللي عنده نسخة أقدم هيطلع له طلب تحديث. التليفون ده: ${com.smrh.zujaj.BuildConfig.VERSION_CODE}"),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            OutlinedTextField(latest, { latest = it.filter { c -> c.isDigit() }.take(7) }, singleLine = true, placeholder = { Text(tr("e.g. 21 (empty = off)", "مثلاً ٢١ (فاضي = مقفول)")) },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
+            SwitchRow(tr("Required update", "تحديث إجباري"), force, tr("Old copies can't be used until they update", "النسخ القديمة متشتغلش غير لما يحدّثوا")) { force = it }
+            OutlinedTextField(upNote, { upNote = it }, placeholder = { Text(tr("What's new (optional)", "إيه الجديد (اختياري)")) },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
         Section(tr("Anti-piracy", "الحماية من التهكير")) {
@@ -499,7 +521,7 @@ private fun GeneralAdmin(email: String) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp)) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim())) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
             }
         }

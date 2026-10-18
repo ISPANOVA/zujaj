@@ -75,7 +75,11 @@ open class MainActivity : ComponentActivity() {
         setContent {
             val ver by Prefs.version.collectAsState()
             key(ver.coerceAtMost(0), Prefs.isArabicUi, Prefs.accentIndex) {
-                ZujajTheme { Root(nav) }
+                ZujajTheme {
+                    Root(nav)
+                    if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates()
+                    Splash(show = configureId == AppWidgetManager.INVALID_APPWIDGET_ID && savedInstanceState == null)
+                }
             }
         }
     }

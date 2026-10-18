@@ -304,7 +304,7 @@ fun DiscoverTab(nav: Nav) {
                 ) { nav.go(Screen.Paywall) }
             }
         }
-        if (flags.notice.isNotBlank()) item {
+        if (flags.notice.isNotBlank() && !flags.noticeOnce) item {
             Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), radius = 18.dp, alpha = 0.08f) {
                 Text(flags.notice, modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
             }
