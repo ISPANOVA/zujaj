@@ -296,6 +296,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     ChoiceRow(tr("Arabic calligraphy", "الخط العربي"), cfg.calli, listOf(
                         0 to tr("Kufi", "كوفي مزخرف"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Naskh", "نسخ"),
                     )) { cfg = cfg.copy(calli = it) }
+                    if (cfg.calli == 0) {
+                        Divider(); SwitchRow(tr("Ornament", "زخرفة"), cfg.ornament) { cfg = cfg.copy(ornament = it) }
+                        if (cfg.ornament) { Divider(); RowBase(tr("Ornament color", "لون الزخرفة")) { ColorDot(cfg.ornColor) { colorTarget = 4 } } }
+                    }
                 }
 
                 }
@@ -341,10 +345,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     }
 
     if (colorTarget != -1) {
-        val init = when (colorTarget) { 1 -> cfg.color1; 2 -> cfg.color2; 3 -> cfg.accent; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
+        val init = when (colorTarget) { 1 -> cfg.color1; 2 -> cfg.color2; 3 -> cfg.accent; 4 -> cfg.ornColor; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
         ColorPickerDialog(init, { colorTarget = -1 }) { c ->
             cfg = when (colorTarget) {
-                1 -> cfg.copy(color1 = c); 2 -> cfg.copy(color2 = c); 3 -> cfg.copy(accent = c)
+                1 -> cfg.copy(color1 = c); 2 -> cfg.copy(color2 = c); 3 -> cfg.copy(accent = c); 4 -> cfg.copy(ornColor = c)
                 10 -> cfg.copy(bgColor = c); else -> cfg.copy(bgColor2 = c)
             }
         }

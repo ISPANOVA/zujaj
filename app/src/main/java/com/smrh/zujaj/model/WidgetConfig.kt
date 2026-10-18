@@ -80,6 +80,9 @@ data class WidgetConfig(
     val variant: Int = 0,
     /** 0 Thuluth, 1 Ruqaa, 2 Nastaliq, 3 Kufi */
     val calli: Int = 0,
+    /** Ornament (stars + rule) around Kufi display words; off by default. */
+    val ornament: Boolean = false,
+    val ornColor: Int = 0xFFE7B75F.toInt(),
     /** Face of the main time (LiveFont name); blank = the design's own. */
     val font: String = "",
     // Region

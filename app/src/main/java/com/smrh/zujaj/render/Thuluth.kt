@@ -17,34 +17,34 @@ import kotlin.math.sin
  * out at both ends with a star at its centre and two small diamonds. Nothing touches the letters.
  */
 object Thuluth {
-    private val GOLD = 0xFFE7B75F.toInt()
-
     fun draw(r: RenderCtx, s0: String, cx: Float, cy: Float, size0: Float, color: Int, maxW: Float, maxH: Float) {
         val s = s0.trim()
         val p = r.paint(color, size0, F.KUFI_BOLD, Paint.Align.LEFT)
         val b = Rect()
+        val orn = r.cfg.ornament
         // room for the side stars (≈ 0.55 em each side) and the rule underneath (≈ 0.42 em)
         fun measure() { p.getTextBounds(s, 0, s.length, b) }
         measure()
-        val fullW = { b.width() + p.textSize * 1.1f }
-        val fullH = { b.height() + p.textSize * 0.42f }
+        val fullW = { b.width() + if (orn) p.textSize * 1.1f else 0f }
+        val fullH = { b.height() + if (orn) p.textSize * 0.42f else 0f }
         var k = 1f
         if (maxW > 0 && fullW() > maxW) k = min(k, maxW / fullW())
         if (maxH > 0 && fullH() > maxH) k = min(k, maxH / fullH())
         if (k < 1f) { p.textSize *= k; measure() }
         val size = p.textSize
-        val rule = size * 0.42f
+        val rule = if (orn) size * 0.42f else 0f
         // centre the whole composition (word + rule) on cy
         val wordCy = cy - rule / 2f
         val x = cx - b.exactCenterX()
         val y = wordCy - b.exactCenterY()
         r.canvas.drawText(s, x, y, p)
+        if (!orn) return
 
         val left = x + b.left
         val right = x + b.right
         val bottom = y + b.bottom
-        val gold = withAlpha(GOLD, 235)
-        val soft = withAlpha(color, 150)
+        val gold = withAlpha(r.cfg.ornColor, 235)
+        val soft = withAlpha(r.cfg.ornColor, 170)
 
         // side stars, level with the middle of the word
         val sr = size * 0.085f
