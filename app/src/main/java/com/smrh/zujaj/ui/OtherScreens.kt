@@ -76,6 +76,7 @@ import com.smrh.zujaj.widget.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.tasks.await

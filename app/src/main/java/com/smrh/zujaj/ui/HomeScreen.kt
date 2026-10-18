@@ -55,6 +55,10 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Brush
+import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.StickyNote2
+import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.WatchLater
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WorkspacePremium
@@ -186,6 +190,10 @@ fun catIcon(c: Cat): ImageVector = when (c) {
     Cat.SYSTEM -> Icons.Rounded.BatteryChargingFull
     Cat.QUOTES -> Icons.Rounded.FormatQuote
     Cat.TOOLS -> Icons.Rounded.Tune
+    Cat.CALLI -> Icons.Rounded.Brush
+    Cat.HABITS -> Icons.Rounded.TaskAlt
+    Cat.NOTES -> Icons.Rounded.StickyNote2
+    Cat.FOCUS -> Icons.Rounded.HourglassBottom
 }
 
 private val catColors = listOf(
