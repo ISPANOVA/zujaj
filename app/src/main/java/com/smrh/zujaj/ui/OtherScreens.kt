@@ -433,6 +433,48 @@ object AdminSession {
     fun isAdminEmail(e: String?) = e != null && sha(e.trim().lowercase()) == EMAIL_HASH
     fun unlock(p: String, e: String, key: String) { gatePass = p; email = e.trim().lowercase(); pass = key; unlocked = true }
 
+    // ---------------------------------------------------------- remember this device
+    private const val TRUST_DAYS = 30L
+    private const val KS_ALIAS = "zujaj_admin_trust"
+    private fun aesKey(): javax.crypto.SecretKey {
+        val ks = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (ks.getKey(KS_ALIAS, null) as? javax.crypto.SecretKey)?.let { return it }
+        val g = javax.crypto.KeyGenerator.getInstance(android.security.keystore.KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        g.init(android.security.keystore.KeyGenParameterSpec.Builder(KS_ALIAS,
+            android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or android.security.keystore.KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE).build())
+        return g.generateKey()
+    }
+
+    /** Stores the unlocked session encrypted with a key that never leaves this phone's keystore. */
+    fun rememberDevice() = runCatching {
+        val until = System.currentTimeMillis() + TRUST_DAYS * 86_400_000L
+        val plain = org.json.JSONObject().put("e", email).put("k", pass).put("g", gatePass).put("u", until).toString()
+        val c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding").apply { init(javax.crypto.Cipher.ENCRYPT_MODE, aesKey()) }
+        val enc = c.iv + c.doFinal(plain.toByteArray())
+        Prefs.setString("adm_trust", android.util.Base64.encodeToString(enc, android.util.Base64.NO_WRAP))
+    }
+
+    private fun trusted(): org.json.JSONObject? = runCatching {
+        val raw = Prefs.getString("adm_trust"); if (raw.isEmpty()) return null
+        val b = android.util.Base64.decode(raw, android.util.Base64.NO_WRAP)
+        val c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(javax.crypto.Cipher.DECRYPT_MODE, aesKey(), javax.crypto.spec.GCMParameterSpec(128, b, 0, 12))
+        org.json.JSONObject(String(c.doFinal(b, 12, b.size - 12))).takeIf { it.optLong("u") > System.currentTimeMillis() && isAdminEmail(it.optString("e")) }
+    }.getOrNull()
+
+    fun isTrusted() = trusted() != null
+
+    /** On a remembered phone the password alone opens the panel. */
+    fun unlockTrusted(p: String): Boolean {
+        val t = trusted() ?: return false
+        if (!checkPass(p)) return false
+        unlock(t.optString("g").ifEmpty { p }, t.optString("e"), t.optString("k")); return true
+    }
+
+    fun forgetDevice() = Prefs.setString("adm_trust", "")
+
     fun otpUrl(ctx: Context): String = ctx.getString(com.smrh.zujaj.R.string.admin_otp_url).trim()
         .ifEmpty { com.smrh.zujaj.remote.Flags.flags.value.otpUrl.trim() }
 
@@ -466,6 +508,8 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var err by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val trusted = remember { AdminSession.isTrusted() }
+    var keep by remember { mutableStateOf(true) }
     fun body(action: String) = org.json.JSONObject().put("action", action).put("pass", pass).put("email", email.trim().lowercase())
     fun sendCode() {
         busy = true; err = null
@@ -500,16 +544,25 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
                         modifier = Modifier.fillMaxWidth())
                     TextButton(onClick = { if (!busy) sendCode() }) { Text(tr("Resend code", "ابعت الكود تاني"), color = Z.sub, fontSize = 12.sp) }
+                    Row(Modifier.fillMaxWidth().clickable { keep = !keep }, verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(keep, { keep = it })
+                        Text(tr("Remember this device (30 days)", "افتكر الجهاز ده (٣٠ يوم)"), fontSize = 13.sp)
+                    }
                 }
             }
             err?.let { Text(it, color = Color(0xFFE5484D), fontSize = 12.sp) }
+            if (trusted && step == 0) {
+                Text(tr("Remembered device — password only", "جهاز محفوظ — كلمة المرور بس"), color = Z.sub, fontSize = 12.sp)
+                TextButton(onClick = { AdminSession.forgetDevice(); onDismiss() }) { Text(tr("Forget this device", "انسى الجهاز ده"), color = Color(0xFFE5484D), fontSize = 12.sp) }
+            }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
                 TextButton(onClick = {
                     if (busy) return@TextButton
                     when (step) {
-                        0 -> if (AdminSession.checkPass(pass)) step = 1 else err = tr("Wrong", "غير صحيح")
+                        0 -> if (trusted && AdminSession.unlockTrusted(pass)) onOk()
+                            else if (AdminSession.checkPass(pass)) step = 1 else err = tr("Wrong", "غير صحيح")
                         1 -> if (!AdminSession.isAdminEmail(email)) err = tr("Wrong", "غير صحيح")
                             // until the email-code service is set up (Control panel → General), password + email open it
                             else if (AdminSession.otpUrl(ctx).isEmpty()) { AdminSession.unlock(pass, email, pass); onOk() }
@@ -521,7 +574,9 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
                                 val j = runCatching { AdminSession.call(ctx, body("verify").put("code", code)) }.getOrNull()
                                 busy = false
                                 if (j?.optBoolean("ok") == true && j.optString("key").isNotEmpty()) {
-                                    AdminSession.unlock(pass, email, j.optString("key")); onOk()
+                                    AdminSession.unlock(pass, email, j.optString("key"))
+                                    if (keep) AdminSession.rememberDevice()
+                                    onOk()
                                 } else err = when (j?.optString("err")) {
                                     "expired" -> tr("Code expired — send a new one", "الكود انتهى — ابعت واحد جديد")
                                     "wrong" -> tr("Wrong code", "الكود غلط")
