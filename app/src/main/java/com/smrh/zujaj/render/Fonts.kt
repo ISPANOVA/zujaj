@@ -21,6 +21,7 @@ enum class F(val res: Int) {
     THULUTH(R.font.gulzar),
     AMIRI(R.font.amiri_bold),
     KUFI(R.font.reem_kufi_medium),
+    KUFI_BOLD(R.font.reem_kufi_bold),
     RAKKAS(R.font.rakkas),
     CAIRO(R.font.cairo_regular),
     CAIRO_BOLD(R.font.cairo_bold),

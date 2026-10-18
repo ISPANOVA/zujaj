@@ -180,7 +180,7 @@ class RenderCtx(
     fun tf(f: F): Typeface = Fonts.get(context, f)
 
     /** Calligraphy face chosen by the user for Arabic display words. */
-    val calliFont: F get() = when (cfg.calli) { 1 -> F.RUQAA; 2 -> F.THULUTH; 3 -> F.KUFI; else -> F.AMIRI }
+    val calliFont: F get() = when (cfg.calli) { 1 -> F.RUQAA; 2 -> F.THULUTH; 3 -> F.AMIRI; else -> F.KUFI_BOLD }
     /** Thuluth look = bold naskh + full tashkeel + the small decorative marks of the script. */
     private val thuluthDeco get() = cfg.calli == 0
     private fun withTashkeel(s: String, font: F) =
@@ -216,7 +216,7 @@ class RenderCtx(
 
     /** Text using its real glyph bounds to centre (better for big numerals). */
     fun textTight(s0: String, cx: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, spacing: Float = 0f, maxW: Float = 0f, maxH: Float = 0f) {
-        if (font == F.AMIRI && thuluthDeco && font == calliFont && s0.any { it in '\u0621'..'\u064A' }) {
+        if (font == F.KUFI_BOLD && thuluthDeco && font == calliFont && s0.any { it in '\u0621'..'\u064A' }) {
             Thuluth.draw(this, s0, cx, cy, size, color, maxW, maxH)
             return
         }
