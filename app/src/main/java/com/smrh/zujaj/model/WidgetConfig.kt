@@ -61,6 +61,12 @@ data class WidgetConfig(
     val accent: Int = 0xFFE5484D.toInt(),
     val size1: Int = 100,
     val size2: Int = 100,
+    /** Small texts (labels, dates, captions) in every widget. */
+    val size3: Int = 100,
+    // Prayer Hub parts
+    val sizeDate: Int = 100,
+    val sizeNames: Int = 100,
+    val sizeTimes: Int = 100,
     val gap: Int = 12,
     val spacing: Int = 0,
     val calendar: Cal = Cal.GREGORIAN,

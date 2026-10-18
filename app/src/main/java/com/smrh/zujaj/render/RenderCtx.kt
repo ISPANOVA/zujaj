@@ -204,7 +204,9 @@ class RenderCtx(
 
     /** Draw text vertically centred on [cy]. */
     fun text(s: String, x: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, align: Paint.Align = Paint.Align.LEFT, spacing: Float = 0f, maxW: Float = 0f): Float {
-        val p = paint(color, size, font, align, spacing)
+        // "Small text" size from the editor applies to labels / dates / captions everywhere
+        val sz = if (size < 15 * u && cfg.size3 != 100) size * cfg.size3 / 100f else size
+        val p = paint(color, sz, font, align, spacing)
         if (maxW > 0) {
             val mw = p.measureText(s)
             if (mw > maxW) p.textSize = p.textSize * maxW / mw

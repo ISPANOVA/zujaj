@@ -242,13 +242,27 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     Divider(); RowBase(tr("Next prayer", "الصلاة الجاية")) { ColorDot(cfg.nextColor) { colorTarget = 12 } }
                     Divider(); RowBase(tr("Divider line", "الخط الفاصل")) { ColorDot(cfg.lineColor) { colorTarget = 13 } }
                 }
-                Section(tr("Content", "المحتوى")) {
-                    if (Feat.HUB !in f) RowBase(tr("Color 1", "اللون ١")) { ColorDot(cfg.color1) { colorTarget = 1 } }
+                if (Feat.HUB !in f) Section(tr("Content", "المحتوى")) {
+                    RowBase(tr("Color 1", "اللون ١")) { ColorDot(cfg.color1) { colorTarget = 1 } }
                     if (Feat.HUB !in f) { Divider(); RowBase(tr("Color 2", "اللون ٢")) { ColorDot(cfg.color2) { colorTarget = 2 } } }
                     if (Feat.ACCENT in f && Feat.HUB !in f) { Divider(); RowBase(tr("Accent", "لون مميز")) { ColorDot(cfg.accent) { colorTarget = 3 } } }
-                    Divider(); StepperRow(tr("Size 1", "الحجم ١"), cfg.size1, 50..160, 5, "%") { cfg = cfg.copy(size1 = it) }
-                    Divider(); StepperRow(tr("Size 2", "الحجم ٢"), cfg.size2, 50..160, 5, "%") { cfg = cfg.copy(size2 = it) }
-                    Divider(); StepperRow(tr("Spacing", "تباعد الحروف"), cfg.spacing, -10..40, 1) { cfg = cfg.copy(spacing = it) }
+                }
+                Section(tr("Text size", "حجم النص")) {
+                    if (Feat.HUB in f) {
+                        StepperRow(tr("Clock", "الساعة"), cfg.size1, 50..120, 5, "%") { cfg = cfg.copy(size1 = it) }
+                        Divider(); StepperRow(tr("Day name", "اسم اليوم"), cfg.size2, 50..140, 5, "%") { cfg = cfg.copy(size2 = it) }
+                        Divider(); StepperRow(tr("Dates", "التاريخ"), cfg.sizeDate, 60..150, 5, "%") { cfg = cfg.copy(sizeDate = it) }
+                        Divider(); StepperRow(tr("Prayer names", "أسماء الصلوات"), cfg.sizeNames, 60..150, 5, "%") { cfg = cfg.copy(sizeNames = it) }
+                        Divider(); StepperRow(tr("Prayer times", "مواعيد الصلوات"), cfg.sizeTimes, 60..150, 5, "%") { cfg = cfg.copy(sizeTimes = it) }
+                    } else {
+                        StepperRow(tr("Main text", "النص الأساسي"), cfg.size1, 50..160, 5, "%") { cfg = cfg.copy(size1 = it) }
+                        Divider(); StepperRow(tr("Secondary text", "النص التاني"), cfg.size2, 50..160, 5, "%") { cfg = cfg.copy(size2 = it) }
+                        Divider(); StepperRow(tr("Small text (labels, dates)", "النص الصغير (العناوين والتاريخ)"), cfg.size3, 60..160, 5, "%") { cfg = cfg.copy(size3 = it) }
+                    }
+                    Divider(); RowBase(tr("Reset sizes", "رجّع الأحجام زي ما كانت"), onClick = { cfg = cfg.copy(size1 = 100, size2 = 100, size3 = 100, sizeDate = 100, sizeNames = 100, sizeTimes = 100) }) {}
+                }
+                Section(tr("More", "إضافات")) {
+                    StepperRow(tr("Spacing", "تباعد الحروف"), cfg.spacing, -10..40, 1) { cfg = cfg.copy(spacing = it) }
                     if (Feat.CALENDAR in f) {
                         Divider(); ChoiceRow(tr("Calendar", "التقويم"), cfg.calendar, listOf(Cal.GREGORIAN to tr("Gregorian", "ميلادي"), Cal.HIJRI to tr("Hijri", "هجري"))) { cfg = cfg.copy(calendar = it) }
                     }

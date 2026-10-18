@@ -343,7 +343,7 @@ object PrayerR {
         val h = Calendars.hijri(d)
         val hij = if (r.ar) "${r.n(h.day)} ${Calendars.hijriMonth(h.month, true)} ${r.n(h.year)}" else "${h.day} ${Calendars.hijriMonth(h.month, false)} ${h.year}"
         val greg = if (r.ar) "${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, true)} ${r.n(d.year)}" else "${Calendars.monthName(d.monthValue, false)} ${d.dayOfMonth}, ${d.year}"
-        val ds = 12.5f * r.u
+        val ds = 12.5f * r.u * c.sizeDate / 100f
         r.text(greg, x0, dateY, ds, c.color2, r.sans, Paint.Align.LEFT, maxW = r.w * 0.45f)
         r.text(hij, right - 4 * r.u, dateY, ds, c.hijriColor, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.45f)
 
@@ -359,8 +359,8 @@ object PrayerR {
         for ((i, pr) in list.withIndex()) {
             val cx = left + cw * (i + 0.5f)
             val isNext = pr.key == nextKey
-            r.text(nm(r, pr), cx, r.h * 0.825f, 11 * r.u, if (isNext) c.nextColor else c.nameColor, r.sans, Paint.Align.CENTER, maxW = cw * 0.94f)
-            r.text(tm12(r, pr.time), cx, r.h * 0.915f, 13 * r.u, if (isNext) c.nextColor else c.timeColor, r.sansBold, Paint.Align.CENTER, maxW = cw * 0.94f)
+            r.text(nm(r, pr), cx, r.h * 0.825f, 11 * r.u * c.sizeNames / 100f, if (isNext) c.nextColor else c.nameColor, r.sans, Paint.Align.CENTER, maxW = cw * 0.94f)
+            r.text(tm12(r, pr.time), cx, r.h * 0.915f, 13 * r.u * c.sizeTimes / 100f, if (isNext) c.nextColor else c.timeColor, r.sansBold, Paint.Align.CENTER, maxW = cw * 0.94f)
         }
     }
 
