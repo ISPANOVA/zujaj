@@ -2,7 +2,7 @@
 <resources>
     <!-- Google Play Console → Monetise → Monetisation setup → Licensing: "Base64-encoded RSA public key".
          When set, every purchase's Google signature is verified before Pro is granted. -->
-    <string name="play_license_key" translatable="false"></string>
+    <string name="play_license_key" translatable="false">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArG+6yt2hpP78cTC8RMJR2t6LJBwyo9vA/aC9MsY03G3nCVK+LTQKJVGfyPOluiP2ZZKrg3SrWDQn5n7uUK8m1bx/u1WDmdqYZnB4PapFlQOnwiy2AgHmU32YOGpRxPaVM5h7iwvUSGGVR5rX5zZEDaB1tyBKSRkfqBwfZDZljqnvpe0WW/q9tklOR/XRRNwDRjarBEkM42kDNsi5GMVesqM+63MYnDXZP9wIQiBLGrdY/WrjC79hWTVUbzFaICIttFYlkmHaCRP/nMDUmVXlqbUr1z2iV60bzZ09iZxBs7wSw4uDQJUtRa5aBeFJ/Fru/cWf3O7W7zTWgIMxJzT8YQIDAQAB</string>
     <!-- Web-app URL of tools/admin-otp.gs (emails the admin a one-time code). -->
     <string name="admin_otp_url" translatable="false"></string>
 </resources>
