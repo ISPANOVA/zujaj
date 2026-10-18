@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -175,7 +176,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 tab, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp),
             ) { tab = it }
             // ---------------------------------------------------------------- controls
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(androidx.compose.animation.core.tween(280))) {
                 if (tab == 0) {
                 Section(tr("Style presets", "أنماط جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

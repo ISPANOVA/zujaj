@@ -11,6 +11,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,8 +46,11 @@ sealed class Screen {
 class Nav(start: Screen) {
     val stack = mutableStateListOf(start)
     val top get() = stack.last()
-    fun go(s: Screen) { stack.add(s) }
-    fun back(): Boolean = if (stack.size > 1) { stack.removeAt(stack.lastIndex); true } else false
+    /** Direction of the last move, for the page transition. */
+    var forward = true
+        private set
+    fun go(s: Screen) { forward = true; stack.add(s) }
+    fun back(): Boolean = if (stack.size > 1) { forward = false; stack.removeAt(stack.lastIndex); true } else false
     fun replace(s: Screen) { stack[stack.lastIndex] = s }
 }
 
@@ -114,7 +120,15 @@ class ConfigureActivity : MainActivity()
 fun Root(nav: Nav) {
     BackHandler(enabled = nav.stack.size > 1) { nav.back() }
     AppBackdrop {
-        AnimatedContent(nav.top, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "nav") { s ->
+        val rtl = Prefs.isArabicUi
+        AnimatedContent(nav.top, transitionSpec = {
+            // new pages slide in from the reading edge; going back slides them away again
+            val dir = (if (nav.forward) 1 else -1) * (if (rtl) -1 else 1)
+            val ease = androidx.compose.animation.core.FastOutSlowInEasing
+            (slideInHorizontally(androidx.compose.animation.core.tween(340, easing = ease)) { w -> w / 4 * dir } + fadeIn(androidx.compose.animation.core.tween(260, 40)))
+                .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(340, easing = ease)) { w -> -w / 8 * dir } +
+                    fadeOut(androidx.compose.animation.core.tween(180)) + scaleOut(androidx.compose.animation.core.tween(340), targetScale = 0.97f))
+        }, label = "nav") { s ->
             Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 when (s) {
                     Screen.Home -> HomeScreen(nav)

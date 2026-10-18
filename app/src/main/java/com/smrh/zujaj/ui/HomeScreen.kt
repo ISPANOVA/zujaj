@@ -3,6 +3,9 @@ package com.smrh.zujaj.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Whatshot
@@ -97,11 +100,24 @@ fun HomeScreen(nav: Nav) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
-            when (tab) {
-                0 -> DiscoverTab(nav)
-                1 -> FavoritesTab(nav)
-                2 -> MyWidgetsTab(nav)
-                else -> SettingsScreen(nav, asTab = true)
+            // tabs glide sideways in the direction of the tab you picked
+            androidx.compose.animation.AnimatedContent(
+                targetState = tab,
+                transitionSpec = {
+                    val dir = if (targetState > initialState) 1 else -1
+                    (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260, 60)) +
+                        androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 6 * dir })
+                        .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)) +
+                            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320)) { -it / 10 * dir })
+                },
+                label = "tabs",
+            ) { t ->
+                when (t) {
+                    0 -> DiscoverTab(nav)
+                    1 -> FavoritesTab(nav)
+                    2 -> MyWidgetsTab(nav)
+                    else -> SettingsScreen(nav, asTab = true)
+                }
             }
         }
         DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it }
@@ -205,7 +221,11 @@ fun collectionTitle(key: String): String = when (key) {
 @Composable
 fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
-    Column(modifier.clip(RoundedCornerShape(28.dp)).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.95f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "press")
+    Column(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(28.dp))
+        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(28.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF0E0E13))))
@@ -273,7 +293,8 @@ fun DiscoverTab(nav: Nav) {
             Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 16.dp, top = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(greet, color = Z.sub, fontSize = 13.sp)
-                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
+                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false,
+                        letterSpacing = if (Prefs.isArabicUi) 0.sp else (-0.5).sp)
                 }
                 RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
                 Spacer(Modifier.width(10.dp))
@@ -367,6 +388,7 @@ fun DiscoverTab(nav: Nav) {
             cats.forEach { cat ->
                 val list = all.filter { it.cat == cat }
                 item(key = "row_${cat.name}") {
+                    Column(Modifier.animateItem()) {
                     SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(list.take(10), key = { it.id }) { st ->
@@ -374,21 +396,26 @@ fun DiscoverTab(nav: Nav) {
                             PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 300.dp), stage = 168.dp) { nav.go(Screen.Editor(st.id)) }
                         }
                     }
+                    }
                 }
             }
         } else {
             // ---- filtered feed: a calm vertical showcase
             val list = collection(chip)
             val rows = feedRows(list)
-            item {
+            item(key = "title_$chip") {
                 Text(
                     "${collectionTitle(chip)} · ${list.size}", color = Z.sub, fontSize = 13.sp,
-                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 10.dp),
+                    modifier = Modifier.animateItem().padding(start = 22.dp, end = 22.dp, bottom = 10.dp),
                 )
             }
-            items(rows.size) { i ->
+            // keyed rows: switching Clock ↔ Digital fades the old cards out and the new ones in, sliding up
+            items(rows.size, key = { i -> "f_${chip}_" + rows[i].joinToString { it.id } }) { i ->
                 val row = rows[i]
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                val shown = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(Unit) { kotlinx.coroutines.delay((i * 45L).coerceAtMost(270L)); shown.animateTo(1f, androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+                Row(Modifier.animateItem().graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 40.dp.toPx() }
+                    .fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
                     if (row.size == 1 && row[0].shape == Shape.SMALL) Spacer(Modifier.weight(1f))
                 }
@@ -441,7 +468,7 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
     ) {
         if (header != null) item(span = { GridItemSpan(2) }) { header() }
         items(pack(list), key = { it.id }, span = { GridItemSpan(if (it.shape == Shape.SMALL) 1 else 2) }) { st ->
-            PreviewTile(st) { onPick(st) }
+            PreviewTile(st, Modifier.animateItem()) { onPick(st) }
         }
     }
 }
