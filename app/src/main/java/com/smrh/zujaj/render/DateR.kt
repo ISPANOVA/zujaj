@@ -197,7 +197,7 @@ object DateR {
 
     fun monthsCalli(r: RenderCtx) {
         val (day, _, arName) = monthInfo(r)
-        r.textTight(r.n(String.format(java.util.Locale.US, "%02d", day)), r.w / 2, r.h * 0.44f, r.h * 0.42f * r.s2, withAlpha(r.c2, 150), F.SANS_BOLD)
+        r.textTight(r.n(String.format(java.util.Locale.US, "%02d", day)), r.w / 2, r.h * 0.44f, r.h * 0.42f * r.s2, withAlpha(r.c2, 38), F.SANS_BOLD)
         r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.6f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad - 10 * r.u, maxH = r.h * 0.62f)
         val d = r.today
         r.text(r.n("${d.dayOfMonth.toString().padStart(2, '0')} / ${d.monthValue.toString().padStart(2, '0')} / ${d.year}"), r.w / 2, r.h * 0.85f, 10 * r.u, withAlpha(r.c1, 190), r.sans, Paint.Align.CENTER)
@@ -205,7 +205,7 @@ object DateR {
 
     fun monthsCalliSmall(r: RenderCtx) {
         val (day, _, arName) = monthInfo(r)
-        r.textTight(r.n(day), r.w / 2, r.h * 0.4f, r.h * 0.6f * r.s2, withAlpha(r.c2, 110), F.SANS_BOLD)
+        r.textTight(r.n(day), r.w / 2, r.h * 0.4f, r.h * 0.6f * r.s2, withAlpha(r.c2, 35), F.SANS_BOLD)
         r.textTight(arName, r.w / 2, r.h * 0.44f, r.h * 0.36f * r.s1, r.c1, r.calliFont, maxW = r.w - 2 * r.pad, maxH = r.h * 0.45f)
         val d = r.today
         r.text("${r.n(d.dayOfMonth)} ${Calendars.monthName(d.monthValue, r.ar)}", r.w / 2, r.h * 0.84f, 10 * r.u, r.c2, r.sans, Paint.Align.CENTER)
