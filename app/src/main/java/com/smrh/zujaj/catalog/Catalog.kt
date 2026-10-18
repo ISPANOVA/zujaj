@@ -4,6 +4,14 @@ import com.smrh.zujaj.model.Fill
 import com.smrh.zujaj.model.Texture
 import com.smrh.zujaj.model.WidgetConfig
 import com.smrh.zujaj.render.AppsR
+import com.smrh.zujaj.render.CalliR
+import com.smrh.zujaj.render.Prayer2R
+import com.smrh.zujaj.render.Cal2R
+import com.smrh.zujaj.render.Weather2R
+import com.smrh.zujaj.render.Tools2R
+import com.smrh.zujaj.render.Tasbih2R
+import com.smrh.zujaj.render.Fancy2R
+import com.smrh.zujaj.render.Life2R
 import com.smrh.zujaj.render.ClockR
 import com.smrh.zujaj.render.CounterR
 import com.smrh.zujaj.render.DateR
