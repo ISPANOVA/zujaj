@@ -111,6 +111,18 @@ class RenderAllTest {
             v.layout(0, 0, w, h)
             val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); v.draw(Canvas(bm)); save(bm, File(out, "reapply.png"))
         } catch (e: Throwable) { errors.append("REAPPLY: $e\n") }
+        // stretched widgets: background fills the slot, design centred at its own proportions
+        for ((nm, wd, hd) in listOf(Triple("prayer_spotlight", 230f, 250f), Triple("clock_classic", 340f, 160f), Triple("digital_stacked", 160f, 300f))) {
+            try {
+                val st = Catalog.byId(nm)!!
+                val v = WidgetUpdater.build(ctx, 1, st.defaultConfig(), st, wd, hd).apply(ctx, FrameLayout(ctx))
+                val d = ctx.resources.displayMetrics.density
+                val w = (wd * d).toInt(); val h = (hd * d).toInt()
+                v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                v.layout(0, 0, w, h)
+                val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); v.draw(Canvas(bm)); save(bm, File(out, "fit_$nm.png"))
+            } catch (e: Throwable) { errors.append("FIT $nm: $e\n") }
+        }
         File(out, "errors.txt").writeText(errors.toString().ifBlank { "OK" })
         println("RENDER ERRORS:\n$errors")
     }

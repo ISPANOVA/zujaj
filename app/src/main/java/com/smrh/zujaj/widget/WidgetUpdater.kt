@@ -142,16 +142,8 @@ object WidgetUpdater {
         // Any design fits any widget size: when the placed widget's proportions differ a lot from
         // the design (e.g. a wide design in a square lock-screen slot) it is drawn at its own
         // proportions, as big as possible, centred in the slot.
-        val aspect = style.shape.dw / style.shape.dh
-        val slot = wDp / hDp
-        var rw = wDp; var rh = hDp
-        if (kotlin.math.abs(kotlin.math.ln(aspect / slot)) > 0.18f) {
-            if (slot > aspect) { rh = hDp; rw = hDp * aspect } else { rw = wDp; rh = wDp / aspect }
-        }
-        val offX = ((wDp - rw) / 2f * density)
-        val offY = ((hDp - rh) / 2f * density)
         val bake = needsBake(ctx, id, cfg)
-        val res = Renderer.render(ctx, cfg, rw, rh, preview = false, bake = bake)
+        val res = Renderer.renderFitted(ctx, cfg, wDp, hDp, bake = bake)
         if (bake) Scheduler.minuteTick(ctx)
         val k = density / res.scale // bitmap px → device px
         val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
@@ -159,9 +151,8 @@ object WidgetUpdater {
         // old views instead of inflating fresh ones, so anything a previous design switched on
         // (extra clocks, countdowns, tap areas, overlays) would stay visible. Reset everything first.
         resetSlots(rv)
-        val ox = offX.toInt(); val oy = offY.toInt()
-        rv.setViewPadding(R.id.bg, ox, oy, ox, oy)
-        rv.setViewPadding(R.id.fx, ox, oy, ox, oy)
+        rv.setViewPadding(R.id.bg, 0, 0, 0, 0)
+        rv.setViewPadding(R.id.fx, 0, 0, 0, 0)
         if (Flags.locked(style)) {
             // Pro expired / not owned: show a lock overlay and send taps to the paywall.
             val c = android.graphics.Canvas(res.bitmap)
@@ -185,8 +176,8 @@ object WidgetUpdater {
             rv.setViewVisibility(wrap, View.VISIBLE)
             rv.setViewPadding(
                 wrap,
-                (offX + l * k).toInt().coerceAtLeast(0), (offY + t * k).toInt().coerceAtLeast(0),
-                (wPx - offX - r * k).toInt().coerceAtLeast(0), (hPx - offY - b * k).toInt().coerceAtLeast(0),
+                (l * k).toInt().coerceAtLeast(0), (t * k).toInt().coerceAtLeast(0),
+                (wPx - r * k).toInt().coerceAtLeast(0), (hPx - b * k).toInt().coerceAtLeast(0),
             )
         }
 

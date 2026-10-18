@@ -56,6 +56,51 @@ object Renderer {
         return RenderResult(bmp, rc.lives, rc.hits, scale, rc.fx)
     }
 
+    /**
+     * Renders for a placed widget of any size: the background always fills the whole widget
+     * (stretch it tall or wide and the card grows with it), while the design itself keeps its
+     * own proportions, as big as fits, centred on that background.
+     */
+    fun renderFitted(
+        ctx: Context, cfg: WidgetConfig, wDp: Float, hDp: Float,
+        density: Float = ctx.resources.displayMetrics.density, bake: Boolean = false,
+    ): RenderResult {
+        val style = Catalog.byId(cfg.styleId) ?: Catalog.all.first()
+        val aspect = style.shape.dw / style.shape.dh
+        val slot = wDp / hDp
+        if (kotlin.math.abs(kotlin.math.ln(aspect / slot)) <= 0.18f) return render(ctx, cfg, wDp, hDp, false, density, bake = bake)
+        var scale = density
+        val longest = max(wDp, hDp) * scale
+        if (longest > MAX_SIDE) scale *= MAX_SIDE / longest
+        // 1) full-size card: background, texture and border only
+        val bw = max(1, (wDp * scale).toInt()); val bh = max(1, (hDp * scale).toInt())
+        val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+        val bgCtx = RenderCtx(ctx, bmp, style, cfg, false, scale)
+        drawBackground(bgCtx)
+        // 2) the design at its own proportions, without its own card
+        val pad = 6f
+        val availW = wDp - 2 * pad; val availH = hDp - 2 * pad
+        val rw: Float; val rh: Float
+        if (availW / availH > aspect) { rh = availH; rw = availH * aspect } else { rw = availW; rh = availW / aspect }
+        val inner = render(ctx, cfg.copy(bg = false), rw, rh, false, scale, bake = bake)
+        val ox = (bw - inner.bitmap.width) / 2f
+        val oy = (bh - inner.bitmap.height) / 2f
+        Canvas(bmp).drawBitmap(inner.bitmap, ox, oy, Paint(Paint.FILTER_BITMAP_FLAG))
+        val fx = inner.fx?.let { f ->
+            Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888).also { Canvas(it).drawBitmap(f, ox, oy, null) }
+        }
+        fun RectF.off() = RectF(left + ox, top + oy, right + ox, bottom + oy)
+        val lives = inner.lives.map { l ->
+            when (l) {
+                is LiveClock -> l.copy(rect = l.rect.off())
+                is LiveChrono -> l.copy(rect = l.rect.off())
+                is LiveAnalog -> l.copy(rect = l.rect.off())
+            }
+        }
+        val hits = inner.hits.map { it.copy(rect = it.rect.off()) }
+        return RenderResult(bmp, lives, hits, scale, fx)
+    }
+
     fun cornerPx(rc: RenderCtx) = min(rc.cfg.corner * rc.u, min(rc.w, rc.h) / 2f)
 
     private var noise: Bitmap? = null
