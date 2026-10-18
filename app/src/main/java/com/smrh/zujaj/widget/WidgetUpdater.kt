@@ -311,7 +311,7 @@ object WidgetUpdater {
             Tap.OPEN_APP -> cfg.tapApp?.let { activity(ctx, req, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(ComponentName(it.pkg, it.cls))) }
                 ?: editIntent(ctx, id)
             Tap.DEFAULT -> when (style.cat) {
-                Cat.CLOCK, Cat.DIGITAL -> activity(ctx, req, Intent(AlarmClock.ACTION_SHOW_ALARMS))
+                Cat.CLOCK, Cat.DIGITAL -> activity(ctx, req, com.smrh.zujaj.render.Intents.alarms(ctx))
                 Cat.DATE -> activity(ctx, req, DateR.calendarIntent())
                 Cat.MEDIA -> activity(ctx, req, MediaRepo.launchIntent(ctx) ?: appMain(ctx, "media_access"))
                 Cat.WEATHER, Cat.PRAYER, Cat.ISLAMIC -> activity(ctx, req, appMain(ctx, "settings"))

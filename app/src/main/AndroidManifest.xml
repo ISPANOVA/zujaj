@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -13,6 +14,17 @@
 
     <!-- Needed to show icons of the apps the user puts in folders / to launch them -->
     <queries>
+        <package android:name="com.sec.android.app.clockpackage" />
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.android.deskclock" />
+        <package android:name="com.coloros.alarmclock" />
+        <package android:name="com.oplus.alarmclock" />
+        <package android:name="com.huawei.deskclock" />
+        <package android:name="com.hihonor.deskclock" />
+        <package android:name="com.oneplus.deskclock" />
+        <package android:name="com.lenovo.deskclock" />
+        <package android:name="com.asus.deskclock" />
+        <intent><action android:name="android.intent.action.SHOW_ALARMS" /></intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

@@ -116,7 +116,20 @@ object Intents {
     fun youtube(ctx: Context) = launch(ctx, YOUTUBE, "https://youtube.com")
     fun webSearch(q: String) = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q)
 
-    fun alarms() = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+    private val CLOCKS = listOf(
+        "com.sec.android.app.clockpackage", "com.google.android.deskclock", "com.android.deskclock",
+        "com.coloros.alarmclock", "com.oplus.alarmclock", "com.huawei.deskclock", "com.hihonor.deskclock",
+        "com.oneplus.deskclock", "com.motorola.timeweatherwidget", "com.lenovo.deskclock", "com.asus.deskclock",
+    )
+
+    /** The phone's clock app (alarms page when the clock supports it). */
+    fun alarms(ctx: Context): Intent {
+        val pm = ctx.packageManager
+        val show = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+        if (show.resolveActivity(pm) != null) return show
+        CLOCKS.firstNotNullOfOrNull { pm.getLaunchIntentForPackage(it) }?.let { return it }
+        return show
+    }
     fun camera() = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
     fun calculator() = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALCULATOR)
     fun settings() = Intent(Settings.ACTION_SETTINGS)

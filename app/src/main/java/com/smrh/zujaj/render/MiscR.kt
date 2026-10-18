@@ -639,11 +639,12 @@ object ToolsR {
     fun quick(r: RenderCtx) {
         val items = listOf("torch", "alarm", "camera", "calc", "wifi")
         val step = (r.w - 2 * r.pad) / items.size
-        val rad = min(step, r.h) * 0.32f
+        val rad = min(step * 0.46f, r.h * 0.40f)
         items.forEachIndexed { i, k ->
             val cx = r.pad + step * (i + 0.5f); val cy = r.h / 2
-            r.circle(cx, cy, rad, withAlpha(r.c1, 30))
-            val s = rad * 1.0f
+            r.circle(cx, cy, rad, withAlpha(r.c1, 34))
+            r.canvas.drawCircle(cx, cy, rad - r.u * 0.5f, r.strokePaint(withAlpha(r.c1, 22), r.u))
+            val s = rad * 1.05f
             when (k) {
                 "torch" -> {
                     val path = Path().apply {
@@ -658,7 +659,7 @@ object ToolsR {
                     r.canvas.drawCircle(cx, cy + s * 0.04f, s * 0.32f, r.strokePaint(r.c1, s * 0.08f))
                     r.canvas.drawLine(cx, cy + s * 0.04f, cx, cy - s * 0.14f, r.strokePaint(r.c1, s * 0.08f))
                     r.canvas.drawLine(cx, cy + s * 0.04f, cx + s * 0.12f, cy + s * 0.12f, r.strokePaint(r.c1, s * 0.08f))
-                    r.hit(RectF(cx - rad, cy - rad, cx + rad, cy + rad), HitAction.Launch(Intents.alarms()))
+                    r.hit(RectF(cx - rad, cy - rad, cx + rad, cy + rad), HitAction.Launch(Intents.alarms(r.context)))
                 }
                 "camera" -> {
                     r.canvas.drawRoundRect(RectF(cx - s * 0.38f, cy - s * 0.24f, cx + s * 0.38f, cy + s * 0.3f), s * 0.08f, s * 0.08f, r.strokePaint(r.c1, s * 0.08f))
