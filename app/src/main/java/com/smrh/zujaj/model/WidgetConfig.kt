@@ -84,14 +84,20 @@ data class WidgetConfig(
     val ornament: Boolean = false,
     val ornColor: Int = 0xFFE7B75F.toInt(),
     // Per-part colours (Prayer Hub)
-    val accent2: Int = 0xFF7B4BB5.toInt(),
+    val accent2: Int = 0xFFF2865E.toInt(),
     val minGrad: Boolean = true,
+    val hourGrad: Boolean = false,
+    val hourColor2: Int = 0xFFE7B75F.toInt(),
+    /** One gradient across the whole time (hours colour → minutes 2nd colour). */
+    val timeMerge: Boolean = false,
+    val dayGrad: Boolean = false,
+    val dayColor2: Int = 0xFFE7B75F.toInt(),
     val dayColor: Int = 0xFFFFFFFF.toInt(),
     val hijriColor: Int = 0xFFFFFFFF.toInt(),
-    val nameColor: Int = 0xFFB9A6E0.toInt(),
+    val nameColor: Int = 0xFF9C9CA6.toInt(),
     val timeColor: Int = 0xFFFFFFFF.toInt(),
-    val nextColor: Int = 0xFFF2865E.toInt(),
-    val lineColor: Int = 0x55B9A6E0,
+    val nextColor: Int = 0xFFE7B75F.toInt(),
+    val lineColor: Int = 0x33FFFFFF,
     /** Face of the main time (LiveFont name); blank = the design's own. */
     val font: String = "",
     // Region

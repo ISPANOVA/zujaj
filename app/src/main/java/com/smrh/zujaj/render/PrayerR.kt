@@ -299,10 +299,20 @@ object PrayerR {
         val clockRight = minL + pw
         val baked = r.preview || r.bakeLive
         if (baked) {
-            r.canvas.drawText(hh, colonL - gap - hW - hL, base, p)   // hours end right before the colon
+            fun lg(a: Float, b: Float, c1: Int, c2: Int) = android.graphics.LinearGradient(a, 0f, b, 0f, c1, c2, android.graphics.Shader.TileMode.CLAMP)
+            val hStart = colonL - gap - hW
+            val whole = if (c.timeMerge) lg(hStart, minL + mW, c.color1, c.accent2) else null
+            // hours
+            p.color = c.color1
+            p.shader = whole ?: if (c.hourGrad) lg(hStart, hStart + hW, c.color1, c.hourColor2) else null
+            r.canvas.drawText(hh, hStart - hL, base, p)   // hours end right before the colon
+            // colon
+            p.shader = whole
+            p.color = if (c.hourGrad && !c.timeMerge) c.hourColor2 else c.color1
             r.canvas.drawText(":", colonL - cL, base, p)
-            p.shader = if (c.minGrad) android.graphics.LinearGradient(minL, 0f, minL + mW, 0f, c.accent, c.accent2, android.graphics.Shader.TileMode.CLAMP) else null
+            // minutes
             p.color = c.accent
+            p.shader = whole ?: if (c.minGrad) lg(minL, minL + mW, c.accent, c.accent2) else null
             r.canvas.drawText(mm, minL - mL, base, p)
             p.shader = null
         } else {
@@ -314,8 +324,19 @@ object PrayerR {
         // ---- day in calligraphy, centred on the same line as the clock
         val d = r.today
         val dayL = clockRight + 10 * r.u
+        val dayBox = RectF(dayL, cyClock - ink.height(), right, cyClock + ink.height())
+        if (c.dayGrad) r.canvas.saveLayer(dayBox, null)
         r.textTight(Calendars.dayName(d, true), (dayL + right) / 2, cyClock, ink.height() * 0.9f * c.size2 / 100f,
-            c.dayColor, r.calliFont, maxW = right - dayL, maxH = ink.height() * 0.95f)
+            if (c.dayGrad) android.graphics.Color.WHITE else c.dayColor, r.calliFont, maxW = right - dayL, maxH = ink.height() * 0.95f)
+        if (c.dayGrad) {
+            // paint the gradient only where the letters are
+            val gp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = android.graphics.LinearGradient(dayBox.left, dayBox.top, dayBox.right, dayBox.bottom, c.dayColor, c.dayColor2, android.graphics.Shader.TileMode.CLAMP)
+                xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+            }
+            r.canvas.drawRect(dayBox, gp)
+            r.canvas.restore()
+        }
 
         // ---- dates
         val dateY = r.h * 0.665f

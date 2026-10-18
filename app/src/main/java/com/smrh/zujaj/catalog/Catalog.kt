@@ -195,9 +195,9 @@ object Catalog {
         WidgetStyle("prayer_spotlight", Cat.PRAYER, "Prayer Spotlight", "الصلاة بالخط الكبير", W, pro = true, isNew = true, popular = true, feats = prayerF, upd = pU) { PrayerR.spotlight(it) },
         WidgetStyle("prayer_hub", Cat.PRAYER, "Prayer Hub", "لوحة الصلاة", L, isNew = true, popular = true,
             feats = setOf(Feat.HUB, Feat.HOUR24), upd = pU,
-            defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF2A0E6E.toInt(), bgColor2 = 0xFF4A1A92.toInt(), border = false,
-                color1 = 0xFFFFFFFF.toInt(), color2 = 0xFFB9A6E0.toInt(), accent = 0xFFF2865E.toInt(), calli = 3) },
-            bakeTime = { it.minGrad }) { PrayerR.hub(it) },
+            // same graphite look as the rest of the app; gold → coral minutes
+            defaults = { it.copy(accent = 0xFFE7B75F.toInt(), calli = 3) },
+            bakeTime = { it.minGrad || it.hourGrad || it.timeMerge }) { PrayerR.hub(it) },
         WidgetStyle("prayer_tiles", Cat.PRAYER, "Prayer Tiles", "مربعات الصلاة", L, pro = true, isNew = true, feats = prayerF, upd = pU) { PrayerR.tiles(it) },
 
         // ------------------------------------------------------------------ ISLAMIC (new)

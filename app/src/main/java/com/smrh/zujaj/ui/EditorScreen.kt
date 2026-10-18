@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -216,11 +217,24 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 Section(tr("Numerals", "الأرقام")) { NumeralsSwitch(cfg) { cfg = it } }
                 if (hasTime) Section(tr("Clock font", "خط الساعة")) { ClockFontGrid(cfg, { cfg = it }) { nav.go(Screen.Paywall) } }
                 if (Feat.HUB in f) Section(tr("Colours of each part", "ألوان كل جزء")) {
-                    RowBase(tr("Hours", "الساعات")) { ColorDot(cfg.color1) { colorTarget = 1 } }
-                    Divider(); RowBase(tr("Minutes", "الدقايق")) { ColorDot(cfg.accent) { colorTarget = 3 } }
-                    Divider(); SwitchRow(tr("Gradient minutes", "دقايق متدرجة"), cfg.minGrad, tr("Two-colour minutes (redrawn every minute)", "الدقايق بلونين (بتتحدث كل دقيقة)")) { cfg = cfg.copy(minGrad = it) }
-                    if (cfg.minGrad) { Divider(); RowBase(tr("Minutes — 2nd colour", "اللون التاني للدقايق")) { ColorDot(cfg.accent2) { colorTarget = 5 } } }
+                    ChoiceRow(tr("Clock colours", "ألوان الساعة"), cfg.timeMerge, listOf(false to tr("Separate", "منفصلة"), true to tr("One gradient", "تدرج واحد"))) { cfg = cfg.copy(timeMerge = it) }
+                    if (cfg.timeMerge) {
+                        Divider(); RowBase(tr("Gradient start", "بداية التدرج")) { ColorDot(cfg.color1) { colorTarget = 1 } }
+                        Divider(); RowBase(tr("Gradient end", "نهاية التدرج")) { ColorDot(cfg.accent2) { colorTarget = 5 } }
+                    } else {
+                        Divider(); RowBase(tr("Hours", "الساعات")) { ColorDot(cfg.color1) { colorTarget = 1 } }
+                        Divider(); SwitchRow(tr("Gradient hours", "ساعات متدرجة"), cfg.hourGrad) { cfg = cfg.copy(hourGrad = it) }
+                        if (cfg.hourGrad) { Divider(); RowBase(tr("Hours — 2nd colour", "اللون التاني للساعات")) { ColorDot(cfg.hourColor2) { colorTarget = 14 } } }
+                        Divider(); RowBase(tr("Minutes", "الدقايق")) { ColorDot(cfg.accent) { colorTarget = 3 } }
+                        Divider(); SwitchRow(tr("Gradient minutes", "دقايق متدرجة"), cfg.minGrad) { cfg = cfg.copy(minGrad = it) }
+                        if (cfg.minGrad) { Divider(); RowBase(tr("Minutes — 2nd colour", "اللون التاني للدقايق")) { ColorDot(cfg.accent2) { colorTarget = 5 } } }
+                    }
+                    if (cfg.timeMerge || cfg.hourGrad || cfg.minGrad)
+                        Text(tr("Gradients are drawn into the picture and refreshed every minute.", "التدرج بيترسم في الصورة وبيتحدث كل دقيقة."),
+                            color = Z.sub, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     Divider(); RowBase(tr("Day name", "اسم اليوم")) { ColorDot(cfg.dayColor) { colorTarget = 6 } }
+                    Divider(); SwitchRow(tr("Gradient day name", "اسم اليوم متدرج"), cfg.dayGrad) { cfg = cfg.copy(dayGrad = it) }
+                    if (cfg.dayGrad) { Divider(); RowBase(tr("Day — 2nd colour", "اللون التاني لليوم")) { ColorDot(cfg.dayColor2) { colorTarget = 15 } } }
                     Divider(); RowBase(tr("Hijri date", "التاريخ الهجري")) { ColorDot(cfg.hijriColor) { colorTarget = 7 } }
                     Divider(); RowBase(tr("Gregorian date", "التاريخ الميلادي")) { ColorDot(cfg.color2) { colorTarget = 2 } }
                     Divider(); RowBase(tr("Prayer names", "أسماء الصلوات")) { ColorDot(cfg.nameColor) { colorTarget = 8 } }
@@ -359,12 +373,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
 
     if (colorTarget != -1) {
         val init = when (colorTarget) { 1 -> cfg.color1; 2 -> cfg.color2; 3 -> cfg.accent; 4 -> cfg.ornColor; 5 -> cfg.accent2; 6 -> cfg.dayColor; 7 -> cfg.hijriColor
-            8 -> cfg.nameColor; 9 -> cfg.timeColor; 12 -> cfg.nextColor; 13 -> cfg.lineColor; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
+            8 -> cfg.nameColor; 9 -> cfg.timeColor; 12 -> cfg.nextColor; 13 -> cfg.lineColor; 14 -> cfg.hourColor2; 15 -> cfg.dayColor2; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
         ColorPickerDialog(init, { colorTarget = -1 }) { c ->
             cfg = when (colorTarget) {
                 1 -> cfg.copy(color1 = c); 2 -> cfg.copy(color2 = c); 3 -> cfg.copy(accent = c); 4 -> cfg.copy(ornColor = c)
                 5 -> cfg.copy(accent2 = c); 6 -> cfg.copy(dayColor = c); 7 -> cfg.copy(hijriColor = c)
                 8 -> cfg.copy(nameColor = c); 9 -> cfg.copy(timeColor = c); 12 -> cfg.copy(nextColor = c); 13 -> cfg.copy(lineColor = c)
+                14 -> cfg.copy(hourColor2 = c); 15 -> cfg.copy(dayColor2 = c)
                 10 -> cfg.copy(bgColor = c); else -> cfg.copy(bgColor2 = c)
             }
         }
