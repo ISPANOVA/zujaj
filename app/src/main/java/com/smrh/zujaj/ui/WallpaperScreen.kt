@@ -23,6 +23,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -334,7 +335,7 @@ fun WallpaperScreen(nav: Nav) {
                 }
                 // gestures: tap selects, drag moves smoothly (state only, nothing is re-rendered)
                 if (photo != null && adjust) Box(Modifier.fillMaxSize().pointerInput(Unit) {
-                    androidx.compose.foundation.gestures.detectTransformGestures { centroid, pan, zoom, _ ->
+                    detectTransformGestures { centroid, pan, zoom, _ ->
                         val W = size.width.toFloat(); val H = size.height.toFloat()
                         val nz = (az * zoom).coerceIn(0.35f, 5f)
                         val k = nz / az
