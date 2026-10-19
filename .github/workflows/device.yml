@@ -42,10 +42,12 @@ jobs:
             adb shell mkdir -p /sdcard/Android/data/com.smrh.zujaj.debug/files
             adb push person.jpg /sdcard/Android/data/com.smrh.zujaj.debug/files/person.jpg || true
             adb push dog.jpg /sdcard/Android/data/com.smrh.zujaj.debug/files/dog.jpg || true
-            adb shell am instrument -w -r com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner > instrument.log 2>&1 || true
+            adb shell am instrument -w -r -e class com.smrh.zujaj.WallTest com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner > instrument.log 2>&1 || true
+            adb shell am instrument -w -r -e class com.smrh.zujaj.DeviceTest#widgetButtons com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner >> instrument.log 2>&1 || true
+            adb shell am instrument -w -r -e class com.smrh.zujaj.DeviceTest#appScreens com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner >> instrument.log 2>&1 || true
             mkdir -p device_out
             adb pull /sdcard/Android/data/com.smrh.zujaj.debug/files/device device_out/ || true
-            adb logcat -d -s AndroidRuntime:E > device_out/crash.log || true
+            adb logcat -d | grep -E "FATAL|AndroidRuntime|OutOfMemory|zujaj" | tail -200 > device_out/crash.log || true
             cp instrument.log device_out/ || true
       - name: Publish to "device" branch
         if: always()
