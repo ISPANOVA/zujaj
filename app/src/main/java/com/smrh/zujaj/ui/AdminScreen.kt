@@ -564,6 +564,10 @@ private fun GeneralAdmin(email: String) {
     var once by remember(flags) { mutableStateOf(flags.noticeOnce) }
     var latest by remember(flags) { mutableStateOf(if (flags.latestCode > 0) flags.latestCode.toString() else "") }
     var force by remember(flags) { mutableStateOf(flags.forceUpdate) }
+    var adsOn by remember(flags) { mutableStateOf(flags.adsOn) }
+    var adBanner by remember(flags) { mutableStateOf(flags.adBanner) }
+    var adReward by remember(flags) { mutableStateOf(flags.adReward) }
+    var adPer by remember(flags) { mutableStateOf(flags.adWallPerDay.toString()) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Section(tr("Promotion", "العروض")) {
@@ -589,6 +593,16 @@ private fun GeneralAdmin(email: String) {
             OutlinedTextField(upNote, { upNote = it }, placeholder = { Text(tr("What's new (optional)", "إيه الجديد (اختياري)")) },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
+        Section(tr("Ads", "الإعلانات")) {
+            SwitchRow(tr("Show ads to free users", "إعلانات للمستخدمين المجانيين"), adsOn, tr("Pro & wallpaper subscribers never see ads", "المشتركين مبيشوفوش إعلانات")) { adsOn = it }
+            OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner ad unit ID", "كود البانر (Ad unit ID)")) }, placeholder = { Text("ca-app-pub-…/…") },
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+            OutlinedTextField(adReward, { adReward = it.trim() }, singleLine = true, label = { Text(tr("Rewarded ad unit ID", "كود إعلان المكافأة (Rewarded)")) }, placeholder = { Text("ca-app-pub-…/…") },
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+            OutlinedTextField(adPer, { adPer = it.filter { c -> c.isDigit() }.take(2) }, singleLine = true, label = { Text(tr("Free wallpaper uses per day (ads)", "عدد مرات الخلفيات بالإعلانات في اليوم")) },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
+        }
         Section(tr("Anti-piracy", "الحماية من التهكير")) {
             Text(tr("After uploading to Google Play, paste the SHA-256 of the \"App signing key certificate\" (Play Console → Test and release → App integrity). Copies signed with any other key never get Pro.",
                 "بعد ما ترفع على جوجل بلاي، الصق SHA-256 بتاع \"App signing key certificate\" (Play Console ← Test and release ← App integrity). أي نسخة متوقعة بمفتاح تاني مش هتاخد برو أبداً."),
@@ -610,7 +624,7 @@ private fun GeneralAdmin(email: String) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim())) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
             }
         }

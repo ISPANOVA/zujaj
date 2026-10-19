@@ -432,8 +432,9 @@ fun DiscoverTab(nav: Nav) {
                 }
             }
             // ---- one shelf per category
-            cats.forEach { cat ->
+            cats.forEachIndexed { ci, cat ->
                 val list = all.filter { it.cat == cat }
+                if (ci > 0 && ci % 3 == 0) item(key = "ad_$ci") { com.smrh.zujaj.ads.AdBanner() }
                 item(key = "row_${cat.name}") {
                     Column(Modifier.animateItem()) {
                     SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }

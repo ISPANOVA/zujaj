@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Collections
@@ -158,6 +159,8 @@ fun WallpaperScreen(nav: Nav) {
     var snapX by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var showBuy by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf("") }
+    val doSaveRef = remember { mutableStateOf({}) }
     var showHistory by remember { mutableStateOf(false) }
     val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
     val accent = LocalAccent.current
@@ -385,20 +388,24 @@ fun WallpaperScreen(nav: Nav) {
                 if (busy) CircularProgressIndicator(Modifier.align(Alignment.Center), color = accent)
             }
         }
+        fun doSave() {
+            scope.launch {
+                busy = true
+                val ok = withContext(Dispatchers.IO) { runCatching {
+                    val full = WallRender.compose(ctx, design, photo, mask, screenW, screenH)
+                    saveToGallery(ctx, full); WallHistory.add(ctx, design, full)
+                }.isSuccess }
+                busy = false
+                Toast.makeText(ctx, if (ok) tr("Saved to Photos ✓", "اتحفظت في الصور ✓") else tr("Couldn't save", "مقدرتش أحفظ"), Toast.LENGTH_SHORT).show()
+            }
+        }
+        doSaveRef.value = { doSave() }
         // ---------------------------------------------------------------- actions
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            WallAction(Icons.Rounded.Wallpaper, tr("Apply", "تطبيق"), photo != null, locked = !owned) { if (owned) showApply = true else showBuy = true }
+            WallAction(Icons.Rounded.Wallpaper, tr("Apply", "تطبيق"), photo != null, locked = !owned) { if (owned) showApply = true else { pending = "apply"; showBuy = true } }
             WallAction(Icons.Rounded.Download, tr("Save", "حفظ"), photo != null, locked = !owned) {
-                if (!owned) { showBuy = true; return@WallAction }
-                scope.launch {
-                    busy = true
-                    val ok = withContext(Dispatchers.IO) { runCatching {
-                        val full = WallRender.compose(ctx, design, photo, mask, screenW, screenH)
-                        saveToGallery(ctx, full); WallHistory.add(ctx, design, full)
-                    }.isSuccess }
-                    busy = false
-                    Toast.makeText(ctx, if (ok) tr("Saved to Photos ✓", "اتحفظت في الصور ✓") else tr("Couldn't save", "مقدرتش أحفظ"), Toast.LENGTH_SHORT).show()
-                }
+                if (!owned) { pending = "save"; showBuy = true; return@WallAction }
+                doSave()
             }
             WallAction(Icons.Rounded.FormatQuote, tr("Text", "نص"), photo != null) { showText = true }
             WallAction(Icons.Rounded.Widgets, tr("Widgets", "ويدجت"), photo != null) { showSheet = true }
@@ -436,7 +443,7 @@ fun WallpaperScreen(nav: Nav) {
             change(id) { it.copy(color = a, color2 = b, gDir = 0) }
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
-    if (showBuy) WallBuySheet { showBuy = false }
+    if (showBuy) WallBuySheet(onReward = { if (pending == "apply") showApply = true else if (pending == "save") doSaveRef.value() }) { showBuy = false }
     if (showHistory) ModalBottomSheet(onDismissRequest = { showHistory = false }, containerColor = Color(0xFF1D2231)) {
         var items by remember { mutableStateOf(WallHistory.list(ctx)) }
         Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 24.dp)) {
@@ -688,8 +695,12 @@ private fun applyWallpaper(ctx: android.content.Context, d: WallDesign, photo: B
 /** Wallpapers purchase sheet: monthly, yearly or lifetime (prices come from Google Play). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WallBuySheet(onDismiss: () -> Unit) {
+fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
+    val adReady by com.smrh.zujaj.ads.Ads.ready.collectAsState()
+    val adVer by com.smrh.zujaj.ads.Ads.changes.collectAsState()
+    val flags by com.smrh.zujaj.remote.Flags.flags.collectAsState()
+    LaunchedEffect(Unit) { com.smrh.zujaj.ads.Ads.preload(ctx) }
     val plans by com.smrh.zujaj.billing.Billing.wallPlans.collectAsState()
     val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
     var redeem by remember { mutableStateOf(false) }
@@ -735,6 +746,31 @@ fun WallBuySheet(onDismiss: () -> Unit) {
             PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
                 val a = ctx as? android.app.Activity
                 if (a == null || !com.smrh.zujaj.billing.Billing.buyWall(a, pick)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
+            }
+            if (flags.adsOn && flags.adWallPerDay > 0) {
+                val left = remember(adVer) { com.smrh.zujaj.ads.Ads.left() }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.06f))
+                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp))
+                    .clickable(enabled = left > 0) {
+                        val a = ctx as? android.app.Activity ?: return@clickable
+                        if (!com.smrh.zujaj.ads.Ads.showReward(a) { onDismiss(); onReward() })
+                            Toast.makeText(ctx, tr("The ad is still loading — try again in a few seconds", "الإعلان لسه بيحمّل، جرب كمان ثواني"), Toast.LENGTH_SHORT).show()
+                    }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.PlayCircle, null, tint = if (left > 0) Z.text else Z.sub, modifier = Modifier.size(26.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        if (left > 0) {
+                            Text(tr("Watch a short ad — use it once free", "شوف إعلان قصير واستخدمها مرة ببلاش"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(tr("$left left today", "فاضلك $left النهارده"), color = Z.sub, fontSize = 12.sp)
+                        } else {
+                            val h = (com.smrh.zujaj.ads.Ads.waitMs() / 3_600_000L); val m = (com.smrh.zujaj.ads.Ads.waitMs() / 60_000L) % 60
+                            Text(tr("No free uses left today", "خلصت المرات المجانية النهارده"), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Z.sub)
+                            Text(tr("Come back in ${h}h ${m}m or subscribe", "ارجع بعد ${h} ساعة و${m} دقيقة أو اشترك"), color = Z.sub, fontSize = 12.sp)
+                        }
+                    }
+                    if (left > 0 && !adReady) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Z.sub)
+                }
             }
             Row {
                 TextButton(onClick = { com.smrh.zujaj.billing.Billing.restore() }) { Text(tr("Restore", "استرجاع"), color = Z.sub) }

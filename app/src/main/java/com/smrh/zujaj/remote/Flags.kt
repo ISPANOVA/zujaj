@@ -42,6 +42,12 @@ data class CatalogFlags(
     /** Older copies can't be used until they update. */
     val forceUpdate: Boolean = false,
     val updateNote: String = "",
+    /** Ads for free users (banners on the home page + rewarded ads for wallpapers). */
+    val adsOn: Boolean = true,
+    val adBanner: String = "",
+    val adReward: String = "",
+    /** How many wallpaper Apply/Save a free user gets per 24 h by watching ads. */
+    val adWallPerDay: Int = 3,
 )
 
 object Flags {

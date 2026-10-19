@@ -71,6 +71,7 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.Zujaj"
         tools:targetApi="34">
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
 
         <activity
             android:name=".ui.MainActivity"

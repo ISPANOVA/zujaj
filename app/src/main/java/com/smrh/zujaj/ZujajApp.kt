@@ -13,6 +13,7 @@ class ZujajApp : Application() {
         Prefs.init(this)
         Flags.init(this)
         Billing.init(this)
+        com.smrh.zujaj.ads.Ads.init(this)
         runCatching { Scheduler.ensure(this) }
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             com.smrh.zujaj.remote.Codes.revalidate(this@ZujajApp)

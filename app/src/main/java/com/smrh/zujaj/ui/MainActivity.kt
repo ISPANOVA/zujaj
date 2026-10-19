@@ -68,6 +68,7 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(0), navigationBarStyle = SystemBarStyle.dark(0))
         super.onCreate(savedInstanceState)
+        runCatching { com.smrh.zujaj.ads.Ads.start(this) }
         Prefs.init(this)
         nav = Nav(startScreen(intent))
         if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) {
