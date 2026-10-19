@@ -62,7 +62,7 @@ object Ads {
     private fun boot(a: Activity) {
         if (booted) return
         booted = true
-        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext) } }
+        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext); Banners.ensure(a, 0); Banners.ensure(a, 1) } }
             .onFailure { Log.w("Zujaj", "ads init", it) }
     }
 
@@ -123,22 +123,47 @@ object Ads {
     }
 }
 
-/** A small banner that only free users see. Collapses to nothing if no ad loads. */
+/** A small banner that only free users see. Banners are loaded ahead of time and kept, so they show at once while scrolling. */
 @Composable
-fun AdBanner(modifier: Modifier = Modifier) {
+fun AdBanner(slot: Int = 0, modifier: Modifier = Modifier) {
     val pro by Billing.pro.collectAsState()
     val wall by Billing.wall.collectAsState()
     val flags by Flags.flags.collectAsState()
+    val loaded by Banners.loaded.collectAsState()
     if (pro || wall || !flags.adsOn) return
-    val w = LocalConfiguration.current.screenWidthDp - 32
-    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
-        AndroidView(factory = { c ->
-            AdView(c).apply {
-                setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(c, w))
-                adUnitId = Ads.bannerId()
-                adListener = object : AdListener() {}
-                loadAd(AdRequest.Builder().build())
-            }
-        }, onRelease = { it.destroy() })
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val k = slot % Banners.SLOTS
+    androidx.compose.runtime.LaunchedEffect(k) { Banners.ensure(ctx, k); Banners.ensure(ctx, (k + 1) % Banners.SLOTS) }
+    if (k !in loaded) return
+    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        AndroidView(factory = { Banners.view(it, k).also { v -> (v.parent as? android.view.ViewGroup)?.removeView(v) } },
+            onRelease = { (it.parent as? android.view.ViewGroup)?.removeView(it) })
     }
+}
+
+/** A small pool of banners that stay loaded (and auto-refresh) for the whole session. */
+object Banners {
+    const val SLOTS = 4
+    private val views = arrayOfNulls<AdView>(SLOTS)
+    private val _loaded = MutableStateFlow<Set<Int>>(emptySet())
+    val loaded: StateFlow<Set<Int>> = _loaded
+    private val retry = LongArray(SLOTS)
+
+    fun view(c: Context, k: Int): AdView = views[k] ?: AdView(c.applicationContext).also { v ->
+        views[k] = v
+        val w = (c.resources.displayMetrics.widthPixels / c.resources.displayMetrics.density).toInt() - 32
+        v.setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(c.applicationContext, w))
+        v.adUnitId = Ads.bannerId()
+        v.adListener = object : AdListener() {
+            override fun onAdLoaded() { retry[k] = 0; _loaded.value = _loaded.value + k }
+            override fun onAdFailedToLoad(e: LoadAdError) {
+                Log.w("Zujaj", "banner $k: ${e.code} ${e.message}")
+                retry[k] = (retry[k] * 2).coerceIn(20_000L, 300_000L)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ v.loadAd(AdRequest.Builder().build()) }, retry[k])
+            }
+        }
+        v.loadAd(AdRequest.Builder().build())
+    }
+
+    fun ensure(c: Context, k: Int) { if (Ads.on()) view(c, k) }
 }

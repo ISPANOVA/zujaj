@@ -434,7 +434,7 @@ fun DiscoverTab(nav: Nav) {
             // ---- one shelf per category
             cats.forEachIndexed { ci, cat ->
                 val list = all.filter { it.cat == cat }
-                if (ci > 0 && ci % 3 == 0) item(key = "ad_$ci") { com.smrh.zujaj.ads.AdBanner() }
+                if (ci % 2 == 0) item(key = "ad_$ci") { com.smrh.zujaj.ads.AdBanner(ci / 2) }
                 item(key = "row_${cat.name}") {
                     Column(Modifier.animateItem()) {
                     SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
@@ -467,10 +467,13 @@ fun DiscoverTab(nav: Nav) {
                 val row = rows[i]
                 val shown = remember { androidx.compose.animation.core.Animatable(0f) }
                 LaunchedEffect(Unit) { kotlinx.coroutines.delay((i * 45L).coerceAtMost(270L)); shown.animateTo(1f, androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
-                Row(Modifier.animateItem().graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 40.dp.toPx() }
+                Column(Modifier.animateItem()) {
+                Row(Modifier.graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 40.dp.toPx() }
                     .fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
                     if (row.size == 1 && row[0].shape == Shape.SMALL) Spacer(Modifier.weight(1f))
+                }
+                if (i % 4 == 2) com.smrh.zujaj.ads.AdBanner(i / 4)
                 }
             }
         }
