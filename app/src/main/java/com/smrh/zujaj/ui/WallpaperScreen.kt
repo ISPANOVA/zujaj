@@ -685,47 +685,66 @@ private fun applyWallpaper(ctx: android.content.Context, d: WallDesign, photo: B
 @Suppress("unused") private val keepCatalog = Catalog
 
 
-/** One-time purchase sheet for Apply & Save (price comes from Google Play). */
+/** Wallpapers purchase sheet: monthly, yearly or lifetime (prices come from Google Play). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WallBuySheet(onDismiss: () -> Unit) {
     val ctx = LocalContext.current
-    val price by com.smrh.zujaj.billing.Billing.wallPrice.collectAsState()
+    val plans by com.smrh.zujaj.billing.Billing.wallPlans.collectAsState()
     val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
     var redeem by remember { mutableStateOf(false) }
+    var pick by remember { mutableStateOf(com.smrh.zujaj.billing.WALL_YEARLY) }
     LaunchedEffect(owned) { if (owned) onDismiss() }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D1A12)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(70.dp).clip(RoundedCornerShape(22.dp)).background(Z.pro.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Wallpaper, null, tint = Z.pro, modifier = Modifier.size(36.dp))
+            Box(Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(Z.pro.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Wallpaper, null, tint = Z.pro, modifier = Modifier.size(34.dp))
             }
-            Spacer(Modifier.height(14.dp))
-            Text(tr("Wallpapers — lifetime", "الخلفيات — مدى الحياة"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            Text(tr("Unlock Wallpapers", "افتح الخلفيات"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text(tr("Apply your designs to the home & lock screen and save them to your photos. Pay once, yours forever.",
-                "طبّق تصميماتك على الشاشة الرئيسية وشاشة القفل واحفظها في الصور. تدفع مرة واحدة وتبقى ليك على طول."),
+            Text(tr("Apply your designs to the home & lock screen and save them to your photos.", "طبّق تصميماتك على الشاشة الرئيسية وشاشة القفل واحفظها في الصور."),
                 color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
             listOf(tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
-                tr("Every widget, colours & gradients", "كل الويدجت والألوان والتدرجات"), tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.AutoAwesome, null, tint = Z.pro, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp)
+                tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = Z.pro, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp)
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            PrimaryButton((price?.oneTimePurchaseOfferDetails?.formattedPrice?.let { tr("Unlock for ", "افتحها بـ ") + it } ?: tr("Unlock", "افتحها")) + tr(" · lifetime", " · مدى الحياة"), Modifier.fillMaxWidth()) {
+            Spacer(Modifier.height(16.dp))
+            val options = listOf(
+                Triple(com.smrh.zujaj.billing.WALL_MONTHLY, tr("Monthly", "شهري"), tr("Billed every month", "بيتجدد كل شهر")),
+                Triple(com.smrh.zujaj.billing.WALL_YEARLY, tr("Yearly", "سنوي"), tr("Best value", "أوفر اختيار")),
+                Triple(com.smrh.zujaj.billing.WALL_PRODUCT, tr("Lifetime", "مدى الحياة"), tr("Pay once, yours forever", "تدفع مرة واحدة وتبقى ليك")),
+            )
+            options.forEach { (id, name, sub) ->
+                val on = pick == id
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(18.dp))
+                    .background(if (on) Z.pro.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f))
+                    .border(if (on) 1.5.dp else 1.dp, if (on) Z.pro else Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                    .clickable { pick = id }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(sub, color = Z.sub, fontSize = 12.sp)
+                    }
+                    Text(plans[id]?.price ?: "—", fontWeight = FontWeight.Bold, color = if (on) Z.pro else Z.text)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
                 val a = ctx as? android.app.Activity
-                if (a == null || !com.smrh.zujaj.billing.Billing.buyWall(a)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
+                if (a == null || !com.smrh.zujaj.billing.Billing.buyWall(a, pick)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
             }
             Row {
                 TextButton(onClick = { com.smrh.zujaj.billing.Billing.restore() }) { Text(tr("Restore", "استرجاع"), color = Z.sub) }
                 TextButton(onClick = { redeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = Z.pro) }
             }
+            Text(tr("Subscriptions renew automatically until cancelled in Google Play.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي."), color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center)
         }
     }
     if (redeem) RedeemDialog { redeem = false }
 }
-
 
 /** Shown once after the update: what the new Wallpapers page does. */
 @Composable

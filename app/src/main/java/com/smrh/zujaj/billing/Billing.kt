@@ -23,8 +23,14 @@ enum class Plan(val productId: String, val type: String) {
     LIFETIME("zujaj_pro_lifetime", BillingClient.ProductType.INAPP),
 }
 
-/** One-time purchase that unlocks Apply / Save in Wallpapers. */
+/** Wallpapers (Apply / Save): monthly, yearly or lifetime — separate from Pro. */
 const val WALL_PRODUCT = "zujaj_wallpapers_lifetime"
+const val WALL_MONTHLY = "zujaj_wall_monthly"
+const val WALL_YEARLY = "zujaj_wall_yearly"
+val WALL_IDS = setOf(WALL_PRODUCT, WALL_MONTHLY, WALL_YEARLY)
+
+/** A wallpapers plan as shown in the purchase sheet. */
+data class WallPlan(val id: String, val price: String, val details: ProductDetails, val offerToken: String?)
 
 data class PlanPrice(val plan: Plan, val price: String, val details: ProductDetails, val offerToken: String?, val trial: Boolean)
 
@@ -35,8 +41,8 @@ object Billing {
     val prices: StateFlow<Map<Plan, PlanPrice>> = _prices
     private val _pro = MutableStateFlow(false)
     val pro: StateFlow<Boolean> = _pro
-    private val _wallPrice = MutableStateFlow<ProductDetails?>(null)
-    val wallPrice: StateFlow<ProductDetails?> = _wallPrice
+    private val _wallPlans = MutableStateFlow<Map<String, WallPlan>>(emptyMap())
+    val wallPlans: StateFlow<Map<String, WallPlan>> = _wallPlans
     private val _wall = MutableStateFlow(false)
     val wall: StateFlow<Boolean> = _wall
     fun refreshWall() { _wall.value = Prefs.wallOwned }
@@ -71,9 +77,24 @@ object Billing {
 
     private fun queryProducts() {
         val c = client ?: return
-        c.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(listOf(
-            QueryProductDetailsParams.Product.newBuilder().setProductId(WALL_PRODUCT).setProductType(BillingClient.ProductType.INAPP).build()
-        )).build()) { r, res -> if (r.responseCode == BillingClient.BillingResponseCode.OK) _wallPrice.value = res.productDetailsList.firstOrNull() }
+        for ((type, ids) in listOf(BillingClient.ProductType.INAPP to listOf(WALL_PRODUCT), BillingClient.ProductType.SUBS to listOf(WALL_MONTHLY, WALL_YEARLY))) {
+            c.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(ids.map {
+                QueryProductDetailsParams.Product.newBuilder().setProductId(it).setProductType(type).build()
+            }).build()) { r, res ->
+                if (r.responseCode != BillingClient.BillingResponseCode.OK) return@queryProductDetailsAsync
+                val map = _wallPlans.value.toMutableMap()
+                for (pd in res.productDetailsList) {
+                    if (type == BillingClient.ProductType.INAPP) {
+                        val price = pd.oneTimePurchaseOfferDetails?.formattedPrice ?: continue
+                        map[pd.productId] = WallPlan(pd.productId, price, pd, null)
+                    } else {
+                        val offer = pd.subscriptionOfferDetails?.firstOrNull() ?: continue
+                        map[pd.productId] = WallPlan(pd.productId, offer.pricingPhases.pricingPhaseList.last().formattedPrice, pd, offer.offerToken)
+                    }
+                }
+                _wallPlans.value = map
+            }
+        }
         for (type in listOf(BillingClient.ProductType.SUBS, BillingClient.ProductType.INAPP)) {
             val plans = Plan.values().filter { it.type == type }
             val params = QueryProductDetailsParams.newBuilder().setProductList(
@@ -117,7 +138,7 @@ object Billing {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     list.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it) }.forEach {
                         acknowledge(it)
-                        if (WALL_PRODUCT in it.products) anyWall = true
+                        if (it.products.any { p -> p in WALL_IDS }) anyWall = true
                         else { any = true; Prefs.proPlan = it.products.firstOrNull() ?: "" }
                     }
                 }
@@ -145,11 +166,12 @@ object Billing {
         if (changed) appCtx?.let { WidgetUpdater.updateAll(it) }
     }
 
-    fun buyWall(activity: Activity): Boolean {
+    fun buyWall(activity: Activity, id: String): Boolean {
         val c = client ?: return false
-        val pd = _wallPrice.value ?: return false
-        val r = c.launchBillingFlow(activity, BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(
-            BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(pd).build())).build())
+        val p = _wallPlans.value[id] ?: return false
+        val pp = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(p.details)
+        p.offerToken?.let { pp.setOfferToken(it) }
+        val r = c.launchBillingFlow(activity, BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(pp.build())).build())
         return r.responseCode == BillingClient.BillingResponseCode.OK
     }
 
@@ -167,7 +189,7 @@ object Billing {
             BillingClient.BillingResponseCode.OK -> purchases?.forEach {
                 if (it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it)) {
                     acknowledge(it)
-                    if (WALL_PRODUCT in it.products) {
+                    if (it.products.any { p -> p in WALL_IDS }) {
                         Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"
                     } else {
                         Prefs.proPlan = it.products.firstOrNull() ?: ""
