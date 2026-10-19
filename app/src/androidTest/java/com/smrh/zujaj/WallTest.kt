@@ -47,6 +47,15 @@ class WallTest {
             FileOutputStream(File(out, "wall_$name.png")).use { img.compress(Bitmap.CompressFormat.PNG, 90, it) }
             mask?.let { m -> FileOutputStream(File(out, "mask_$name.png")).use { m.compress(Bitmap.CompressFormat.PNG, 90, it) } }
         }
+        // photo smaller than the screen: each fill mode + glass layers
+        val dome = testCtx.assets.open("dome.jpg").use { BitmapFactory.decodeStream(it) }
+        for (mode in 0..3) {
+            val d = WallDesign(zoom = 0.62f, py = 0.12f, fillMode = mode, layers = listOf(
+                WallLayer(kind = "clock_tall", cx = 0.5f, cy = 0.2f, w = 0.8f, glassFill = true),
+                WallLayer(kind = "date_greg", cx = 0.5f, cy = 0.07f, w = 0.55f, glass = true),
+            ))
+            FileOutputStream(File(out, "fill_$mode.png")).use { WallRender.compose(ctx, d, dome, null, 540, 1170).compress(Bitmap.CompressFormat.PNG, 90, it) }
+        }
         File(out, "wall.txt").writeText(log.toString())
     }
 }
