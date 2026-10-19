@@ -41,7 +41,7 @@ class WallService : WallpaperService() {
             val d = WallDesign.load(ctx)
             val key = d.image + "|" + d.mask
             if (key != loadedFor) {
-                photo = WallRender.loadImage(d.image); mask = WallRender.loadImage(d.mask, 1600); loadedFor = key
+                photo = WallRender.loadImage(d.image); mask = WallRender.loadImage(d.mask, 1600, trim = false); loadedFor = key
             }
             val holder = surfaceHolder
             val f = holder.surfaceFrame

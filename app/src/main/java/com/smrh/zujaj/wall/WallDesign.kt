@@ -27,6 +27,10 @@ data class WallLayer(
     val color2: Int = 0,
     /** gradient direction: 0 top→bottom, 1 left→right, 2 diagonal */
     val gDir: Int = 0,
+    /** custom width/height ratio when stretched from the edges (0 = natural shape) */
+    val ar: Float = 0f,
+    /** frosted-glass plate behind the layer (iPhone style) */
+    val glass: Boolean = false,
 )
 
 @Serializable
@@ -36,6 +40,10 @@ data class WallDesign(
     val layers: List<WallLayer> = emptyList(),
     val blur: Int = 0,
     val dim: Int = 0,
+    /** photo framing: zoom relative to "fill the screen" (below 1 = smaller, edges filled with a blurred copy) and offset as a fraction of the screen */
+    val zoom: Float = 1f,
+    val px: Float = 0f,
+    val py: Float = 0f,
 ) {
     fun toJson() = J.encodeToString(this)
 

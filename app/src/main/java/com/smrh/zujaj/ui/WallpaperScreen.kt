@@ -47,6 +47,7 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OpenInFull
+import androidx.compose.material.icons.rounded.OpenWith
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material.icons.rounded.WaterDrop
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -142,7 +144,7 @@ fun WallpaperScreen(nav: Nav) {
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     var mask by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) { photo = WallRender.loadImage(design.image); mask = WallRender.loadImage(design.mask, 1600) }
+        withContext(Dispatchers.IO) { photo = WallRender.loadImage(design.image); mask = WallRender.loadImage(design.mask, 1600, trim = false) }
     }
     // save a moment after the last change (not on every finger move)
     LaunchedEffect(design) { kotlinx.coroutines.delay(500); withContext(Dispatchers.IO) { WallDesign.save(ctx, design) } }
@@ -158,6 +160,11 @@ fun WallpaperScreen(nav: Nav) {
     var menu by remember { mutableStateOf(false) }
     var snapX by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    // "move photo" mode: live zoom / pan, saved when Done is pressed
+    var adjust by remember { mutableStateOf(false) }
+    var az by remember { mutableFloatStateOf(1f) }
+    var ax by remember { mutableFloatStateOf(0f) }
+    var ay by remember { mutableFloatStateOf(0f) }
     var showBuy by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf("") }
     val doSaveRef = remember { mutableStateOf({}) }
@@ -169,16 +176,16 @@ fun WallpaperScreen(nav: Nav) {
 
     // static parts of the preview — only rebuilt when the photo / mask / background settings change
     val pw = size.width; val ph = size.height
-    val bg by produceState<ImageBitmap?>(null, photo, design.blur, design.dim, pw) {
+    val bg by produceState<ImageBitmap?>(null, photo, design.blur, design.dim, design.zoom, design.px, design.py, pw) {
         value = if (pw <= 0) null else withContext(Dispatchers.Default) { runCatching { WallRender.background(design, photo, pw, ph).asImageBitmap() }.getOrNull() }
     }
-    val subject by produceState<ImageBitmap?>(null, photo, mask, design.dim, pw) {
+    val subject by produceState<ImageBitmap?>(null, photo, mask, design.dim, design.zoom, design.px, design.py, pw) {
         val p = photo; val m = mask
         value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.subject(design, p, m, pw, ph).asImageBitmap() }.getOrNull() }
     }
-    val outline by produceState<ImageBitmap?>(null, photo, mask, pw) {
+    val outline by produceState<ImageBitmap?>(null, photo, mask, design.zoom, design.px, design.py, pw) {
         val p = photo; val m = mask
-        value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.outline(p, m, pw, ph, accent.toArgbInt()).asImageBitmap() }.getOrNull() }
+        value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.outline(p, m, pw, ph, accent.toArgbInt(), design).asImageBitmap() }.getOrNull() }
     }
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -191,8 +198,9 @@ fun WallpaperScreen(nav: Nav) {
             File(design.mask).takeIf { design.mask.isNotBlank() }?.delete()
             photo = withContext(Dispatchers.IO) { WallRender.loadImage(f.path) }
             mask = null
-            update(design.copy(image = f.path, mask = "", layers = design.layers.map { it.copy(behind = false) }))
+            update(design.copy(image = f.path, mask = "", zoom = 1f, px = 0f, py = 0f, layers = design.layers.map { it.copy(behind = false) }))
             busy = false
+            az = 1f; ax = 0f; ay = 0f; adjust = true; selected = null
         }
     }
 
@@ -286,11 +294,19 @@ fun WallpaperScreen(nav: Nav) {
                         Text(tr("Any photo from your phone", "أي صورة من تليفونك"), color = Z.sub, fontSize = 13.sp)
                     }
                 } else {
-                    bg?.let { Image(it, null, Modifier.fillMaxSize()) }
+                    val photoMove = Modifier.graphicsLayer {
+                        if (adjust) {
+                            val k = az / design.zoom
+                            scaleX = k; scaleY = k
+                            translationX = ax * size.width - k * design.px * size.width
+                            translationY = ay * size.height - k * design.py * size.height
+                        }
+                    }
+                    bg?.let { Image(it, null, Modifier.fillMaxSize().then(photoMove)) }
                     val hasMask = mask != null && subject != null
-                    design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id) }
-                    if (hasMask && design.layers.any { it.behind }) subject?.let { Image(it, null, Modifier.fillMaxSize().graphicsLayer { alpha = subjectIn.value }) }
-                    design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id) }
+                    design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if (l.glass && !adjust) bg else null) }
+                    if (hasMask && design.layers.any { it.behind }) subject?.let { Image(it, null, Modifier.fillMaxSize().then(photoMove).graphicsLayer { alpha = subjectIn.value }) }
+                    design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if (l.glass && !adjust) bg else null) }
                     // "found it" — glowing outline sweeping across the subject
                     if (found.value > 0f) outline?.let { o ->
                         Canvas(Modifier.fillMaxSize()) {
@@ -317,7 +333,21 @@ fun WallpaperScreen(nav: Nav) {
                         modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 8.dp))
                 }
                 // gestures: tap selects, drag moves smoothly (state only, nothing is re-rendered)
-                if (photo != null) Box(Modifier.fillMaxSize()
+                if (photo != null && adjust) Box(Modifier.fillMaxSize().pointerInput(Unit) {
+                    androidx.compose.foundation.gestures.detectTransformGestures { centroid, pan, zoom, _ ->
+                        val W = size.width.toFloat(); val H = size.height.toFloat()
+                        val nz = (az * zoom).coerceIn(0.35f, 5f)
+                        val k = nz / az
+                        // zoom around the fingers: keep the point under the centroid in place
+                        val cx = W / 2 + ax * W; val cy = H / 2 + ay * H
+                        val ncx = centroid.x + (cx - centroid.x) * k + pan.x
+                        val ncy = centroid.y + (cy - centroid.y) * k + pan.y
+                        az = nz
+                        ax = ((ncx - W / 2) / W).coerceIn(-1.2f, 1.2f)
+                        ay = ((ncy - H / 2) / H).coerceIn(-1.2f, 1.2f)
+                    }
+                })
+                if (photo != null && !adjust) Box(Modifier.fillMaxSize()
                     .pointerInput(Unit) {
                         detectTapGestures { p ->
                             val hit = design.layers.lastOrNull { l -> WallRender.rect(l, size.width, size.height).contains(p.x, p.y) }
@@ -348,7 +378,7 @@ fun WallpaperScreen(nav: Nav) {
                     })
                 if (snapX) Canvas(Modifier.fillMaxSize()) { drawLine(accent, Offset(this.size.width / 2, 0f), Offset(this.size.width / 2, this.size.height), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))) }
                 // selection box + handles
-                design.layers.firstOrNull { it.id == selected }?.let { l ->
+                if (!adjust) design.layers.firstOrNull { it.id == selected }?.let { l ->
                     val rc = WallRender.rect(l, size.width, size.height)
                     val dens = LocalDensity.current
                     Canvas(Modifier.fillMaxSize()) {
@@ -372,9 +402,55 @@ fun WallpaperScreen(nav: Nav) {
                             change(l.id) { it.copy(w = (it.w + (-d.x + d.y) / size.width * 1.4f).coerceIn(0.12f, 1.2f)) }
                         }
                     })
+                    // edge handles: stretch only the width or only the height (free shape, like iPhone)
+                    @Composable
+                    fun edge(x: Float, y: Float, vertical: Boolean, onDrag: (Float) -> Unit) {
+                        val lw = with(dens) { (if (vertical) 10.dp else 34.dp).toPx() }; val lh = with(dens) { (if (vertical) 34.dp else 10.dp).toPx() }
+                        val touch = with(dens) { 44.dp.toPx() }
+                        Box(Modifier.offset { IntOffset((x - touch / 2).roundToInt(), (y - touch / 2).roundToInt()) }.size(44.dp)
+                            .pointerInput(l.id, vertical) { detectDragGestures { ch, d -> ch.consume(); onDrag(if (vertical) d.x else d.y) } },
+                            contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(with(dens) { lw.toDp() }, with(dens) { lh.toDp() }).clip(RoundedCornerShape(50)).background(Color.White)
+                                .border(1.dp, Color.Black.copy(alpha = 0.25f), RoundedCornerShape(50)))
+                        }
+                    }
+                    edge(rc.right, rc.centerY(), true) { dx ->
+                        change(l.id) { o ->
+                            val hPx = o.w * size.width / WallRender.aspect(o)
+                            val nw = (o.w + dx / size.width).coerceIn(0.1f, 1.2f)
+                            o.copy(w = nw, ar = (nw * size.width / hPx).coerceIn(0.25f, 10f))
+                        }
+                    }
+                    edge(rc.centerX(), rc.bottom, false) { dy ->
+                        change(l.id) { o ->
+                            val hPx = (o.w * size.width / WallRender.aspect(o) + dy).coerceAtLeast(16f)
+                            o.copy(ar = (o.w * size.width / hPx).coerceIn(0.25f, 10f))
+                        }
+                    }
+                }
+                // move / zoom the photo
+                if (photo != null) {
+                    if (adjust) {
+                        Text(tr("Pinch to zoom · drag to move", "قرّب وبعّد بصباعين · اسحب عشان تحرك الصورة"), color = Color.White, fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 12.dp, vertical = 6.dp))
+                        Row(Modifier.align(Alignment.BottomCenter).padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(tr("Reset", "رجّعها"), color = Color.White, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).clickable { az = 1f; ax = 0f; ay = 0f }.padding(horizontal = 18.dp, vertical = 10.dp))
+                            Text(tr("Done", "تمام"), color = Color.Black, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(accent).clickable {
+                                    update(design.copy(zoom = az, px = ax, py = ay)); adjust = false
+                                }.padding(horizontal = 22.dp, vertical = 10.dp))
+                        }
+                    } else {
+                        Box(Modifier.align(Alignment.TopEnd).padding(12.dp).size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.5f))
+                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                            .clickable { az = design.zoom; ax = design.px; ay = design.py; selected = null; adjust = true }, contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.OpenWith, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
                 }
                 // ✦ depth button
-                if (photo != null) {
+                if (photo != null && !adjust) {
                     val spin = rememberInfiniteTransition(label = "spark")
                     val r by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "r")
                     val on = design.layers.any { it.behind } && mask != null
@@ -439,7 +515,7 @@ fun WallpaperScreen(nav: Nav) {
         if (l == null) colorFor = null
         else LayerColorSheet(l, onAuto = {
             val p = photo ?: return@LayerColorSheet
-            val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1), design.dim)
+            val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1), design.dim, design)
             change(id) { it.copy(color = a, color2 = b, gDir = 0) }
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
@@ -460,7 +536,7 @@ fun WallpaperScreen(nav: Nav) {
                                     scope.launch {
                                         val d = withContext(Dispatchers.IO) { WallHistory.open(ctx, it) }
                                         photo = withContext(Dispatchers.IO) { WallRender.loadImage(d.image) }
-                                        mask = withContext(Dispatchers.IO) { WallRender.loadImage(d.mask, 1600) }
+                                        mask = withContext(Dispatchers.IO) { WallRender.loadImage(d.mask, 1600, trim = false) }
                                         design = d; selected = null; showHistory = false
                                     }
                                 },
@@ -493,18 +569,29 @@ private fun Color.toArgbInt(): Int = android.graphics.Color.argb((alpha * 255).t
 
 /** One layer drawn from its own cached bitmap and placed with an offset — moving it is free. */
 @Composable
-private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean) {
+private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: ImageBitmap? = null) {
     val ctx = LocalContext.current
     if (box.width <= 0) return
     val rc = WallRender.rect(l, box.width, box.height)
     val wBucket = (rc.width() / 24f).roundToInt() * 24 // re-render only every 24 px of resizing
     val minute = rememberTicker(30_000L)
-    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute) {
+    val arKey = (l.ar * 50).roundToInt()
+    // frosted glass plate, rebuilt only every few px of movement
+    if (under != null) {
+        val gx = (rc.left / 6f).roundToInt(); val gy = (rc.top / 6f).roundToInt(); val gh = (rc.height() / 6f).roundToInt()
+        val plate by produceState<ImageBitmap?>(null, under, gx, gy, wBucket, gh) {
+            value = withContext(Dispatchers.Default) { runCatching { WallRender.glassPlate(under.asAndroidBitmap(), rc)?.asImageBitmap() }.getOrNull() }
+        }
+        val gr = WallRender.glassRect(rc)
+        val d0 = LocalDensity.current
+        plate?.let { Image(it, null, Modifier.offset { IntOffset(gr.left.roundToInt(), gr.top.roundToInt()) }.size(with(d0) { gr.width().toDp() }, with(d0) { gr.height().toDp() })) }
+    }
+    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute, arKey) {
         value = withContext(Dispatchers.Default) { runCatching { WallRender.styled(ctx, l, wBucket.coerceAtLeast(24)).asImageBitmap() }.getOrNull() }
     }
     val dens = LocalDensity.current
     bmp?.let { b ->
-        val h = rc.width() * b.height / b.width.toFloat()
+        val h = if (l.ar > 0f) rc.height() else rc.width() * b.height / b.width.toFloat()
         Image(b, null, Modifier
             .offset { IntOffset(rc.left.roundToInt(), (rc.centerY() - h / 2).roundToInt()) }
             .size(with(dens) { rc.width().toDp() }, with(dens) { h.toDp() })
@@ -559,6 +646,14 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLay
     var custom by remember { mutableIntStateOf(0) } // 1 = first colour, 2 = second
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D2231)) {
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 28.dp)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                .clickable { onChange(l.copy(glass = !l.glass)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Glass background", "خلفية زجاج"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(tr("Frosted glass behind it, like iPhone", "زجاج مطفي وراه زي الآيفون"), color = Z.sub, fontSize = 12.sp)
+                }
+                Switch(l.glass, { onChange(l.copy(glass = it)) })
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("Colour", "اللون"), fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))
                 Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {

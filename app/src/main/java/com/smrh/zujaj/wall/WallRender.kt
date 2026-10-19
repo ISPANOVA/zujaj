@@ -39,23 +39,83 @@ object WallRender {
         "prayer_next" to 4f, "prayer_in" to 4f, "prayer_row" to 3.6f, "location" to 4f, "text" to 3.4f,
     )
 
-    fun aspect(l: WallLayer): Float = if (l.kind == "widget") Catalog.byId(l.styleId)?.shape?.let { it.dw / it.dh } ?: 2f
+    fun aspect(l: WallLayer): Float = if (l.ar > 0f) l.ar else naturalAspect(l)
+    fun naturalAspect(l: WallLayer): Float = if (l.kind == "widget") Catalog.byId(l.styleId)?.shape?.let { it.dw / it.dh } ?: 2f
         else kinds.firstOrNull { it.first == l.kind }?.second ?: 3f
 
-    fun loadImage(path: String, maxSide: Int = 2400): Bitmap? = runCatching {
+    fun loadImage(path: String, maxSide: Int = 2400, trim: Boolean = true): Bitmap? = runCatching {
         if (path.isBlank() || !File(path).exists()) return null
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, o)
         var s = 1
         while (max(o.outWidth, o.outHeight) / (s * 2) >= maxSide) s *= 2
-        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = s })
+        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = s })?.let { if (trim) trimBars(it) else it }
     }.getOrNull()
 
-    /** Center-crop matrix of an image into W×H. */
-    fun cropMatrix(iw: Int, ih: Int, W: Int, H: Int): Matrix {
-        val sc = max(W / iw.toFloat(), H / ih.toFloat())
-        return Matrix().apply { setScale(sc, sc); postTranslate((W - iw * sc) / 2f, (H - ih * sc) / 2f) }
+    /** Cuts off flat black (or white) bars around a photo — e.g. a screenshot of a picture. */
+    fun trimBars(b: Bitmap): Bitmap {
+        val w = b.width; val h = b.height
+        if (w < 40 || h < 40) return b
+        fun flat(px: IntArray): Boolean {
+            val first = px[0]
+            val dark = Color.red(first) < 28 && Color.green(first) < 28 && Color.blue(first) < 28
+            val light = Color.red(first) > 235 && Color.green(first) > 235 && Color.blue(first) > 235
+            if (!dark && !light) return false
+            return px.all { abs(Color.red(it) - Color.red(first)) < 14 && abs(Color.green(it) - Color.green(first)) < 14 && abs(Color.blue(it) - Color.blue(first)) < 14 }
+        }
+        val step = 4
+        fun row(y: Int) = IntArray(w / step) { b.getPixel(it * step, y) }
+        fun col(x: Int) = IntArray(h / step) { b.getPixel(x, it * step) }
+        var top = 0; while (top < h / 2 && flat(row(top))) top++
+        var bot = h - 1; while (bot > top + h / 4 && flat(row(bot))) bot--
+        var left = 0; while (left < w / 2 && flat(col(left))) left++
+        var right = w - 1; while (right > left + w / 4 && flat(col(right))) right--
+        val nw = right - left + 1; val nh = bot - top + 1
+        if (nw >= w - 4 && nh >= h - 4) return b
+        if (nw < w * 0.3f || nh < h * 0.3f) return b
+        return Bitmap.createBitmap(b, left, top, nw, nh)
     }
+
+    /** Matrix placing the photo into W×H: fills the screen, then the user's zoom / move on top. */
+    fun cropMatrix(iw: Int, ih: Int, W: Int, H: Int, d: WallDesign? = null): Matrix {
+        val sc = max(W / iw.toFloat(), H / ih.toFloat()) * (d?.zoom ?: 1f)
+        return Matrix().apply { setScale(sc, sc); postTranslate((W - iw * sc) / 2f + (d?.px ?: 0f) * W, (H - ih * sc) / 2f + (d?.py ?: 0f) * H) }
+    }
+
+    /** When the photo is smaller than the screen, the empty parts get a soft blurred copy of it. */
+    private fun fill(c: Canvas, photo: Bitmap, d: WallDesign, W: Int, H: Int) {
+        val m = cropMatrix(photo.width, photo.height, W, H, d)
+        val r = RectF(0f, 0f, photo.width.toFloat(), photo.height.toFloat()); m.mapRect(r)
+        if (r.left <= 0.5f && r.top <= 0.5f && r.right >= W - 0.5f && r.bottom >= H - 0.5f) return
+        val small = Bitmap.createScaledBitmap(photo, (photo.width / 24).coerceAtLeast(2), (photo.height / 24).coerceAtLeast(2), true)
+        val cover = cropMatrix(small.width, small.height, W, H)
+        c.drawBitmap(small, cover, Paint(Paint.FILTER_BITMAP_FLAG))
+        c.drawColor(Color.argb(60, 0, 0, 0))
+    }
+
+    /** Frosted glass plate for the area [rc] of an already-drawn wallpaper [under]. */
+    fun glassPlate(under: Bitmap, rc: RectF): Bitmap? {
+        val pad = minOf(rc.width(), rc.height()) * 0.12f
+        val r = RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad)
+        val x0 = r.left.toInt().coerceIn(0, under.width - 2); val y0 = r.top.toInt().coerceIn(0, under.height - 2)
+        val x1 = r.right.toInt().coerceIn(x0 + 1, under.width); val y1 = r.bottom.toInt().coerceIn(y0 + 1, under.height)
+        val w = (r.width().toInt()).coerceAtLeast(2); val h = (r.height().toInt()).coerceAtLeast(2)
+        val crop = Bitmap.createBitmap(under, x0, y0, x1 - x0, y1 - y0)
+        val small = Bitmap.createScaledBitmap(crop, (crop.width / 14).coerceAtLeast(2), (crop.height / 14).coerceAtLeast(2), true)
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val rad = minOf(w, h) * 0.24f
+        val path = android.graphics.Path().apply { addRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), rad, rad, android.graphics.Path.Direction.CW) }
+        c.save(); c.clipPath(path)
+        c.drawBitmap(small, null, RectF(x0 - r.left, y0 - r.top, x1 - r.left, y1 - r.top), Paint(Paint.FILTER_BITMAP_FLAG))
+        c.drawColor(Color.argb(46, 255, 255, 255))
+        c.drawRect(0f, 0f, w.toFloat(), h * 0.5f, Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h * 0.5f, Color.argb(34, 255, 255, 255), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP) })
+        c.restore()
+        val st = minOf(w, h) * 0.012f + 1f
+        c.drawRoundRect(RectF(st / 2, st / 2, w - st / 2, h - st / 2), rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = st; color = Color.argb(90, 255, 255, 255) })
+        return out
+    }
+    fun glassRect(rc: RectF): RectF { val pad = minOf(rc.width(), rc.height()) * 0.12f; return RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad) }
 
     /** Box of a layer in px. */
     fun rect(l: WallLayer, W: Int, H: Int): RectF {
@@ -88,7 +148,8 @@ object WallRender {
             if (st != null) {
                 val cfg = st.defaultConfig().copy(bg = false, color1 = l.color)
                 val d = w / st.shape.dw
-                return runCatching { Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, true, d, RenderData(now)).bitmap }.getOrElse { Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888) }
+                val dh = if (l.ar > 0f) st.shape.dw / l.ar else st.shape.dh
+                return runCatching { Renderer.render(ctx, cfg, st.shape.dw, dh, true, d, RenderData(now)).bitmap }.getOrElse { Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888) }
             }
         }
         val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -174,7 +235,8 @@ object WallRender {
         val c = Canvas(out)
         c.drawColor(Color.rgb(16, 20, 30))
         if (photo == null) return out
-        val m = cropMatrix(photo.width, photo.height, W, H)
+        fill(c, photo, d, W, H)
+        val m = cropMatrix(photo.width, photo.height, W, H, d)
         val bp = Paint(Paint.FILTER_BITMAP_FLAG)
         if (d.blur > 0) {
             val k = (1 + d.blur / 4).coerceAtMost(24)
@@ -187,7 +249,7 @@ object WallRender {
 
     /** Only the subject (sharp), transparent elsewhere. */
     fun subject(d: WallDesign, photo: Bitmap, mask: Bitmap, W: Int, H: Int): Bitmap {
-        val m = cropMatrix(photo.width, photo.height, W, H)
+        val m = cropMatrix(photo.width, photo.height, W, H, d)
         val sub = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val sc = Canvas(sub)
         sc.drawBitmap(photo, m, Paint(Paint.FILTER_BITMAP_FLAG))
@@ -198,8 +260,8 @@ object WallRender {
     }
 
     /** A soft glowing outline of the subject (for the "found it" animation). */
-    fun outline(photo: Bitmap, mask: Bitmap, W: Int, H: Int, color: Int): Bitmap {
-        val m = cropMatrix(photo.width, photo.height, W, H)
+    fun outline(photo: Bitmap, mask: Bitmap, W: Int, H: Int, color: Int, d: WallDesign? = null): Bitmap {
+        val m = cropMatrix(photo.width, photo.height, W, H, d)
         val full = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         Canvas(full).drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, Paint(Paint.FILTER_BITMAP_FLAG))
         val a = full.extractAlpha()
@@ -297,10 +359,11 @@ object WallRender {
      * Two colours that suit the wallpaper: looks at what is actually behind the layer (its main colour)
      * and at the photo's palette, then picks two harmonious accents and adjusts them to stay readable there.
      */
-    fun autoColors(photo: Bitmap, l: WallLayer, W: Int, H: Int, dim: Int = 0): Pair<Int, Int> {
+    fun autoColors(photo: Bitmap, l: WallLayer, W: Int, H: Int, dim: Int = 0, d: WallDesign? = null): Pair<Int, Int> {
         val rc = rect(l, W, H)
-        val sc = maxOf(W / photo.width.toFloat(), H / photo.height.toFloat())
-        val ox = (W - photo.width * sc) / 2; val oy = (H - photo.height * sc) / 2
+        val mv = FloatArray(9).also { cropMatrix(photo.width, photo.height, W, H, d).getValues(it) }
+        val sc = mv[Matrix.MSCALE_X]
+        val ox = mv[Matrix.MTRANS_X]; val oy = mv[Matrix.MTRANS_Y]
         val x0 = ((rc.left - ox) / sc).toInt().coerceIn(0, photo.width - 2); val x1 = ((rc.right - ox) / sc).toInt().coerceIn(x0 + 1, photo.width)
         val y0 = ((rc.top - oy) / sc).toInt().coerceIn(0, photo.height - 2); val y1 = ((rc.bottom - oy) / sc).toInt().coerceIn(y0 + 1, photo.height)
         // what's right behind the layer
@@ -327,8 +390,9 @@ object WallRender {
         return top to bottom
     }
 
-    private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime) {
+    private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime, under: Bitmap? = null) {
         val rc = rect(l, W, H)
+        if (l.glass && under != null) glassPlate(under, rc)?.let { c.drawBitmap(it, null, glassRect(rc), Paint(Paint.FILTER_BITMAP_FLAG)) }
         val b = styled(ctx, l, rc.width().toInt(), now)
         val dst = RectF(rc.left, rc.centerY() - rc.width() / (b.width / b.height.toFloat()) / 2, rc.right, rc.centerY() + rc.width() / (b.width / b.height.toFloat()) / 2)
         if (l.shadow) {
@@ -347,7 +411,8 @@ object WallRender {
         val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
         c.drawColor(Color.rgb(16, 20, 30))
-        val m = photo?.let { cropMatrix(it.width, it.height, W, H) }
+        if (photo != null) fill(c, photo, d, W, H)
+        val m = photo?.let { cropMatrix(it.width, it.height, W, H, d) }
         if (photo != null) {
             val bp = Paint(Paint.FILTER_BITMAP_FLAG)
             if (d.blur > 0) {
@@ -357,7 +422,7 @@ object WallRender {
             } else c.drawBitmap(photo, m!!, bp)
             if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
         }
-        for (l in d.layers.filter { it.behind && mask != null }) drawLayer(ctx, c, l, W, H, now)
+        for (l in d.layers.filter { it.behind && mask != null }) drawLayer(ctx, c, l, W, H, now, out)
         if (photo != null && mask != null && d.layers.any { it.behind }) {
             // the subject, cut out with the mask, drawn over the "behind" layers
             val sub = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
@@ -368,7 +433,7 @@ object WallRender {
             sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
             c.drawBitmap(sub, 0f, 0f, Paint().apply { alpha = (255 * reveal).toInt() })
         }
-        for (l in d.layers.filter { !it.behind || mask == null }) drawLayer(ctx, c, l, W, H, now)
+        for (l in d.layers.filter { !it.behind || mask == null }) drawLayer(ctx, c, l, W, H, now, out)
         return out
     }
 }
