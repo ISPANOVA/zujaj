@@ -137,10 +137,9 @@ object WallRender {
             }
         }
         // the photo itself too, so the blur never mixes in empty (dark) pixels at the seam
-        if (d.fillMode != 2) e.drawBitmap(photo, null, r, p)
+        if (d.fillMode < 2) e.drawBitmap(photo, null, r, p)
         val blurred = smoothBlur(ext, when (d.fillMode) { 2 -> 32; 1 -> 8; 3 -> 1; else -> 6 })
         c.drawBitmap(blurred, 0f, 0f, p)
-        if (d.fillMode == 2) c.drawColor(Color.argb(50, 0, 0, 0))
     }
 
     /** Draws the photo; where it meets a filled gap its edge is feathered so the seam disappears. */
