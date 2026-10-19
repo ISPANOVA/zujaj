@@ -252,9 +252,9 @@ fun WallpaperScreen(nav: Nav) {
                     val y by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = LinearEasing), RepeatMode.Reverse), label = "y")
                     Canvas(Modifier.fillMaxSize()) {
                         drawRect(Color.Black.copy(alpha = 0.25f))
-                        val yy = size.height * y
-                        drawRect(Brush.verticalGradient(listOf(Color.Transparent, accent.copy(alpha = 0.45f), Color.Transparent), yy - 120f, yy + 120f), Offset(0f, yy - 120f), androidx.compose.ui.geometry.Size(size.width, 240f))
-                        drawLine(Color.White.copy(alpha = 0.9f), Offset(0f, yy), Offset(size.width, yy), 3f)
+                        val yy = this.size.height * y
+                        drawRect(Brush.verticalGradient(listOf(Color.Transparent, accent.copy(alpha = 0.45f), Color.Transparent), yy - 120f, yy + 120f), Offset(0f, yy - 120f), androidx.compose.ui.geometry.Size(this.size.width, 240f))
+                        drawLine(Color.White.copy(alpha = 0.9f), Offset(0f, yy), Offset(this.size.width, yy), 3f)
                     }
                     Text(tr("Finding the subject…", "بحدد الشكل اللي في الصورة…"), color = Color.White, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 8.dp))
@@ -288,7 +288,7 @@ fun WallpaperScreen(nav: Nav) {
                             change(s.id) { it.copy(cx = cx.coerceIn(0.02f, 0.98f), cy = cy) }
                         }
                     })
-                if (snapX) Canvas(Modifier.fillMaxSize()) { drawLine(accent, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))) }
+                if (snapX) Canvas(Modifier.fillMaxSize()) { drawLine(accent, Offset(this.size.width / 2, 0f), Offset(this.size.width / 2, this.size.height), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))) }
                 // selection box + handles
                 design.layers.firstOrNull { it.id == selected }?.let { l ->
                     val rc = WallRender.rect(l, size.width, size.height)
