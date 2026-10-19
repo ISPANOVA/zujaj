@@ -30,7 +30,9 @@ object Segment {
             val px = IntArray(src.width * src.height) { Color.argb((buf.get().coerceIn(0f, 1f) * 255).toInt(), 0, 0, 0) }
             Bitmap.createBitmap(px, src.width, src.height, Bitmap.Config.ARGB_8888)
         }
-        subject.getOrNull()?.let { return Result.Ok(it) }
+        // a "subject" covering almost the whole photo (or nothing) is useless → sky detection instead
+        subject.getOrNull()?.let { m -> val cv = WallRender.coverage(m); if (cv in 0.03f..0.62f) return Result.Ok(m) }
+        WallRender.skyMask(photo)?.let { return Result.Ok(it) }
         // ask Play services to download the model for next time
         runCatching {
             val client = com.google.mlkit.vision.segmentation.subject.SubjectSegmentation.getClient(
@@ -52,7 +54,8 @@ object Segment {
             if (any < w * h / 200) error("nothing found")
             Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
         }
-        selfie.getOrNull()?.let { return Result.Ok(it) }
+        selfie.getOrNull()?.let { m -> if (WallRender.coverage(m) < 0.8f) return Result.Ok(m) }
+        subject.getOrNull()?.let { return Result.Ok(it) }
         return Result.Fail(subject.exceptionOrNull()?.message ?: "not found")
     }
 }

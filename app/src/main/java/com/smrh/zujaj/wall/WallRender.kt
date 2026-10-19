@@ -152,9 +152,140 @@ object WallRender {
         return b
     }
 
+    /** Layer bitmap with its solid/gradient colour applied. */
+    fun styled(ctx: Context, l: WallLayer, wPx: Int, now: ZonedDateTime = ZonedDateTime.now()): Bitmap {
+        val b = layerBitmap(ctx, l, wPx, now)
+        if (l.color2 == 0) return b
+        val out = if (b.isMutable) b else b.copy(Bitmap.Config.ARGB_8888, true)
+        val c = Canvas(out)
+        val (x1, y1) = when (l.gDir) { 1 -> out.width.toFloat() to 0f; 2 -> out.width.toFloat() to out.height.toFloat(); else -> 0f to out.height.toFloat() }
+        val p = Paint().apply {
+            shader = android.graphics.LinearGradient(0f, 0f, x1, y1, l.color, l.color2, android.graphics.Shader.TileMode.CLAMP)
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        }
+        c.drawRect(0f, 0f, out.width.toFloat(), out.height.toFloat(), p)
+        return out
+    }
+
+    /** The photo (blurred/darkened as set), cropped to W×H. */
+    fun background(d: WallDesign, photo: Bitmap?, W: Int, H: Int): Bitmap {
+        val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        c.drawColor(Color.rgb(16, 20, 30))
+        if (photo == null) return out
+        val m = cropMatrix(photo.width, photo.height, W, H)
+        val bp = Paint(Paint.FILTER_BITMAP_FLAG)
+        if (d.blur > 0) {
+            val k = (1 + d.blur / 4).coerceAtMost(24)
+            val small = Bitmap.createScaledBitmap(photo, (photo.width / k).coerceAtLeast(2), (photo.height / k).coerceAtLeast(2), true)
+            c.drawBitmap(small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, bp)
+        } else c.drawBitmap(photo, m, bp)
+        if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
+        return out
+    }
+
+    /** Only the subject (sharp), transparent elsewhere. */
+    fun subject(d: WallDesign, photo: Bitmap, mask: Bitmap, W: Int, H: Int): Bitmap {
+        val m = cropMatrix(photo.width, photo.height, W, H)
+        val sub = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val sc = Canvas(sub)
+        sc.drawBitmap(photo, m, Paint(Paint.FILTER_BITMAP_FLAG))
+        if (d.dim > 0) sc.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0), PorterDuff.Mode.SRC_ATOP)
+        val mp = Paint(Paint.FILTER_BITMAP_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
+        sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
+        return sub
+    }
+
+    /** A soft glowing outline of the subject (for the "found it" animation). */
+    fun outline(photo: Bitmap, mask: Bitmap, W: Int, H: Int, color: Int): Bitmap {
+        val m = cropMatrix(photo.width, photo.height, W, H)
+        val full = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        Canvas(full).drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, Paint(Paint.FILTER_BITMAP_FLAG))
+        val a = full.extractAlpha()
+        val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; maskFilter = BlurMaskFilter(W * 0.012f, BlurMaskFilter.Blur.OUTER) }
+        c.drawBitmap(a, 0f, 0f, glow)
+        val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.WHITE; maskFilter = BlurMaskFilter(W * 0.003f, BlurMaskFilter.Blur.OUTER) }
+        c.drawBitmap(a, 0f, 0f, rim)
+        return out
+    }
+
+    /**
+     * Mask of everything that is NOT sky: flood-fills from the top edge over pixels that look
+     * like the sky. Great for mountains, domes, skylines and trees.
+     */
+    fun skyMask(photo: Bitmap): Bitmap? {
+        val w = 220; val h = (photo.height * w / photo.width.toFloat()).toInt().coerceAtLeast(10)
+        val s = Bitmap.createScaledBitmap(photo, w, h, true)
+        val px = IntArray(w * h); s.getPixels(px, 0, w, 0, 0, w, h)
+        fun d(a: Int, b: Int): Int { val dr = Color.red(a) - Color.red(b); val dg = Color.green(a) - Color.green(b); val db = Color.blue(a) - Color.blue(b); return dr * dr + dg * dg + db * db }
+        val sky = BooleanArray(w * h)
+        val q = ArrayDeque<Int>()
+        for (x in 0 until w) { sky[x] = true; q.add(x) }
+        val local = 18 * 18 * 3
+        // the sky's colour drifts from top to horizon; allow that, but not into the subject
+        var mr = 0L; var mg = 0L; var mb = 0L; val band = (h / 20).coerceAtLeast(1)
+        for (i in 0 until w * band) { mr += Color.red(px[i]); mg += Color.green(px[i]); mb += Color.blue(px[i]) }
+        val mean = Color.rgb((mr / (w * band)).toInt(), (mg / (w * band)).toInt(), (mb / (w * band)).toInt())
+        val global = 85 * 85 * 3
+        while (q.isNotEmpty()) {
+            val i = q.removeFirst(); val x = i % w; val y = i / w
+            for ((nx, ny) in listOf(x - 1 to y, x + 1 to y, x to y + 1, x to y - 1)) {
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                val j = ny * w + nx
+                if (sky[j]) continue
+                if (d(px[i], px[j]) < local && d(px[j], mean) < global) { sky[j] = true; q.add(j) }
+            }
+        }
+        val count = sky.count { it }
+        if (count < w * h / 12 || count > w * h * 0.92) return null
+        val out = IntArray(w * h) { if (sky[it]) 0 else Color.BLACK }
+        val small = Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
+        // smooth edges
+        val big = Bitmap.createScaledBitmap(small, w * 4, h * 4, true)
+        return Bitmap.createScaledBitmap(Bitmap.createScaledBitmap(big, w * 2, h * 2, true), photo.width.coerceAtMost(1600), (photo.height * (photo.width.coerceAtMost(1600) / photo.width.toFloat())).toInt(), true)
+    }
+
+    /** Fraction of the photo the mask covers. */
+    fun coverage(mask: Bitmap): Float {
+        val s = Bitmap.createScaledBitmap(mask, 64, 64, true)
+        var n = 0
+        for (y in 0 until 64) for (x in 0 until 64) if (Color.alpha(s.getPixel(x, y)) > 128) n++
+        return n / 4096f
+    }
+
+    /** Two colours that suit the photo behind a layer: a light one and a vivid one. */
+    fun autoColors(photo: Bitmap, l: WallLayer, W: Int, H: Int): Pair<Int, Int> {
+        val rc = rect(l, W, H)
+        val sc = maxOf(W / photo.width.toFloat(), H / photo.height.toFloat())
+        val ox = (W - photo.width * sc) / 2; val oy = (H - photo.height * sc) / 2
+        val x0 = ((rc.left - ox) / sc).toInt().coerceIn(0, photo.width - 2); val x1 = ((rc.right - ox) / sc).toInt().coerceIn(x0 + 1, photo.width)
+        val y0 = ((rc.top - oy) / sc).toInt().coerceIn(0, photo.height - 2); val y1 = ((rc.bottom - oy) / sc).toInt().coerceIn(y0 + 1, photo.height)
+        val crop = Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0)
+        val small = Bitmap.createScaledBitmap(crop, 24, 24, true)
+        val whole = Bitmap.createScaledBitmap(photo, 32, 32, true)
+        var best = Color.WHITE; var bestSat = -1f
+        val hsv = FloatArray(3)
+        for (y in 0 until 32) for (x in 0 until 32) {
+            Color.colorToHSV(whole.getPixel(x, y), hsv)
+            val score = hsv[1] * (0.4f + hsv[2])
+            if (score > bestSat) { bestSat = score; best = whole.getPixel(x, y) }
+        }
+        var sum = FloatArray(3)
+        for (y in 0 until 24) for (x in 0 until 24) { Color.colorToHSV(small.getPixel(x, y), hsv); sum[0] += hsv[0]; sum[1] += hsv[1]; sum[2] += hsv[2] }
+        sum = sum.map { it / 576f }.toFloatArray()
+        val darkBg = sum[2] < 0.55f
+        // light tint of the area + vivid accent from the photo, kept readable on the area
+        val light = Color.HSVToColor(floatArrayOf(sum[0], (sum[1] * 0.35f).coerceAtMost(0.3f), if (darkBg) 0.98f else 0.18f))
+        Color.colorToHSV(best, hsv)
+        val vivid = Color.HSVToColor(floatArrayOf(hsv[0], hsv[1].coerceIn(0.45f, 0.9f), if (darkBg) 0.95f else 0.35f))
+        return light to vivid
+    }
+
     private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime) {
         val rc = rect(l, W, H)
-        val b = layerBitmap(ctx, l, rc.width().toInt(), now)
+        val b = styled(ctx, l, rc.width().toInt(), now)
         val dst = RectF(rc.left, rc.centerY() - rc.width() / (b.width / b.height.toFloat()) / 2, rc.right, rc.centerY() + rc.width() / (b.width / b.height.toFloat()) / 2)
         if (l.shadow) {
             val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(rc.width() * 0.02f + 2f, BlurMaskFilter.Blur.NORMAL); alpha = 90 }

@@ -23,6 +23,10 @@ data class WallLayer(
     val behind: Boolean = false,
     val alpha: Int = 255,
     val shadow: Boolean = true,
+    /** second colour; 0 = solid colour */
+    val color2: Int = 0,
+    /** gradient direction: 0 top→bottom, 1 left→right, 2 diagonal */
+    val gDir: Int = 0,
 )
 
 @Serializable

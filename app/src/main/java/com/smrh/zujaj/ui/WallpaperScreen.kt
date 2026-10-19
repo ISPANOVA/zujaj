@@ -139,11 +139,11 @@ fun WallpaperScreen(nav: Nav) {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { photo = WallRender.loadImage(design.image); mask = WallRender.loadImage(design.mask, 1600) }
     }
-    fun update(d: WallDesign) { design = d; WallDesign.save(ctx, d) }
+    // save a moment after the last change (not on every finger move)
+    LaunchedEffect(design) { kotlinx.coroutines.delay(500); withContext(Dispatchers.IO) { WallDesign.save(ctx, design) } }
+    fun update(d: WallDesign) { design = d }
     var selected by remember { mutableStateOf<Long?>(null) }
     var size by remember { mutableStateOf(IntSize.Zero) }
-    var preview by remember { mutableStateOf<ImageBitmap?>(null) }
-    val reveal = remember { Animatable(1f) }
     var scanning by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
     var showText by remember { mutableStateOf(false) }
@@ -153,12 +153,22 @@ fun WallpaperScreen(nav: Nav) {
     var menu by remember { mutableStateOf(false) }
     var snapX by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    val accent = LocalAccent.current
+    val found = remember { Animatable(0f) }      // outline animation 0..1
+    val subjectIn = remember { Animatable(1f) }  // subject fade over the layers
 
-    // re-render the preview whenever something changes
-    LaunchedEffect(design, photo, mask, size, reveal.value) {
-        if (size.width <= 0) return@LaunchedEffect
-        val w = size.width.coerceAtMost(900); val h = (w / aspect).roundToInt()
-        preview = withContext(Dispatchers.Default) { runCatching { WallRender.compose(ctx, design, photo, mask, w, h, reveal = reveal.value).asImageBitmap() }.getOrNull() }
+    // static parts of the preview — only rebuilt when the photo / mask / background settings change
+    val pw = size.width; val ph = size.height
+    val bg by produceState<ImageBitmap?>(null, photo, design.blur, design.dim, pw) {
+        value = if (pw <= 0) null else withContext(Dispatchers.Default) { runCatching { WallRender.background(design, photo, pw, ph).asImageBitmap() }.getOrNull() }
+    }
+    val subject by produceState<ImageBitmap?>(null, photo, mask, design.dim, pw) {
+        val p = photo; val m = mask
+        value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.subject(design, p, m, pw, ph).asImageBitmap() }.getOrNull() }
+    }
+    val outline by produceState<ImageBitmap?>(null, photo, mask, pw) {
+        val p = photo; val m = mask
+        value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.outline(p, m, pw, ph, accent.toArgbInt()).asImageBitmap() }.getOrNull() }
     }
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -179,37 +189,45 @@ fun WallpaperScreen(nav: Nav) {
     fun add(l: WallLayer) { update(design.copy(layers = design.layers + l)); selected = l.id; showSheet = false }
     fun change(id: Long, f: (WallLayer) -> WallLayer) = update(design.copy(layers = design.layers.map { if (it.id == id) f(it) else it }))
 
-    /** ✦ — find the subject, then slide the selected (or every) layer behind it. */
+    /** ✦ — find the subject (glowing outline), then slide the selected (or every) layer behind it. */
     fun depth() {
         if (photo == null) { Toast.makeText(ctx, tr("Choose a photo first", "اختار صورة الأول"), Toast.LENGTH_SHORT).show(); return }
         if (design.layers.isEmpty()) { Toast.makeText(ctx, tr("Add a clock or widget first", "ضيف ساعة أو ويدجت الأول"), Toast.LENGTH_SHORT).show(); return }
         scope.launch {
+            var fresh = false
             if (mask == null) {
                 scanning = true
                 val r = withContext(Dispatchers.Default) { Segment.run(ctx, photo!!) }
-                scanning = false
                 when (r) {
                     is Segment.Result.Ok -> {
                         val f = File(WallDesign.dir(ctx), "mask_${System.currentTimeMillis()}.png")
                         withContext(Dispatchers.IO) { f.outputStream().use { r.mask.compress(Bitmap.CompressFormat.PNG, 100, it) } }
-                        mask = r.mask
-                        design = design.copy(mask = f.path)
+                        mask = r.mask; fresh = true
+                        update(design.copy(mask = f.path))
                     }
                     is Segment.Result.Fail -> {
-                        Toast.makeText(ctx, tr("Couldn't find a clear subject in this photo. Try another (or try again in a minute while the model downloads).",
-                            "مالقيتش شكل واضح في الصورة دي. جرب صورة تانية (أو جرب كمان دقيقة لحد ما الموديل يتحمل)."), Toast.LENGTH_LONG).show()
+                        scanning = false
+                        Toast.makeText(ctx, tr("Couldn't find a clear subject in this photo. Try another one.", "مالقيتش شكل واضح في الصورة دي. جرب صورة تانية."), Toast.LENGTH_LONG).show()
                         return@launch
                     }
                 }
+                scanning = false
             }
             val targets = selected?.let { s -> design.layers.filter { it.id == s } } ?: design.layers
             val goBehind = targets.any { !it.behind }
-            update(design.copy(layers = design.layers.map { l -> if (targets.any { it.id == l.id }) l.copy(behind = goBehind) else l }))
-            if (goBehind) { reveal.snapTo(0f); reveal.animateTo(1f, tween(900)) }
+            if (goBehind) {
+                // trace the subject with a glowing outline, then tuck the layers behind it
+                kotlinx.coroutines.delay(120)
+                found.snapTo(0f)
+                found.animateTo(1f, tween(if (fresh) 1100 else 700, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                subjectIn.snapTo(0f)
+                update(design.copy(layers = design.layers.map { l -> if (targets.any { it.id == l.id }) l.copy(behind = true) else l }))
+                subjectIn.animateTo(1f, tween(650))
+                found.animateTo(0f, tween(700))
+            } else update(design.copy(layers = design.layers.map { l -> if (targets.any { it.id == l.id }) l.copy(behind = false) else l }))
         }
     }
 
-    val accent = LocalAccent.current
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, null) }
@@ -223,7 +241,19 @@ fun WallpaperScreen(nav: Nav) {
                 DropdownMenu(menu, { menu = false }, containerColor = Z.surface) {
                     DropdownMenuItem(text = { Text(tr("Change photo", "غيّر الصورة")) }, onClick = { menu = false; pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
                     DropdownMenuItem(text = { Text(tr("Remove all layers", "امسح كل الإضافات")) }, onClick = { menu = false; selected = null; update(design.copy(layers = emptyList())) })
-                    DropdownMenuItem(text = { Text(tr("Find the subject again", "حدد الشكل من جديد")) }, onClick = { menu = false; mask = null; update(design.copy(mask = "", layers = design.layers.map { it.copy(behind = false) })) })
+                    DropdownMenuItem(text = { Text(tr("Detect the shape again", "حدد الشكل من جديد")) }, onClick = { menu = false; mask = null; update(design.copy(mask = "", layers = design.layers.map { it.copy(behind = false) })) })
+                    DropdownMenuItem(text = { Text(tr("Use horizon (sky) detection", "حدد بالسما (للجبال والمباني)")) }, onClick = {
+                        menu = false
+                        val p = photo ?: return@DropdownMenuItem
+                        scope.launch {
+                            val m = withContext(Dispatchers.Default) { WallRender.skyMask(p) }
+                            if (m == null) { Toast.makeText(ctx, tr("No clear sky in this photo", "مفيش سما واضحة في الصورة"), Toast.LENGTH_SHORT).show(); return@launch }
+                            val f = File(WallDesign.dir(ctx), "mask_${System.currentTimeMillis()}.png")
+                            withContext(Dispatchers.IO) { f.outputStream().use { m.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+                            mask = m; update(design.copy(mask = f.path))
+                            found.snapTo(0f); found.animateTo(1f, tween(900)); found.animateTo(0f, tween(700))
+                        }
+                    })
                 }
             }
         }
@@ -244,8 +274,24 @@ fun WallpaperScreen(nav: Nav) {
                         Text(tr("Choose a photo", "اختار صورة"), fontWeight = FontWeight.Bold, fontSize = 17.sp)
                         Text(tr("Any photo from your phone", "أي صورة من تليفونك"), color = Z.sub, fontSize = 13.sp)
                     }
+                } else {
+                    bg?.let { Image(it, null, Modifier.fillMaxSize()) }
+                    val hasMask = mask != null && subject != null
+                    design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id) }
+                    if (hasMask && design.layers.any { it.behind }) subject?.let { Image(it, null, Modifier.fillMaxSize().graphicsLayer { alpha = subjectIn.value }) }
+                    design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id) }
+                    // "found it" — glowing outline sweeping across the subject
+                    if (found.value > 0f) outline?.let { o ->
+                        Canvas(Modifier.fillMaxSize()) {
+                            val x = this.size.width * found.value
+                            drawContext.canvas.save()
+                            drawContext.canvas.clipRect(0f, 0f, x, this.size.height)
+                            drawImage(o, alpha = (0.35f + 0.65f * found.value).coerceAtMost(1f))
+                            drawContext.canvas.restore()
+                            if (found.value < 1f) drawLine(Brush.verticalGradient(listOf(Color.Transparent, Color.White, Color.Transparent)), Offset(x, 0f), Offset(x, this.size.height), 4f)
+                        }
+                    }
                 }
-                preview?.let { Image(it, null, Modifier.fillMaxSize()) }
                 // scanning shimmer while the subject is being found
                 if (scanning) {
                     val t = rememberInfiniteTransition(label = "scan")
@@ -256,36 +302,37 @@ fun WallpaperScreen(nav: Nav) {
                         drawRect(Brush.verticalGradient(listOf(Color.Transparent, accent.copy(alpha = 0.45f), Color.Transparent), yy - 120f, yy + 120f), Offset(0f, yy - 120f), androidx.compose.ui.geometry.Size(this.size.width, 240f))
                         drawLine(Color.White.copy(alpha = 0.9f), Offset(0f, yy), Offset(this.size.width, yy), 3f)
                     }
-                    Text(tr("Finding the subject…", "بحدد الشكل اللي في الصورة…"), color = Color.White, fontWeight = FontWeight.SemiBold,
+                    Text(tr("Finding the shape…", "بحدد الشكل اللي في الصورة…"), color = Color.White, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 8.dp))
                 }
-                // gestures: tap selects, drag moves (with centre snapping)
+                // gestures: tap selects, drag moves smoothly (state only, nothing is re-rendered)
                 if (photo != null) Box(Modifier.fillMaxSize()
-                    .pointerInput(design.layers.size) {
+                    .pointerInput(Unit) {
                         detectTapGestures { p ->
                             val hit = design.layers.lastOrNull { l -> WallRender.rect(l, size.width, size.height).contains(p.x, p.y) }
                             selected = hit?.id
                         }
                     }
-                    .pointerInput(selected, design.layers.size) {
-                        var start: WallLayer? = null
-                        var acc = Offset.Zero
+                    .pointerInput(Unit) {
+                        var id: Long? = null
                         detectDragGestures(
                             onDragStart = { p ->
                                 val hit = design.layers.lastOrNull { l -> WallRender.rect(l, size.width, size.height).contains(p.x, p.y) }
                                 if (hit != null) selected = hit.id
-                                start = hit; acc = Offset.Zero
+                                id = hit?.id
                             },
-                            onDragEnd = { snapX = false; start = null },
-                            onDragCancel = { snapX = false; start = null },
+                            onDragEnd = { snapX = false; id = null },
+                            onDragCancel = { snapX = false; id = null },
                         ) { ch, d ->
-                            val s = start ?: return@detectDragGestures
-                            ch.consume(); acc += d
-                            var cx = s.cx + acc.x / size.width
-                            val cy = (s.cy + acc.y / size.height).coerceIn(0.02f, 0.98f)
-                            snapX = abs(cx - 0.5f) < 0.018f
-                            if (snapX) cx = 0.5f
-                            change(s.id) { it.copy(cx = cx.coerceIn(0.02f, 0.98f), cy = cy) }
+                            val lid = id ?: return@detectDragGestures
+                            ch.consume()
+                            change(lid) { l ->
+                                var cx = l.cx + d.x / size.width
+                                val near = abs(cx - 0.5f) < 0.012f
+                                if (near && !snapX) cx = 0.5f
+                                snapX = near
+                                l.copy(cx = cx.coerceIn(0.02f, 0.98f), cy = (l.cy + d.y / size.height).coerceIn(0.02f, 0.98f))
+                            }
                         }
                     })
                 if (snapX) Canvas(Modifier.fillMaxSize()) { drawLine(accent, Offset(this.size.width / 2, 0f), Offset(this.size.width / 2, this.size.height), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))) }
@@ -309,22 +356,22 @@ fun WallpaperScreen(nav: Nav) {
                     handle(rc.left, rc.top, Icons.Rounded.ContentCopy) { add(l.copy(id = System.nanoTime(), cy = (l.cy + 0.08f).coerceAtMost(0.95f))) }
                     handle(rc.right, rc.bottom, Icons.Rounded.Palette) { colorFor = l.id }
                     handle(rc.left, rc.bottom, Icons.Rounded.OpenInFull, Modifier.pointerInput(l.id) {
-                        var w0 = l.w; var acc = 0f
-                        detectDragGestures(onDragStart = { w0 = design.layers.first { it.id == l.id }.w; acc = 0f }) { ch, d ->
-                            ch.consume(); acc += (-d.x + d.y) / size.width
-                            change(l.id) { it.copy(w = (w0 + acc * 1.4f).coerceIn(0.12f, 1.2f)) }
+                        detectDragGestures { ch, d ->
+                            ch.consume()
+                            change(l.id) { it.copy(w = (it.w + (-d.x + d.y) / size.width * 1.4f).coerceIn(0.12f, 1.2f)) }
                         }
                     })
                 }
                 // ✦ depth button
                 if (photo != null) {
                     val spin = rememberInfiniteTransition(label = "spark")
-                    val r by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "r")
-                    val on = design.layers.any { it.behind }
-                    Box(Modifier.align(Alignment.BottomStart).padding(14.dp).size(48.dp).clip(CircleShape)
-                        .background(if (on) accent else Color.Black.copy(alpha = 0.45f)).clickable { depth() }, contentAlignment = Alignment.Center) {
+                    val r by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "r")
+                    val on = design.layers.any { it.behind } && mask != null
+                    Box(Modifier.align(Alignment.BottomStart).padding(14.dp).size(52.dp).clip(CircleShape)
+                        .background(if (on) accent else Color.Black.copy(alpha = 0.5f)).border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                        .clickable { depth() }, contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.AutoAwesome, null, tint = if (on) Color.Black else Color.White,
-                            modifier = Modifier.size(26.dp).graphicsLayer { rotationZ = if (scanning) r else 0f })
+                            modifier = Modifier.size(26.dp).graphicsLayer { rotationZ = if (scanning) r else 0f; val k = if (scanning) 1f + 0.12f * kotlin.math.sin(r / 57f) else 1f; scaleX = k; scaleY = k })
                     }
                 }
                 if (busy) CircularProgressIndicator(Modifier.align(Alignment.Center), color = accent)
@@ -348,25 +395,7 @@ fun WallpaperScreen(nav: Nav) {
     }
 
     // ---------------------------------------------------------------- sheets & dialogs
-    if (showSheet) ModalBottomSheet(onDismissRequest = { showSheet = false }, containerColor = Color(0xFF1D2231)) {
-        LazyVerticalGrid(GridCells.Fixed(2), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.heightIn(max = 620.dp)) {
-            item(span = { GridItemSpan(2) }) { Text(tr("Clocks & dates", "ساعات وتواريخ"), fontWeight = FontWeight.Bold, modifier = Modifier.padding(4.dp)) }
-            items(WallRender.kinds.filter { it.first != "text" }) { (k, a) ->
-                val bmp by produceState<ImageBitmap?>(null, k) { value = withContext(Dispatchers.Default) { runCatching { WallRender.layerBitmap(ctx, WallLayer(kind = k), 420).asImageBitmap() }.getOrNull() } }
-                Box(Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
-                    .clickable { add(WallLayer(kind = k, w = if (a < 1.5f) 0.55f else 0.8f, cy = 0.3f)) }.padding(12.dp), contentAlignment = Alignment.Center) {
-                    bmp?.let { Image(it, null, Modifier.fillMaxSize()) }
-                }
-            }
-            item(span = { GridItemSpan(2) }) { Text(tr("Widgets", "ويدجتات"), fontWeight = FontWeight.Bold, modifier = Modifier.padding(4.dp, top = 12.dp)) }
-            items(Flags.visible().filter { it.shape != com.smrh.zujaj.catalog.Shape.LARGE }, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL) 1 else 2) }) { st ->
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
-                    .clickable { add(WallLayer(kind = "widget", styleId = st.id, w = if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) 0.45f else 0.9f, cy = 0.35f)) }.padding(10.dp)) {
-                    WidgetPreview(st.defaultConfig().copy(bg = false), Modifier.fillMaxWidth(), density = 1.6f)
-                }
-            }
-        }
-    }
+    if (showSheet) ModalBottomSheet(onDismissRequest = { showSheet = false }, containerColor = Color(0xFF1D2231)) { WidgetPickerSheet(onAdd = { add(it) }) }
     if (showText) {
         var t by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = { showText = false }, containerColor = Z.surface,
@@ -388,7 +417,12 @@ fun WallpaperScreen(nav: Nav) {
         confirmButton = { TextButton(onClick = { showBlur = false }) { Text(tr("Done", "تمام"), color = accent) } })
     colorFor?.let { id ->
         val l = design.layers.firstOrNull { it.id == id }
-        if (l == null) colorFor = null else ColorPickerDialog(l.color, { colorFor = null }) { c -> change(id) { it.copy(color = c) } }
+        if (l == null) colorFor = null
+        else LayerColorSheet(l, onAuto = {
+            val p = photo ?: return@LayerColorSheet
+            val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1))
+            change(id) { it.copy(color = a, color2 = b, gDir = 0) }
+        }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
     if (showApply) ApplyWallDialog(onDismiss = { showApply = false }) { target, live ->
         showApply = false
@@ -400,6 +434,133 @@ fun WallpaperScreen(nav: Nav) {
             msg?.let { Toast.makeText(ctx, it, Toast.LENGTH_LONG).show() }
         }
     }
+}
+
+private fun Color.toArgbInt(): Int = android.graphics.Color.argb((alpha * 255).toInt(), (red * 255).toInt(), (green * 255).toInt(), (blue * 255).toInt())
+
+/** One layer drawn from its own cached bitmap and placed with an offset — moving it is free. */
+@Composable
+private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean) {
+    val ctx = LocalContext.current
+    if (box.width <= 0) return
+    val rc = WallRender.rect(l, box.width, box.height)
+    val wBucket = (rc.width() / 24f).roundToInt() * 24 // re-render only every 24 px of resizing
+    val minute = rememberTicker(30_000L)
+    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute) {
+        value = withContext(Dispatchers.Default) { runCatching { WallRender.styled(ctx, l, wBucket.coerceAtLeast(24)).asImageBitmap() }.getOrNull() }
+    }
+    val dens = LocalDensity.current
+    bmp?.let { b ->
+        val h = rc.width() * b.height / b.width.toFloat()
+        Image(b, null, Modifier
+            .offset { IntOffset(rc.left.roundToInt(), (rc.centerY() - h / 2).roundToInt()) }
+            .size(with(dens) { rc.width().toDp() }, with(dens) { h.toDp() })
+            .graphicsLayer { shadowElevation = 0f; alpha = l.alpha / 255f })
+    }
+}
+
+/** Organised picker: clocks & dates, then widgets by category; small ones in pairs, wide ones full width. */
+@Composable
+private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
+    val ctx = LocalContext.current
+    val cats = remember { listOf("wall") + com.smrh.zujaj.catalog.Cat.values().filter { c -> Flags.visible().any { it.cat == c && it.shape != com.smrh.zujaj.catalog.Shape.LARGE } }.map { it.name } }
+    var cat by remember { mutableStateOf("wall") }
+    Column(Modifier.heightIn(max = 640.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(cats.size) { i ->
+                val k = cats[i]
+                val label = if (k == "wall") tr("Clocks & dates", "ساعات وتواريخ") else com.smrh.zujaj.catalog.Cat.valueOf(k).let { if (Prefs.isArabicUi) it.ar else it.en }
+                ZChip(label, cat == k) { cat = k }
+            }
+        }
+        androidx.compose.animation.AnimatedContent(cat, label = "cat") { k ->
+            LazyVerticalGrid(GridCells.Fixed(2), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (k == "wall") {
+                    val list = WallRender.kinds.filter { it.first != "text" }
+                    items(list, span = { (_, a) -> GridItemSpan(if (a < 2f) 1 else 2) }) { (kind, a) ->
+                        val bmp by produceState<ImageBitmap?>(null, kind) { value = withContext(Dispatchers.Default) { runCatching { WallRender.layerBitmap(ctx, WallLayer(kind = kind), 460).asImageBitmap() }.getOrNull() } }
+                        Box(Modifier.fillMaxWidth().height(if (a < 2f) 130.dp else 92.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
+                            .clickable { onAdd(WallLayer(kind = kind, w = if (a < 1.5f) 0.55f else 0.8f, cy = 0.3f)) }.padding(12.dp), contentAlignment = Alignment.Center) {
+                            bmp?.let { Image(it, null, Modifier.fillMaxSize()) }
+                        }
+                    }
+                } else {
+                    val list = pack(Flags.visible().filter { it.cat.name == k && it.shape != com.smrh.zujaj.catalog.Shape.LARGE })
+                    items(list, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL) 1 else 2) }) { st ->
+                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
+                            .clickable { onAdd(WallLayer(kind = "widget", styleId = st.id, w = if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) 0.45f else 0.9f, cy = 0.35f)) }.padding(10.dp)) {
+                            WidgetPreview(st.defaultConfig().copy(bg = false), Modifier.fillMaxWidth(), density = 1.6f)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Solid or gradient colour for a layer, plus "match the wallpaper". */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLayer) -> Unit, onDismiss: () -> Unit) {
+    val swatches = listOf(0xFFFFFFFF, 0xFF111111, 0xFFE7B75F, 0xFFF2865E, 0xFFE5484D, 0xFFFF6B9A, 0xFFB07BF0, 0xFF5B8DEF, 0xFF38C6D9, 0xFF3DDC97, 0xFFB7E34A, 0xFFF3E3C2).map { it.toInt() }
+    var custom by remember { mutableIntStateOf(0) } // 1 = first colour, 2 = second
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D2231)) {
+        Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 28.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Colour", "اللون"), fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))
+                Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {
+                    listOf(tr("Solid", "سادة") to false, tr("Gradient", "متدرج") to true).forEach { (s, g) ->
+                        val on = (l.color2 != 0) == g
+                        Text(s, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.Black else Z.text,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) LocalAccent.current else Color.Transparent)
+                                .clickable { onChange(if (g) l.copy(color2 = if (l.color2 == 0) 0xFFE7B75F.toInt() else l.color2) else l.copy(color2 = 0)) }
+                                .padding(horizontal = 14.dp, vertical = 7.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            // ✨ match the wallpaper
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFF7B5CD6).copy(alpha = 0.45f), Color(0xFFE7B75F).copy(alpha = 0.35f))))
+                .clickable(onClick = onAuto).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(tr("Match the wallpaper", "على حسب الخلفية"), fontWeight = FontWeight.Bold)
+                    Text(tr("Picks a gradient from your photo", "يختار تدرج متناسق من صورتك"), color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            @Composable
+            fun row(title: String, value: Int, which: Int, set: (Int) -> WallLayer) {
+                Text(title, color = Z.sub, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(swatches.size) { i ->
+                        val c = swatches[i]
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(Color(c))
+                            .border(if (c == value) 3.dp else 1.dp, if (c == value) LocalAccent.current else Color.White.copy(alpha = 0.2f), CircleShape)
+                            .clickable { onChange(set(c)) })
+                    }
+                    item {
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))
+                            .clickable { custom = which })
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+            row(if (l.color2 != 0) tr("From", "من") else tr("Colour", "اللون"), l.color, 1) { l.copy(color = it) }
+            if (l.color2 != 0) {
+                row(tr("To", "إلى"), l.color2, 2) { l.copy(color2 = it) }
+                Text(tr("Direction", "الاتجاه"), color = Z.sub, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(tr("↓ Down", "↓ لتحت"), tr("→ Across", "↔ بالعرض"), tr("↘ Diagonal", "↘ مايل")).forEachIndexed { i, s -> ZChip(s, l.gDir == i) { onChange(l.copy(gDir = i)) } }
+                }
+            }
+        }
+    }
+    if (custom != 0) ColorPickerDialog(if (custom == 1) l.color else l.color2, { custom = 0 }) { c -> onChange(if (custom == 1) l.copy(color = c) else l.copy(color2 = c)) }
 }
 
 @Composable
