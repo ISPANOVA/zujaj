@@ -82,15 +82,81 @@ object WallRender {
         return Matrix().apply { setScale(sc, sc); postTranslate((W - iw * sc) / 2f + (d?.px ?: 0f) * W, (H - ih * sc) / 2f + (d?.py ?: 0f) * H) }
     }
 
-    /** When the photo is smaller than the screen, the empty parts get a soft blurred copy of it. */
+    /** Smooth (not blocky) blur: shrink in halves, then grow back in doubles. */
+    fun smoothBlur(src: Bitmap, factor: Int): Bitmap {
+        var b = src; var f = 1
+        while (f < factor && b.width > 4 && b.height > 4) { b = Bitmap.createScaledBitmap(b, b.width / 2, b.height / 2, true); f *= 2 }
+        while (b.width * 2 <= src.width && b.height * 2 <= src.height) b = Bitmap.createScaledBitmap(b, b.width * 2, b.height * 2, true)
+        return Bitmap.createScaledBitmap(b, src.width, src.height, true)
+    }
+
+    private fun photoRect(photo: Bitmap, d: WallDesign, W: Int, H: Int) =
+        RectF(0f, 0f, photo.width.toFloat(), photo.height.toFloat()).also { cropMatrix(photo.width, photo.height, W, H, d).mapRect(it) }
+
+    private fun covers(r: RectF, W: Int, H: Int) = r.left <= 0.5f && r.top <= 0.5f && r.right >= W - 0.5f && r.bottom >= H - 0.5f
+
+    /** Fills the empty space around a photo that is smaller than the screen, so it looks like the photo continues. */
     private fun fill(c: Canvas, photo: Bitmap, d: WallDesign, W: Int, H: Int) {
-        val m = cropMatrix(photo.width, photo.height, W, H, d)
-        val r = RectF(0f, 0f, photo.width.toFloat(), photo.height.toFloat()); m.mapRect(r)
-        if (r.left <= 0.5f && r.top <= 0.5f && r.right >= W - 0.5f && r.bottom >= H - 0.5f) return
-        val small = Bitmap.createScaledBitmap(photo, (photo.width / 24).coerceAtLeast(2), (photo.height / 24).coerceAtLeast(2), true)
-        val cover = cropMatrix(small.width, small.height, W, H)
-        c.drawBitmap(small, cover, Paint(Paint.FILTER_BITMAP_FLAG))
-        c.drawColor(Color.argb(60, 0, 0, 0))
+        val r = photoRect(photo, d, W, H)
+        if (covers(r, W, H)) return
+        val ext = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val e = Canvas(ext)
+        val p = Paint(Paint.FILTER_BITMAP_FLAG)
+        val pw = photo.width; val ph = photo.height
+        val sw = (pw * 0.035f).toInt().coerceAtLeast(2); val shh = (ph * 0.035f).toInt().coerceAtLeast(2)
+        when (d.fillMode) {
+            1 -> { // mirror the photo around its edges
+                fun flip(sx: Float, sy: Float, dx: Float, dy: Float) {
+                    val m = Matrix().apply { setScale(r.width() / pw * sx, r.height() / ph * sy); postTranslate(dx, dy) }
+                    e.drawBitmap(photo, m, p)
+                }
+                flip(1f, -1f, r.left, r.top); flip(1f, -1f, r.left, r.bottom + r.height())
+                flip(-1f, 1f, r.left, r.top); flip(-1f, 1f, r.right + r.width(), r.top)
+                e.drawBitmap(photo, null, r, p)
+            }
+            2 -> { // big soft blur of the whole photo
+                val cover = cropMatrix(pw, ph, W, H)
+                e.drawBitmap(photo, cover, p)
+            }
+            3 -> { // smooth colour gradient from the photo's edges
+                val t = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, 0, 0, pw, shh), 1, 1, true).getPixel(0, 0)
+                val bt = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, 0, ph - shh, pw, shh), 1, 1, true).getPixel(0, 0)
+                e.drawRect(0f, 0f, W.toFloat(), H.toFloat(), Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, H.toFloat(), t, bt, android.graphics.Shader.TileMode.CLAMP) })
+            }
+            else -> { // extend: stretch the outermost rows / columns outwards
+                val src = android.graphics.Rect()
+                if (r.top > 0) { src.set(0, 0, pw, shh); e.drawBitmap(photo, src, RectF(r.left, 0f, r.right, r.top + 2), p) }
+                if (r.bottom < H) { src.set(0, ph - shh, pw, ph); e.drawBitmap(photo, src, RectF(r.left, r.bottom - 2, r.right, H.toFloat()), p) }
+                if (r.left > 0) { src.set(0, 0, sw, ph); e.drawBitmap(photo, src, RectF(0f, r.top, r.left + 2, r.bottom), p) }
+                if (r.right < W) { src.set(pw - sw, 0, pw, ph); e.drawBitmap(photo, src, RectF(r.right - 2, r.top, W.toFloat(), r.bottom), p) }
+                // corners: the corner pixels' colours
+                fun corner(px: Int, py: Int, rc: RectF) { if (rc.width() > 0 && rc.height() > 0) e.drawRect(rc, Paint().apply { color = photo.getPixel(px, py) }) }
+                corner(0, 0, RectF(0f, 0f, r.left, r.top)); corner(pw - 1, 0, RectF(r.right, 0f, W.toFloat(), r.top))
+                corner(0, ph - 1, RectF(0f, r.bottom, r.left, H.toFloat())); corner(pw - 1, ph - 1, RectF(r.right, r.bottom, W.toFloat(), H.toFloat()))
+            }
+        }
+        val blurred = smoothBlur(ext, when (d.fillMode) { 2 -> 32; 1 -> 8; 3 -> 1; else -> 6 })
+        c.drawBitmap(blurred, 0f, 0f, p)
+        if (d.fillMode == 2) c.drawColor(Color.argb(50, 0, 0, 0))
+    }
+
+    /** Draws the photo; where it meets a filled gap its edge is feathered so the seam disappears. */
+    private fun drawPhoto(c: Canvas, b: Bitmap, m: Matrix, r: RectF, W: Int, H: Int, p: Paint) {
+        if (covers(r, W, H)) { c.drawBitmap(b, m, p); return }
+        val layer = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val lc = Canvas(layer)
+        lc.drawBitmap(b, m, p)
+        val f = minOf(W, H) * 0.06f
+        val out = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
+        fun fade(x0: Float, y0: Float, x1: Float, y1: Float, rc: RectF) {
+            out.shader = android.graphics.LinearGradient(x0, y0, x1, y1, Color.BLACK, Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP)
+            lc.drawRect(rc, out)
+        }
+        if (r.top > 0.5f) fade(0f, r.top, 0f, r.top + f, RectF(r.left, r.top, r.right, r.top + f))
+        if (r.bottom < H - 0.5f) fade(0f, r.bottom, 0f, r.bottom - f, RectF(r.left, r.bottom - f, r.right, r.bottom))
+        if (r.left > 0.5f) fade(r.left, 0f, r.left + f, 0f, RectF(r.left, r.top, r.left + f, r.bottom))
+        if (r.right < W - 0.5f) fade(r.right, 0f, r.right - f, 0f, RectF(r.right - f, r.top, r.right, r.bottom))
+        c.drawBitmap(layer, 0f, 0f, null)
     }
 
     /** Frosted glass plate for the area [rc] of an already-drawn wallpaper [under]. */
@@ -264,8 +330,8 @@ object WallRender {
         if (d.blur > 0) {
             val k = (1 + d.blur / 4).coerceAtMost(24)
             val small = Bitmap.createScaledBitmap(photo, (photo.width / k).coerceAtLeast(2), (photo.height / k).coerceAtLeast(2), true)
-            c.drawBitmap(small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, bp)
-        } else c.drawBitmap(photo, m, bp)
+            drawPhoto(c, small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, photoRect(photo, d, W, H), W, H, bp)
+        } else drawPhoto(c, photo, m, photoRect(photo, d, W, H), W, H, bp)
         if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
         return out
     }
@@ -442,8 +508,8 @@ object WallRender {
             if (d.blur > 0) {
                 val k = (1 + d.blur / 4).coerceAtMost(24)
                 val small = Bitmap.createScaledBitmap(photo, (photo.width / k).coerceAtLeast(2), (photo.height / k).coerceAtLeast(2), true)
-                c.drawBitmap(small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, bp)
-            } else c.drawBitmap(photo, m!!, bp)
+                drawPhoto(c, small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, photoRect(photo, d, W, H), W, H, bp)
+            } else drawPhoto(c, photo, m!!, photoRect(photo, d, W, H), W, H, bp)
             if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
         }
         for (l in d.layers.filter { it.behind && mask != null }) drawLayer(ctx, c, l, W, H, now, out)

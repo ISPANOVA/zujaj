@@ -177,7 +177,7 @@ fun WallpaperScreen(nav: Nav) {
 
     // static parts of the preview — only rebuilt when the photo / mask / background settings change
     val pw = size.width; val ph = size.height
-    val bg by produceState<ImageBitmap?>(null, photo, design.blur, design.dim, design.zoom, design.px, design.py, pw) {
+    val bg by produceState<ImageBitmap?>(null, photo, design.blur, design.dim, design.fillMode, design.zoom, design.px, design.py, pw) {
         value = if (pw <= 0) null else withContext(Dispatchers.Default) { runCatching { WallRender.background(design, photo, pw, ph).asImageBitmap() }.getOrNull() }
     }
     val subject by produceState<ImageBitmap?>(null, photo, mask, design.dim, design.zoom, design.px, design.py, pw) {
@@ -434,6 +434,18 @@ fun WallpaperScreen(nav: Nav) {
                     if (adjust) {
                         Text(tr("Pinch to zoom · drag to move", "قرّب وبعّد بصباعين · اسحب عشان تحرك الصورة"), color = Color.White, fontSize = 12.sp,
                             modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 12.dp, vertical = 6.dp))
+                        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 70.dp).clip(RoundedCornerShape(18.dp)).background(Color.Black.copy(alpha = 0.6f)).padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(tr("Fill the empty space", "تكملة الفراغ"), color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                                listOf(tr("Extend", "امتداد"), tr("Mirror", "مراية"), tr("Blur", "ضباب"), tr("Colour", "لون")).forEachIndexed { i, t ->
+                                    val on = design.fillMode == i
+                                    Text(t, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.Black else Color.White,
+                                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) accent else Color.White.copy(alpha = 0.12f))
+                                            .clickable { update(design.copy(fillMode = i, zoom = az, px = ax, py = ay)) }.padding(horizontal = 12.dp, vertical = 7.dp))
+                                }
+                            }
+                        }
                         Row(Modifier.align(Alignment.BottomCenter).padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(tr("Reset", "رجّعها"), color = Color.White, fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).clickable { az = 1f; ax = 0f; ay = 0f }.padding(horizontal = 18.dp, vertical = 10.dp))
