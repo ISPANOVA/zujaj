@@ -66,8 +66,11 @@ object Ads {
     }
 
     fun on(): Boolean = Flags.flags.value.adsOn
-    private fun bannerId() = Flags.flags.value.adBanner.ifBlank { TEST_BANNER }
-    private fun rewardId() = Flags.flags.value.adReward.ifBlank { TEST_REWARD }
+    const val REAL_BANNER = "ca-app-pub-6729977170206961/5219173598"
+    const val REAL_REWARD = "ca-app-pub-6729977170206961/6657123207"
+    // debug builds always use Google's test ads so we never click our own real ads
+    fun bannerId() = if (com.smrh.zujaj.BuildConfig.DEBUG) TEST_BANNER else Flags.flags.value.adBanner.ifBlank { REAL_BANNER }
+    private fun rewardId() = if (com.smrh.zujaj.BuildConfig.DEBUG) TEST_REWARD else Flags.flags.value.adReward.ifBlank { REAL_REWARD }
 
     // ---------------------------------------------------------------- daily wallpaper quota
     private fun perDay() = Flags.flags.value.adWallPerDay.coerceIn(0, 20)
@@ -126,7 +129,7 @@ fun AdBanner(modifier: Modifier = Modifier) {
         AndroidView(factory = { c ->
             AdView(c).apply {
                 setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(c, w))
-                adUnitId = flags.adBanner.ifBlank { "ca-app-pub-3940256099942544/9214589741" }
+                adUnitId = Ads.bannerId()
                 adListener = object : AdListener() {}
                 loadAd(AdRequest.Builder().build())
             }
