@@ -13,7 +13,7 @@ android {
         applicationId = "com.smrh.zujaj"
         minSdk = 26
         targetSdk = 36
-        versionCode = 27
+        versionCode = 28
         versionName = "1.0.0"
         vectorDrawables { useSupportLibrary = true }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -107,6 +107,10 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.8.6")
 
     implementation("com.batoulapps.adhan:adhan:1.2.1")
+    // on-device subject cut-out for the depth wallpaper
+    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

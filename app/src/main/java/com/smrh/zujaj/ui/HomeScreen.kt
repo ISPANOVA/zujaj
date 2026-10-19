@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.StickyNote2
@@ -302,6 +303,8 @@ fun DiscoverTab(nav: Nav) {
         else -> tr("Good evening", "مساء الخير")
     }
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
+    var showWallGate by remember { mutableStateOf(false) }
+    if (showWallGate) WallGateDialog({ showWallGate = false }) { showWallGate = false; nav.go(Screen.Wallpapers) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 130.dp)) {
         // ---- header: greeting + round actions
         item {
@@ -320,6 +323,8 @@ fun DiscoverTab(nav: Nav) {
                         letterSpacing = if (Prefs.isArabicUi) 0.sp else (-0.5).sp)
                     Text(tr("${all.size} widgets · made to be yours", "${all.size} ويدجت · صمّمها على مزاجك"), color = Z.sub, fontSize = 12.sp, maxLines = 1)
                 }
+                RoundAction(Icons.Rounded.Wallpaper, Color.White.copy(alpha = 0.07f), Z.text) { if (WallGate.unlocked) nav.go(Screen.Wallpapers) else showWallGate = true }
+                Spacer(Modifier.width(10.dp))
                 RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
                 Spacer(Modifier.width(10.dp))
                 RoundAction(

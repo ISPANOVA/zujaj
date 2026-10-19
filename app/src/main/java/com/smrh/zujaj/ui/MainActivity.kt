@@ -41,6 +41,7 @@ sealed class Screen {
     data object Tutorial : Screen()
     data object MediaAccess : Screen()
     data object About : Screen()
+    data object Wallpapers : Screen()
 }
 
 class Nav(start: Screen) {
@@ -146,6 +147,7 @@ fun Root(nav: Nav) {
                     Screen.Tutorial -> TutorialScreen(nav)
                     Screen.MediaAccess -> MediaAccessScreen(nav)
                     Screen.About -> AboutScreen(nav)
+                    Screen.Wallpapers -> WallpaperScreen(nav)
                 }
             }
         }
