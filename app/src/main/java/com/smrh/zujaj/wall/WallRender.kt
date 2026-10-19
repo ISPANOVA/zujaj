@@ -216,7 +216,7 @@ object WallRender {
      * like the sky. Great for mountains, domes, skylines and trees.
      */
     fun skyMask(photo: Bitmap): Bitmap? {
-        val w = 220; val h = (photo.height * w / photo.width.toFloat()).toInt().coerceAtLeast(10)
+        val w = 380; val h = (photo.height * w / photo.width.toFloat()).toInt().coerceAtLeast(10)
         val s = Bitmap.createScaledBitmap(photo, w, h, true)
         val px = IntArray(w * h); s.getPixels(px, 0, w, 0, 0, w, h)
         fun d(a: Int, b: Int): Int { val dr = Color.red(a) - Color.red(b); val dg = Color.green(a) - Color.green(b); val db = Color.blue(a) - Color.blue(b); return dr * dr + dg * dg + db * db }
