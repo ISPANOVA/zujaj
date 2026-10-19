@@ -305,9 +305,9 @@ fun WallpaperScreen(nav: Nav) {
                     }
                     bg?.let { Image(it, null, Modifier.fillMaxSize().then(photoMove)) }
                     val hasMask = mask != null && subject != null
-                    design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if (l.glass && !adjust) bg else null) }
+                    design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if ((l.glass || l.glassFill) && !adjust) bg else null) }
                     if (hasMask && design.layers.any { it.behind }) subject?.let { Image(it, null, Modifier.fillMaxSize().then(photoMove).graphicsLayer { alpha = subjectIn.value }) }
-                    design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if (l.glass && !adjust) bg else null) }
+                    design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if ((l.glass || l.glassFill) && !adjust) bg else null) }
                     // "found it" — glowing outline sweeping across the subject
                     if (found.value > 0f) outline?.let { o ->
                         Canvas(Modifier.fillMaxSize()) {
@@ -578,7 +578,7 @@ private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: Imag
     val minute = rememberTicker(30_000L)
     val arKey = (l.ar * 50).roundToInt()
     // frosted glass plate, rebuilt only every few px of movement
-    if (under != null) {
+    if (under != null && l.glass) {
         val gx = (rc.left / 6f).roundToInt(); val gy = (rc.top / 6f).roundToInt(); val gh = (rc.height() / 6f).roundToInt()
         val plate by produceState<ImageBitmap?>(null, under, gx, gy, wBucket, gh) {
             value = withContext(Dispatchers.Default) { runCatching { WallRender.glassPlate(under.asAndroidBitmap(), rc)?.asImageBitmap() }.getOrNull() }
@@ -587,8 +587,16 @@ private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: Imag
         val d0 = LocalDensity.current
         plate?.let { Image(it, null, Modifier.offset { IntOffset(gr.left.roundToInt(), gr.top.roundToInt()) }.size(with(d0) { gr.width().toDp() }, with(d0) { gr.height().toDp() })) }
     }
-    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute, arKey) {
-        value = withContext(Dispatchers.Default) { runCatching { WallRender.styled(ctx, l, wBucket.coerceAtLeast(24)).asImageBitmap() }.getOrNull() }
+    val glassUnder = if (l.glassFill) under else null
+    val px6 = if (glassUnder != null) (rc.left / 6f).roundToInt() * 100000 + (rc.top / 6f).roundToInt() else 0
+    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute, arKey, glassUnder, px6) {
+        value = withContext(Dispatchers.Default) { runCatching {
+            val b = WallRender.styled(ctx, l, wBucket.coerceAtLeast(24))
+            if (glassUnder != null) {
+                val h = if (l.ar > 0f) rc.height() else rc.width() * b.height / b.width.toFloat()
+                WallRender.glassify(b, glassUnder.asAndroidBitmap(), android.graphics.RectF(rc.left, rc.centerY() - h / 2, rc.right, rc.centerY() + h / 2)).asImageBitmap()
+            } else b.asImageBitmap()
+        }.getOrNull() }
     }
     val dens = LocalDensity.current
     bmp?.let { b ->
@@ -654,6 +662,14 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLay
                     Text(tr("Frosted glass behind it, like iPhone", "زجاج مطفي وراه زي الآيفون"), color = Z.sub, fontSize = 12.sp)
                 }
                 Switch(l.glass, { onChange(l.copy(glass = it)) })
+            }
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                .clickable { onChange(l.copy(glassFill = !l.glassFill)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Glass widget", "الويدجت نفسها زجاج"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(tr("The numbers and shapes become frosted glass", "الأرقام والأشكال نفسها تبقى زجاج شفاف"), color = Z.sub, fontSize = 12.sp)
+                }
+                Switch(l.glassFill, { onChange(l.copy(glassFill = it)) })
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("Colour", "اللون"), fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))

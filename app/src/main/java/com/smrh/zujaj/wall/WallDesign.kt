@@ -31,6 +31,8 @@ data class WallLayer(
     val ar: Float = 0f,
     /** frosted-glass plate behind the layer (iPhone style) */
     val glass: Boolean = false,
+    /** the widget/text itself is made of frosted glass (no plate) */
+    val glassFill: Boolean = false,
 )
 
 @Serializable

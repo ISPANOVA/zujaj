@@ -115,6 +115,29 @@ object WallRender {
         c.drawRoundRect(RectF(st / 2, st / 2, w - st / 2, h - st / 2), rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = st; color = Color.argb(90, 255, 255, 255) })
         return out
     }
+    /** Turns a layer into glass: its shapes are filled with the blurred wallpaper behind them, with a soft shine and a bright rim. */
+    fun glassify(layer: Bitmap, under: Bitmap, dst: RectF): Bitmap {
+        val w = layer.width; val h = layer.height
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val x0 = dst.left.toInt().coerceIn(0, under.width - 2); val y0 = dst.top.toInt().coerceIn(0, under.height - 2)
+        val x1 = dst.right.toInt().coerceIn(x0 + 1, under.width); val y1 = dst.bottom.toInt().coerceIn(y0 + 1, under.height)
+        val crop = Bitmap.createBitmap(under, x0, y0, x1 - x0, y1 - y0)
+        val small = Bitmap.createScaledBitmap(crop, (crop.width / 10).coerceAtLeast(2), (crop.height / 10).coerceAtLeast(2), true)
+        val sx = w / dst.width(); val sy = h / dst.height()
+        c.drawBitmap(small, null, RectF((x0 - dst.left) * sx, (y0 - dst.top) * sy, (x1 - dst.left) * sx, (y1 - dst.top) * sy), Paint(Paint.FILTER_BITMAP_FLAG))
+        // milky frost + light from the top
+        c.drawColor(Color.argb(70, 255, 255, 255))
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), Color.argb(80, 255, 255, 255), Color.argb(0, 255, 255, 255), android.graphics.Shader.TileMode.CLAMP) })
+        // keep only the shapes of the layer
+        c.drawBitmap(layer, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) })
+        // glossy inner rim
+        val a = layer.extractAlpha()
+        val r = (minOf(w, h) * 0.035f).coerceIn(1.5f, 14f)
+        c.drawBitmap(a, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 255, 255, 255); maskFilter = BlurMaskFilter(r, BlurMaskFilter.Blur.INNER) })
+        return out
+    }
+
     fun glassRect(rc: RectF): RectF { val pad = minOf(rc.width(), rc.height()) * 0.12f; return RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad) }
 
     /** Box of a layer in px. */
@@ -395,12 +418,13 @@ object WallRender {
         if (l.glass && under != null) glassPlate(under, rc)?.let { c.drawBitmap(it, null, glassRect(rc), Paint(Paint.FILTER_BITMAP_FLAG)) }
         val b = styled(ctx, l, rc.width().toInt(), now)
         val dst = RectF(rc.left, rc.centerY() - rc.width() / (b.width / b.height.toFloat()) / 2, rc.right, rc.centerY() + rc.width() / (b.width / b.height.toFloat()) / 2)
-        if (l.shadow) {
+        if (l.shadow && !l.glassFill) {
             val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(rc.width() * 0.02f + 2f, BlurMaskFilter.Blur.NORMAL); alpha = 90 }
             val sh = b.extractAlpha()
             c.drawBitmap(sh, null, RectF(dst.left, dst.top + rc.width() * 0.006f, dst.right, dst.bottom + rc.width() * 0.006f), sp.apply { color = Color.BLACK })
         }
-        c.drawBitmap(b, null, dst, Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = l.alpha })
+        val fin = if (l.glassFill && under != null) runCatching { glassify(b, under, dst) }.getOrDefault(b) else b
+        c.drawBitmap(fin, null, dst, Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = l.alpha })
     }
 
     /**
