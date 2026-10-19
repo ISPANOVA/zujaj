@@ -33,7 +33,14 @@ data class RedeemCode(
     val expiresAt: Long,
     val note: String,
     val createdAt: Long,
+    /** pro, wall or both */
+    val grants: String = "pro",
 ) {
+    fun grantsLabel(ar: Boolean) = when (grants) {
+        "wall" -> if (ar) "الخلفيات" else "Wallpapers"
+        "both" -> if (ar) "برو + الخلفيات" else "Pro + Wallpapers"
+        else -> if (ar) "برو" else "Pro"
+    }
     fun durationLabel(ar: Boolean): String =
         if (unit == CodeUnit.FOREVER) (if (ar) "للأبد" else "Forever") else "$amount ${if (ar) unit.ar else unit.en}"
 
@@ -53,7 +60,7 @@ data class RedeemCode(
 }
 
 sealed class RedeemResult {
-    data class Ok(val until: Long, val restored: Boolean) : RedeemResult()
+    data class Ok(val until: Long, val restored: Boolean, val grants: String = "pro") : RedeemResult()
     data class Fail(val reason: Reason) : RedeemResult()
     enum class Reason { INVALID, DISABLED, EXPIRED, FULL, ALREADY_USED_EXPIRED, OFFLINE }
 }
@@ -80,6 +87,7 @@ object Codes {
         expiresAt = (d["expiresAt"] as? Number)?.toLong() ?: 0,
         note = d["note"] as? String ?: "",
         createdAt = (d["createdAt"] as? Number)?.toLong() ?: 0,
+        grants = d["grants"] as? String ?: "pro",
     )
 
     /** Redeems [raw] on this phone and turns Pro on locally when it works. */
@@ -96,7 +104,7 @@ object Codes {
             val prev = redRef.get().await()
             if (prev.exists()) {
                 val until = prev.getLong("until") ?: 0
-                if (until > now) RedeemResult.Ok(until, restored = true)
+                if (until > now) RedeemResult.Ok(until, restored = true, grants = prev.getString("grants") ?: "pro")
                 else RedeemResult.Fail(RedeemResult.Reason.ALREADY_USED_EXPIRED)
             } else db().runTransaction { tx ->
                 val snap = tx.get(ref)
@@ -109,8 +117,8 @@ object Codes {
                     else -> {
                         val until = c.until(now)
                         tx.update(ref, mapOf("uses" to c.uses + 1, "lastDevice" to dev))
-                        tx.set(redRef, mapOf("at" to now, "until" to until, "model" to "${Build.MANUFACTURER} ${Build.MODEL}"))
-                        RedeemResult.Ok(until, restored = false)
+                        tx.set(redRef, mapOf("at" to now, "until" to until, "model" to "${Build.MANUFACTURER} ${Build.MODEL}", "grants" to c.grants))
+                        RedeemResult.Ok(until, restored = false, grants = c.grants)
                     }
                 }
             }.await()
@@ -120,7 +128,7 @@ object Codes {
             else RedeemResult.Fail(RedeemResult.Reason.OFFLINE)
         }
         if (result is RedeemResult.Ok) {
-            Prefs.codeProUntil = maxOf(Prefs.codeProUntil, result.until)
+            apply(result.grants, result.until)
             Prefs.codeUsed = code
             Billing.refreshPro()
             watch(ctx)
@@ -142,12 +150,24 @@ object Codes {
             val red = ref.collection("redemptions").document(deviceId(ctx)).get().await()
             if (red.exists()) {
                 val until = red.getLong("until") ?: 0
-                if (until != Prefs.codeProUntil) Prefs.codeProUntil = until
+                val g = red.getString("grants") ?: "pro"
+                if (g != "wall") { if (until != Prefs.codeProUntil) Prefs.codeProUntil = until }
+                if (g != "pro") { if (until != Prefs.codeWallUntil) Prefs.codeWallUntil = until }
+                Prefs.codeGrants = g
             } else if (ref.get().await().exists()) {
-                Prefs.codeProUntil = 0
+                Prefs.codeProUntil = 0; Prefs.codeWallUntil = 0
             }
+            Billing.refreshWall()
             Billing.refreshPro()
         }
+    }
+
+    /** Sets the local Pro / Wallpapers time from what a code unlocks. */
+    private fun apply(grants: String, until: Long) {
+        Prefs.codeGrants = grants
+        if (grants != "wall") Prefs.codeProUntil = maxOf(Prefs.codeProUntil, until)
+        if (grants != "pro") Prefs.codeWallUntil = if (until == 0L) 0L else maxOf(Prefs.codeWallUntil, until)
+        Billing.refreshWall()
     }
 
     // ------------------------------------------------------------------ admin
@@ -161,7 +181,7 @@ object Codes {
             mapOf(
                 "amount" to c.amount, "unit" to c.unit.name, "maxUses" to c.maxUses, "uses" to 0L,
                 "active" to true, "expiresAt" to c.expiresAt, "note" to c.note,
-                "createdAt" to System.currentTimeMillis(), "lastDevice" to "",
+                "createdAt" to System.currentTimeMillis(), "lastDevice" to "", "grants" to c.grants,
             )
         ).await()
     }
@@ -225,8 +245,10 @@ object Codes {
         val app = ctx.applicationContext
         watchReg = col().document(code).collection("redemptions").document(deviceId(app)).addSnapshotListener { snap, err ->
             if (err != null || snap == null) return@addSnapshotListener
+            val g = snap.getString("grants") ?: Prefs.codeGrants
             val until = if (snap.exists()) snap.getLong("until") ?: 0 else Prefs.codeProUntil
-            if (until != Prefs.codeProUntil) {
+            if (g != "pro" && until != Prefs.codeWallUntil) { Prefs.codeWallUntil = until; Billing.refreshWall() }
+            if (g != "wall" && until != Prefs.codeProUntil) {
                 Prefs.codeProUntil = until
                 Billing.refreshPro()
                 com.smrh.zujaj.widget.Scheduler.scheduleAlarms(app)

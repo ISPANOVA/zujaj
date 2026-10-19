@@ -613,6 +613,7 @@ fun RedeemDialog(onDismiss: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }
     var success by remember { mutableStateOf<String?>(null) }
+    var grants by remember { mutableStateOf("pro") }
     // close by itself a moment after the celebration
     LaunchedEffect(success) { if (success != null) { kotlinx.coroutines.delay(2800); onDismiss() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -623,7 +624,7 @@ fun RedeemDialog(onDismiss: () -> Unit) {
                 (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.9f))
                     .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)))
             }, label = "redeem") { done ->
-                if (done != null) ProUnlocked(done) else Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                if (done != null) ProUnlocked(done, grants) else Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(Z.pro.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(32.dp))
                     }
@@ -650,6 +651,7 @@ fun RedeemDialog(onDismiss: () -> Unit) {
                                     val d = if (r.until == Long.MAX_VALUE) tr("Forever", "للأبد")
                                         else tr("Until ", "لحد ") + java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(r.until))
                                     WidgetUpdater.updateAll(ctx)
+                                    grants = r.grants
                                     success = d
                                 }
                                 is com.smrh.zujaj.remote.RedeemResult.Fail -> msg = when (r.reason) {
@@ -672,7 +674,7 @@ fun RedeemDialog(onDismiss: () -> Unit) {
 
 /** Celebration shown when Pro turns on: glowing crown, gold confetti and the end date. */
 @Composable
-fun ProUnlocked(until: String) {
+fun ProUnlocked(until: String, grants: String = "pro") {
     val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "pro")
     val glow by t.animateFloat(0.55f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "g")
     val pop = remember { androidx.compose.animation.core.Animatable(0.3f) }
@@ -704,9 +706,9 @@ fun ProUnlocked(until: String) {
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(54.dp)) }
             Spacer(Modifier.height(18.dp))
-            Text(tr("Pro is on!", "البرو اتفعّل!"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Z.pro)
+            Text(when (grants) { "wall" -> tr("Wallpapers unlocked!", "الخلفيات اتفتحت!"); "both" -> tr("Pro + Wallpapers on!", "البرو والخلفيات اتفعّلوا!"); else -> tr("Pro is on!", "البرو اتفعّل!") }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Z.pro)
             Spacer(Modifier.height(6.dp))
-            Text(tr("Every widget is unlocked", "كل الويدجتات بقت مفتوحة"), color = Z.text, fontSize = 14.sp)
+            Text(if (grants == "wall") tr("Apply & Save are yours", "التطبيق والحفظ بقوا مفتوحين") else tr("Every widget is unlocked", "كل الويدجتات بقت مفتوحة"), color = Z.text, fontSize = 14.sp)
             Spacer(Modifier.height(10.dp))
             Box(Modifier.clip(RoundedCornerShape(50)).background(Z.pro.copy(alpha = 0.14f)).padding(horizontal = 14.dp, vertical = 6.dp)) {
                 Text(until, color = Z.pro, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)

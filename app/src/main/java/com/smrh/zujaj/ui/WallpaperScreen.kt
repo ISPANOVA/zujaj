@@ -36,6 +36,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.Lock
+import com.smrh.zujaj.wall.WallHistory
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FormatQuote
@@ -60,6 +63,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -153,6 +157,9 @@ fun WallpaperScreen(nav: Nav) {
     var menu by remember { mutableStateOf(false) }
     var snapX by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var showBuy by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
+    val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
     val accent = LocalAccent.current
     val found = remember { Animatable(0f) }      // outline animation 0..1
     val subjectIn = remember { Animatable(1f) }  // subject fade over the layers
@@ -235,6 +242,7 @@ fun WallpaperScreen(nav: Nav) {
                 Text(tr("Wallpapers", "الخلفيات"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text("BETA", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
             }
+            IconButton(onClick = { showHistory = true }) { Icon(Icons.Rounded.Collections, null) }
             IconButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Icon(Icons.Rounded.Image, null) }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, null) }
@@ -379,11 +387,15 @@ fun WallpaperScreen(nav: Nav) {
         }
         // ---------------------------------------------------------------- actions
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            WallAction(Icons.Rounded.Wallpaper, tr("Apply", "تطبيق"), photo != null) { showApply = true }
-            WallAction(Icons.Rounded.Download, tr("Save", "حفظ"), photo != null) {
+            WallAction(Icons.Rounded.Wallpaper, tr("Apply", "تطبيق"), photo != null, locked = !owned) { if (owned) showApply = true else showBuy = true }
+            WallAction(Icons.Rounded.Download, tr("Save", "حفظ"), photo != null, locked = !owned) {
+                if (!owned) { showBuy = true; return@WallAction }
                 scope.launch {
                     busy = true
-                    val ok = withContext(Dispatchers.IO) { runCatching { saveToGallery(ctx, WallRender.compose(ctx, design, photo, mask, screenW, screenH)) }.isSuccess }
+                    val ok = withContext(Dispatchers.IO) { runCatching {
+                        val full = WallRender.compose(ctx, design, photo, mask, screenW, screenH)
+                        saveToGallery(ctx, full); WallHistory.add(ctx, design, full)
+                    }.isSuccess }
                     busy = false
                     Toast.makeText(ctx, if (ok) tr("Saved to Photos ✓", "اتحفظت في الصور ✓") else tr("Couldn't save", "مقدرتش أحفظ"), Toast.LENGTH_SHORT).show()
                 }
@@ -424,12 +436,46 @@ fun WallpaperScreen(nav: Nav) {
             change(id) { it.copy(color = a, color2 = b, gDir = 0) }
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
+    if (showBuy) WallBuySheet { showBuy = false }
+    if (showHistory) ModalBottomSheet(onDismissRequest = { showHistory = false }, containerColor = Color(0xFF1D2231)) {
+        var items by remember { mutableStateOf(WallHistory.list(ctx)) }
+        Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 24.dp)) {
+            Text(tr("My wallpapers", "خلفياتي"), fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(6.dp))
+            if (items.isEmpty()) Text(tr("Wallpapers you save or apply show up here so you can edit them again.", "أي خلفية تحفظها أو تطبقها هتظهر هنا عشان تعدّل عليها تاني."),
+                color = Z.sub, modifier = Modifier.padding(vertical = 30.dp, horizontal = 6.dp))
+            LazyVerticalGrid(GridCells.Fixed(3), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 560.dp)) {
+                items(items, key = { it.dir.name }) { it ->
+                    val bmp by produceState<ImageBitmap?>(null, it.thumb) { value = withContext(Dispatchers.IO) { runCatching { android.graphics.BitmapFactory.decodeFile(it.thumb.path).asImageBitmap() }.getOrNull() } }
+                    Box(Modifier.aspectRatio(aspect).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.06f))
+                        .pointerInput(it.dir.name) {
+                            detectTapGestures(
+                                onTap = { _ ->
+                                    scope.launch {
+                                        val d = withContext(Dispatchers.IO) { WallHistory.open(ctx, it) }
+                                        photo = withContext(Dispatchers.IO) { WallRender.loadImage(d.image) }
+                                        mask = withContext(Dispatchers.IO) { WallRender.loadImage(d.mask, 1600) }
+                                        design = d; selected = null; showHistory = false
+                                    }
+                                },
+                                onLongPress = { _ -> WallHistory.delete(it); items = WallHistory.list(ctx) },
+                            )
+                        }) {
+                        bmp?.let { b -> Image(b, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                    }
+                }
+            }
+            if (items.isNotEmpty()) Text(tr("Tap to edit · long-press to delete", "اضغط للتعديل · اضغط مطولاً للمسح"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, start = 6.dp))
+        }
+    }
     if (showApply) ApplyWallDialog(onDismiss = { showApply = false }) { target, live ->
         showApply = false
         scope.launch {
             busy = true
             WallDesign.save(ctx, design)
-            val msg = withContext(Dispatchers.IO) { applyWallpaper(ctx, design, photo, mask, screenW, screenH, target, live) }
+            val msg = withContext(Dispatchers.IO) {
+                runCatching { WallHistory.add(ctx, design, WallRender.compose(ctx, design, photo, mask, screenW / 2, screenH / 2)) }
+                applyWallpaper(ctx, design, photo, mask, screenW, screenH, target, live)
+            }
             busy = false
             msg?.let { Toast.makeText(ctx, it, Toast.LENGTH_LONG).show() }
         }
@@ -564,10 +610,11 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLay
 }
 
 @Composable
-private fun WallAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun WallAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, locked: Boolean = false, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = if (enabled) 1f else 0.4f }) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f)).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(if (locked) Z.pro.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.08f)).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, null, modifier = Modifier.size(25.dp))
+            if (locked) Icon(Icons.Rounded.Lock, null, tint = Z.pro, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(13.dp))
         }
         Spacer(Modifier.height(6.dp))
         Text(label, fontSize = 12.sp, color = Z.text)
@@ -636,3 +683,85 @@ private fun applyWallpaper(ctx: android.content.Context, d: WallDesign, photo: B
 }
 
 @Suppress("unused") private val keepCatalog = Catalog
+
+
+/** One-time purchase sheet for Apply & Save (price comes from Google Play). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WallBuySheet(onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val price by com.smrh.zujaj.billing.Billing.wallPrice.collectAsState()
+    val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
+    var redeem by remember { mutableStateOf(false) }
+    LaunchedEffect(owned) { if (owned) onDismiss() }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D1A12)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(70.dp).clip(RoundedCornerShape(22.dp)).background(Z.pro.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Wallpaper, null, tint = Z.pro, modifier = Modifier.size(36.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(tr("Wallpapers — lifetime", "الخلفيات — مدى الحياة"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text(tr("Apply your designs to the home & lock screen and save them to your photos. Pay once, yours forever.",
+                "طبّق تصميماتك على الشاشة الرئيسية وشاشة القفل واحفظها في الصور. تدفع مرة واحدة وتبقى ليك على طول."),
+                color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Spacer(Modifier.height(18.dp))
+            listOf(tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
+                tr("Every widget, colours & gradients", "كل الويدجت والألوان والتدرجات"), tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = Z.pro, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            PrimaryButton((price?.oneTimePurchaseOfferDetails?.formattedPrice?.let { tr("Unlock for ", "افتحها بـ ") + it } ?: tr("Unlock", "افتحها")) + tr(" · lifetime", " · مدى الحياة"), Modifier.fillMaxWidth()) {
+                val a = ctx as? android.app.Activity
+                if (a == null || !com.smrh.zujaj.billing.Billing.buyWall(a)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
+            }
+            Row {
+                TextButton(onClick = { com.smrh.zujaj.billing.Billing.restore() }) { Text(tr("Restore", "استرجاع"), color = Z.sub) }
+                TextButton(onClick = { redeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = Z.pro) }
+            }
+        }
+    }
+    if (redeem) RedeemDialog { redeem = false }
+}
+
+
+/** Shown once after the update: what the new Wallpapers page does. */
+@Composable
+fun WallIntroDialog(onTry: () -> Unit, onDismiss: () -> Unit) {
+    val t = rememberInfiniteTransition(label = "intro")
+    val glow by t.animateFloat(0.4f, 1f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "g")
+    val sweep by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "s")
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.clip(RoundedCornerShape(30.dp)).background(Brush.verticalGradient(listOf(Color(0xFF2A1F3D), Z.surface))).padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("NEW · جديد", color = LocalAccent.current, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+            Spacer(Modifier.height(12.dp))
+            // a tiny animated demo: a mountain in front of a clock
+            Canvas(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(22.dp))) {
+                val w = size.width; val h = size.height
+                drawRect(Brush.verticalGradient(listOf(Color(0xFFF2A26B), Color(0xFF7B5CD6))))
+                val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; textSize = h * 0.62f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true }
+                drawContext.canvas.nativeCanvas.drawText("10:55", w / 2, h * 0.62f, p)
+                val m = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, h); lineTo(0f, h * 0.62f); lineTo(w * 0.22f, h * 0.42f); lineTo(w * 0.38f, h * 0.55f); lineTo(w * 0.55f, h * 0.3f)
+                    lineTo(w * 0.72f, h * 0.5f); lineTo(w * 0.86f, h * 0.4f); lineTo(w, h * 0.58f); lineTo(w, h); close()
+                }
+                drawPath(m, Color(0xFF241A35))
+                drawPath(m, Color.White.copy(alpha = 0.5f * glow), style = Stroke(4f))
+                val x = w * sweep
+                drawLine(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.7f), Color.Transparent)), Offset(x, 0f), Offset(x, h), 3f)
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(tr("Wallpapers are here", "الخلفيات وصلت"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(tr("Pick any photo, add a clock or any widget, then tap ✦ — Zujaj finds the mountain, building or person and slides the clock behind it.",
+                "اختار أي صورة، ضيف ساعة أو أي ويدجت، واضغط ✦ — زجاج بيتعرّف على الجبل أو المبنى أو الشخص ويحط الساعة وراه."),
+                color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Spacer(Modifier.height(18.dp))
+            PrimaryButton(tr("Try it", "جرّبها"), Modifier.fillMaxWidth(), onClick = onTry)
+            TextButton(onClick = onDismiss) { Text(tr("Later", "بعدين"), color = Z.sub) }
+        }
+    }
+}

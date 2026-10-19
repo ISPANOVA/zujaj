@@ -118,6 +118,22 @@ object Prefs {
     var isPro: Boolean
         get() = (purchasedPro || codePro) && !Guard.compromised()
         set(v) { purchasedPro = v }
+    // ---------- Wallpapers (one-time purchase or code) ----------
+    var purchasedWall: Boolean
+        get() = sp.getBoolean("wall", false) && Guard.verify("wall|1", str("wall_sig", ""))
+        set(v) { sp.edit().putBoolean("wall", v).putString("wall_sig", if (v) Guard.seal("wall|1") else "").apply(); bump() }
+    var codeWallUntil: Long
+        get() {
+            val u = sp.getLong("code_wall_until", 0L)
+            return if (u > 0 && Guard.verify("cwall|$u", str("cwall_sig", ""))) u else 0L
+        }
+        set(v) { sp.edit().putLong("code_wall_until", v).putString("cwall_sig", if (v > 0) Guard.seal("cwall|$v") else "").apply(); bump() }
+    /** What the redeemed code unlocks: pro, wall or both. */
+    var codeGrants: String
+        get() = str("code_grants", "pro")
+        set(v) = put("code_grants", v)
+    val wallOwned: Boolean get() = (purchasedWall || codeWallUntil > System.currentTimeMillis()) && !Guard.compromised()
+
     var proPlan: String
         get() = str("pro_plan", "")
         set(v) = put("pro_plan", v)

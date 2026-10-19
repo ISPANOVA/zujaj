@@ -295,6 +295,7 @@ private fun CodesAdmin() {
     var people by remember { mutableIntStateOf(1) }
     var deadline by remember { mutableIntStateOf(0) } // days the code stays redeemable, 0 = no deadline
     var note by remember { mutableStateOf("") }
+    var grants by remember { mutableStateOf("pro") }
     var busy by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<String?>(null) }
 
@@ -309,6 +310,13 @@ private fun CodesAdmin() {
                         shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = { code = Codes.randomCode() }) { Icon(Icons.Rounded.Casino, null, tint = LocalAccent.current) }
+                }
+                Divider()
+                Text(tr("Unlocks", "الكود بيفتح"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
+                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("pro" to tr("Pro (widgets)", "برو (الويدجت)"), "wall" to tr("Wallpapers", "الخلفيات"), "both" to tr("Pro + Wallpapers", "برو + الخلفيات"))) { (k, l) ->
+                        ZChip(l, grants == k) { grants = k }
+                    }
                 }
                 Divider()
                 Text(tr("Pro duration", "مدة البرو"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
@@ -344,7 +352,7 @@ private fun CodesAdmin() {
                         val r = runCatching {
                             if (Codes.exists(c)) error(tr("This code already exists", "الكود ده موجود قبل كده"))
                             Codes.create(RedeemCode(c, amount, unit, if (unlimited) 0 else people.toLong(), 0, true,
-                                if (deadline == 0) 0 else System.currentTimeMillis() + deadline * 86_400_000L, note.trim(), 0))
+                                if (deadline == 0) 0 else System.currentTimeMillis() + deadline * 86_400_000L, note.trim(), 0, grants))
                         }
                         busy = false
                         if (r.isSuccess) {
@@ -433,7 +441,7 @@ private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> U
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (c.unit == CodeUnit.FOREVER) { Icon(Icons.Rounded.AllInclusive, null, tint = Z.pro, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)) }
-            Text("PRO · ${c.durationLabel(ar)}", color = Z.pro, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("${c.grantsLabel(ar).uppercase()} · ${c.durationLabel(ar)}", color = Z.pro, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(10.dp))
             Text(
                 if (c.maxUses == 0L) tr("${c.uses} used · unlimited", "${c.uses} استخدام · غير محدود") else tr("${c.uses} / ${c.maxUses} used", "${c.uses} من ${c.maxUses} استخدموه"),

@@ -23,6 +23,9 @@ enum class Plan(val productId: String, val type: String) {
     LIFETIME("zujaj_pro_lifetime", BillingClient.ProductType.INAPP),
 }
 
+/** One-time purchase that unlocks Apply / Save in Wallpapers. */
+const val WALL_PRODUCT = "zujaj_wallpapers_lifetime"
+
 data class PlanPrice(val plan: Plan, val price: String, val details: ProductDetails, val offerToken: String?, val trial: Boolean)
 
 object Billing {
@@ -32,12 +35,18 @@ object Billing {
     val prices: StateFlow<Map<Plan, PlanPrice>> = _prices
     private val _pro = MutableStateFlow(false)
     val pro: StateFlow<Boolean> = _pro
+    private val _wallPrice = MutableStateFlow<ProductDetails?>(null)
+    val wallPrice: StateFlow<ProductDetails?> = _wallPrice
+    private val _wall = MutableStateFlow(false)
+    val wall: StateFlow<Boolean> = _wall
+    fun refreshWall() { _wall.value = Prefs.wallOwned }
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
     fun init(ctx: Context) {
         appCtx = ctx.applicationContext
         _pro.value = Prefs.isPro
+        _wall.value = Prefs.wallOwned
         val c = BillingClient.newBuilder(ctx.applicationContext)
             .setListener { result, purchases -> onPurchases(result, purchases) }
             .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
@@ -62,6 +71,9 @@ object Billing {
 
     private fun queryProducts() {
         val c = client ?: return
+        c.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(listOf(
+            QueryProductDetailsParams.Product.newBuilder().setProductId(WALL_PRODUCT).setProductType(BillingClient.ProductType.INAPP).build()
+        )).build()) { r, res -> if (r.responseCode == BillingClient.BillingResponseCode.OK) _wallPrice.value = res.productDetailsList.firstOrNull() }
         for (type in listOf(BillingClient.ProductType.SUBS, BillingClient.ProductType.INAPP)) {
             val plans = Plan.values().filter { it.type == type }
             val params = QueryProductDetailsParams.newBuilder().setProductList(
@@ -98,18 +110,23 @@ object Billing {
     fun restore() {
         val c = client ?: return
         var any = false
+        var anyWall = false
         var done = 0
         for (type in listOf(BillingClient.ProductType.SUBS, BillingClient.ProductType.INAPP)) {
             c.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(type).build()) { result, list ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     list.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it) }.forEach {
-                        any = true
                         acknowledge(it)
-                        Prefs.proPlan = it.products.firstOrNull() ?: ""
+                        if (WALL_PRODUCT in it.products) anyWall = true
+                        else { any = true; Prefs.proPlan = it.products.firstOrNull() ?: "" }
                     }
                 }
                 done++
-                if (done == 2 && result.responseCode == BillingClient.BillingResponseCode.OK) setPro(any)
+                if (done == 2 && result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    setPro(any)
+                    if (Prefs.purchasedWall != anyWall) Prefs.purchasedWall = anyWall
+                    refreshWall()
+                }
             }
         }
     }
@@ -121,10 +138,19 @@ object Billing {
 
     /** Re-evaluates Pro (purchase or redeem code) and refreshes widgets when it changes. */
     fun refreshPro() {
+        _wall.value = Prefs.wallOwned
         val now = Prefs.isPro
         val changed = _pro.value != now
         _pro.value = now
         if (changed) appCtx?.let { WidgetUpdater.updateAll(it) }
+    }
+
+    fun buyWall(activity: Activity): Boolean {
+        val c = client ?: return false
+        val pd = _wallPrice.value ?: return false
+        val r = c.launchBillingFlow(activity, BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(
+            BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(pd).build())).build())
+        return r.responseCode == BillingClient.BillingResponseCode.OK
     }
 
     fun buy(activity: Activity, plan: Plan): Boolean {
@@ -141,9 +167,13 @@ object Billing {
             BillingClient.BillingResponseCode.OK -> purchases?.forEach {
                 if (it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it)) {
                     acknowledge(it)
-                    Prefs.proPlan = it.products.firstOrNull() ?: ""
-                    setPro(true)
-                    _message.value = "pro_ok"
+                    if (WALL_PRODUCT in it.products) {
+                        Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"
+                    } else {
+                        Prefs.proPlan = it.products.firstOrNull() ?: ""
+                        setPro(true)
+                        _message.value = "pro_ok"
+                    }
                 } else if (it.purchaseState == Purchase.PurchaseState.PENDING) {
                     _message.value = "pending"
                 }
