@@ -306,31 +306,22 @@ object WallRender {
         // what's right behind the layer
         val area = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0), 40, 40, true)
         val ap = IntArray(1600); area.getPixels(ap, 0, 40, 0, 0, 40, 40)
-        val bg = clusters(ap, 3).first().first.let { if (dim > 0) androidx.core.graphics.ColorUtils.blendARGB(it, Color.BLACK, dim / 100f) else it }
-        // the photo's palette
-        val whole = Bitmap.createScaledBitmap(photo, 64, 64, true)
-        val wp = IntArray(4096); whole.getPixels(wp, 0, 64, 0, 0, 64, 64)
-        val pal = clusters(wp, 7)
-        val bgH = hsl(bg)
-        // rank palette colours: vivid, reasonably common, and different from what's behind
-        val ranked = pal.map { (c, share) ->
-            val h = hsl(c)
-            val hueGap = minOf(abs(h[0] - bgH[0]), 360 - abs(h[0] - bgH[0])) / 180f
-            c to (h[1] * 1.6f + share * 1.2f + hueGap * 0.5f)
-        }.sortedByDescending { it.second }.map { it.first }
-        val first = ranked.firstOrNull() ?: Color.WHITE
-        val fh = hsl(first)
-        val second = ranked.drop(1).firstOrNull { c -> val h = hsl(c); minOf(abs(h[0] - fh[0]), 360 - abs(h[0] - fh[0])) > 22 } ?: run {
-            // monochrome photo: a neighbouring hue of the main colour
-            androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf((fh[0] + 35) % 360, fh[1].coerceAtLeast(0.35f), fh[2]))
+        val area3 = clusters(ap, 3)
+        val bg = area3.first().first.let { if (dim > 0) androidx.core.graphics.ColorUtils.blendARGB(it, Color.BLACK, dim / 100f) else it }
+        // the hue to build on: the most colourful tone right behind the layer, else the photo's most vivid colour
+        var src = area3.maxByOrNull { hsl(it.first)[1] * (0.5f + it.second) }!!.first
+        if (hsl(src)[1] < 0.15f) {
+            val whole = Bitmap.createScaledBitmap(photo, 64, 64, true)
+            val wp = IntArray(4096); whole.getPixels(wp, 0, 64, 0, 0, 64, 64)
+            clusters(wp, 6).maxByOrNull { hsl(it.first)[1] * (0.4f + it.second) }?.first?.let { if (hsl(it)[1] >= 0.15f) src = it }
         }
-        fun vivid(c: Int): Int { val h = hsl(c); h[1] = h[1].coerceIn(0.35f, 0.85f); return androidx.core.graphics.ColorUtils.HSLToColor(h) }
-        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(bg) < 0.4
-        // a near-white (or near-black) tint of the main colour on top, the vivid accent below
-        val tint = androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(fh[0], (fh[1] * 0.5f).coerceAtMost(0.45f), if (dark) 0.92f else 0.14f))
-        val a = readable(tint, bg, 4.5)
-        val b = readable(vivid(second), bg, 3.0)
-        return a to b
+        val sh = hsl(src)
+        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(bg) < 0.45
+        val sat = if (sh[1] < 0.15f) 0.08f else sh[1]
+        // tone-on-tone: a pale tint on top fading into a richer shade of the same hue, both readable on the spot
+        val top = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.6f).coerceIn(0.05f, 0.45f), if (dark) 0.94f else 0.12f)), bg, 4.5)
+        val bottom = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], sat.coerceIn(0.08f, 0.85f).let { if (sat > 0.15f) maxOf(it, 0.6f) else it }, if (dark) 0.74f else 0.3f)), bg, 2.4)
+        return top to bottom
     }
 
     private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime) {
