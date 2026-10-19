@@ -105,6 +105,10 @@ object Flags {
                 latestCode = snap.getLong("latestCode") ?: 0,
                 forceUpdate = snap.getBoolean("forceUpdate") ?: false,
                 updateNote = snap.getString("updateNote") ?: "",
+                adsOn = snap.getBoolean("adsOn") ?: true,
+                adBanner = snap.getString("adBanner") ?: "",
+                adReward = snap.getString("adReward") ?: "",
+                adWallPerDay = snap.getLong("adWallPerDay")?.toInt() ?: 3,
             )
             com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
             _flags.value = f
@@ -141,6 +145,10 @@ object Flags {
             "latestCode" to f.latestCode,
             "forceUpdate" to f.forceUpdate,
             "updateNote" to f.updateNote,
+            "adsOn" to f.adsOn,
+            "adBanner" to f.adBanner,
+            "adReward" to f.adReward,
+            "adWallPerDay" to f.adWallPerDay,
             "updatedAt" to System.currentTimeMillis(),
         )
         doc().set(data, SetOptions.merge()).await()
