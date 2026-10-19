@@ -25,16 +25,18 @@ class WallTest {
         val base = ctx.getExternalFilesDir(null)!!
         val out = File(base, "device").apply { mkdirs() }
         val log = StringBuilder()
-        for (name in listOf("person.jpg", "dog.jpg")) {
+        val testCtx = InstrumentationRegistry.getInstrumentation().context
+        for (name in listOf("dome.jpg", "person.jpg", "dog.jpg")) {
             val f = File(base, name)
-            if (!f.exists()) { log.append("$name missing\n"); continue }
-            val photo = BitmapFactory.decodeFile(f.path)
+            val photo = if (name == "dome.jpg") testCtx.assets.open(name).use { BitmapFactory.decodeStream(it) }
+                else { if (!f.exists()) { log.append("$name missing\n"); continue }; BitmapFactory.decodeFile(f.path) }
             val t0 = System.currentTimeMillis()
             val r = runBlocking { Segment.run(ctx, photo) }
+            log.append("coverage=${(r as? Segment.Result.Ok)?.mask?.let { WallRender.coverage(it) }} ")
             log.append("$name ${photo.width}x${photo.height}: ${r.javaClass.simpleName} ${if (r is Segment.Result.Fail) r.why else ""} in ${System.currentTimeMillis() - t0} ms\n")
             val mask = (r as? Segment.Result.Ok)?.mask
             val layers = listOf(
-                WallLayer(kind = "clock_tall", cx = 0.5f, cy = 0.28f, w = 0.8f, behind = true),
+                WallLayer(kind = "clock_tall", cx = 0.5f, cy = if (name == "dome.jpg") 0.36f else 0.28f, w = 0.8f, behind = true, color2 = 0xFFE7B75F.toInt()),
                 WallLayer(kind = "date_greg", cx = 0.5f, cy = 0.1f, w = 0.6f),
                 WallLayer(kind = "day_calli", cx = 0.5f, cy = 0.62f, w = 0.6f, behind = false),
             )
