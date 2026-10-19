@@ -37,6 +37,11 @@ jobs:
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            curl -sL -o person.jpg https://storage.googleapis.com/download.tensorflow.org/example_images/grace_hopper.jpg || true
+            curl -sL -o dog.jpg https://storage.googleapis.com/download.tensorflow.org/example_images/YellowLabradorLooking_new.jpg || true
+            adb shell mkdir -p /sdcard/Android/data/com.smrh.zujaj.debug/files
+            adb push person.jpg /sdcard/Android/data/com.smrh.zujaj.debug/files/person.jpg || true
+            adb push dog.jpg /sdcard/Android/data/com.smrh.zujaj.debug/files/dog.jpg || true
             adb shell am instrument -w -r com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner > instrument.log 2>&1 || true
             mkdir -p device_out
             adb pull /sdcard/Android/data/com.smrh.zujaj.debug/files/device device_out/ || true
