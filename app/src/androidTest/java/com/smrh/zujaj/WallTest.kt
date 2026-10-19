@@ -40,6 +40,8 @@ class WallTest {
                 WallLayer(kind = "date_greg", cx = 0.5f, cy = 0.1f, w = 0.6f),
                 WallLayer(kind = "day_calli", cx = 0.5f, cy = 0.62f, w = 0.6f, behind = false),
             )
+            val auto = layers.map { l -> val (a, b) = WallRender.autoColors(photo, l, 1080, 2340); log.append("  auto ${l.kind}: #%08X → #%08X\n".format(a, b)); l.copy(color = a, color2 = b) }
+            FileOutputStream(File(out, "auto_$name.png")).use { WallRender.compose(ctx, WallDesign(layers = auto), photo, mask, 1080, 2340).compress(Bitmap.CompressFormat.PNG, 90, it) }
             val d = WallDesign(layers = layers)
             val img = WallRender.compose(ctx, d, photo, mask, 1080, 2340)
             FileOutputStream(File(out, "wall_$name.png")).use { img.compress(Bitmap.CompressFormat.PNG, 90, it) }

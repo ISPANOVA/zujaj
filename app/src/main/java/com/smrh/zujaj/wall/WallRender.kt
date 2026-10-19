@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 
 /** Draws a wallpaper design: photo → layers behind the subject → the subject → layers in front. */
@@ -255,32 +256,81 @@ object WallRender {
         return n / 4096f
     }
 
-    /** Two colours that suit the photo behind a layer: a light one and a vivid one. */
-    fun autoColors(photo: Bitmap, l: WallLayer, W: Int, H: Int): Pair<Int, Int> {
+    /** k-means on a pixel list → (colour, share) sorted by share. */
+    private fun clusters(px: IntArray, k: Int): List<Pair<Int, Float>> {
+        if (px.isEmpty()) return emptyList()
+        val cent = Array(k) { i -> px[(i * px.size / k).coerceAtMost(px.size - 1)] }.map { floatArrayOf(Color.red(it).toFloat(), Color.green(it).toFloat(), Color.blue(it).toFloat()) }.toMutableList()
+        val assign = IntArray(px.size)
+        repeat(8) {
+            for ((i, c) in px.withIndex()) {
+                val r = Color.red(c); val g = Color.green(c); val b = Color.blue(c)
+                var best = 0; var bd = Float.MAX_VALUE
+                for ((j, m) in cent.withIndex()) { val d = (r - m[0]) * (r - m[0]) + (g - m[1]) * (g - m[1]) + (b - m[2]) * (b - m[2]); if (d < bd) { bd = d; best = j } }
+                assign[i] = best
+            }
+            for (j in 0 until k) {
+                var n = 0; var sr = 0f; var sg = 0f; var sb = 0f
+                for ((i, c) in px.withIndex()) if (assign[i] == j) { n++; sr += Color.red(c); sg += Color.green(c); sb += Color.blue(c) }
+                if (n > 0) cent[j] = floatArrayOf(sr / n, sg / n, sb / n)
+            }
+        }
+        return (0 until k).map { j -> Color.rgb(cent[j][0].toInt(), cent[j][1].toInt(), cent[j][2].toInt()) to assign.count { it == j } / px.size.toFloat() }
+            .filter { it.second > 0f }.sortedByDescending { it.second }
+    }
+
+    private fun hsl(c: Int) = FloatArray(3).also { androidx.core.graphics.ColorUtils.colorToHSL(c, it) }
+
+    /** Moves a colour's lightness until it reads clearly on [bg] (contrast ≥ [target]). */
+    private fun readable(c: Int, bg: Int, target: Double = 3.2): Int {
+        val h = hsl(c)
+        val darkBg = androidx.core.graphics.ColorUtils.calculateLuminance(bg) < 0.4
+        var out = c
+        var steps = 0
+        while (androidx.core.graphics.ColorUtils.calculateContrast(out, bg or 0xFF000000.toInt()) < target && steps < 40) {
+            h[2] = (h[2] + if (darkBg) 0.025f else -0.025f).coerceIn(0.03f, 0.97f)
+            out = androidx.core.graphics.ColorUtils.HSLToColor(h); steps++
+        }
+        return out
+    }
+
+    /**
+     * Two colours that suit the wallpaper: looks at what is actually behind the layer (its main colour)
+     * and at the photo's palette, then picks two harmonious accents and adjusts them to stay readable there.
+     */
+    fun autoColors(photo: Bitmap, l: WallLayer, W: Int, H: Int, dim: Int = 0): Pair<Int, Int> {
         val rc = rect(l, W, H)
         val sc = maxOf(W / photo.width.toFloat(), H / photo.height.toFloat())
         val ox = (W - photo.width * sc) / 2; val oy = (H - photo.height * sc) / 2
         val x0 = ((rc.left - ox) / sc).toInt().coerceIn(0, photo.width - 2); val x1 = ((rc.right - ox) / sc).toInt().coerceIn(x0 + 1, photo.width)
         val y0 = ((rc.top - oy) / sc).toInt().coerceIn(0, photo.height - 2); val y1 = ((rc.bottom - oy) / sc).toInt().coerceIn(y0 + 1, photo.height)
-        val crop = Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0)
-        val small = Bitmap.createScaledBitmap(crop, 24, 24, true)
-        val whole = Bitmap.createScaledBitmap(photo, 32, 32, true)
-        var best = Color.WHITE; var bestSat = -1f
-        val hsv = FloatArray(3)
-        for (y in 0 until 32) for (x in 0 until 32) {
-            Color.colorToHSV(whole.getPixel(x, y), hsv)
-            val score = hsv[1] * (0.4f + hsv[2])
-            if (score > bestSat) { bestSat = score; best = whole.getPixel(x, y) }
+        // what's right behind the layer
+        val area = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0), 40, 40, true)
+        val ap = IntArray(1600); area.getPixels(ap, 0, 40, 0, 0, 40, 40)
+        val bg = clusters(ap, 3).first().first.let { if (dim > 0) androidx.core.graphics.ColorUtils.blendARGB(it, Color.BLACK, dim / 100f) else it }
+        // the photo's palette
+        val whole = Bitmap.createScaledBitmap(photo, 64, 64, true)
+        val wp = IntArray(4096); whole.getPixels(wp, 0, 64, 0, 0, 64, 64)
+        val pal = clusters(wp, 7)
+        val bgH = hsl(bg)
+        // rank palette colours: vivid, reasonably common, and different from what's behind
+        val ranked = pal.map { (c, share) ->
+            val h = hsl(c)
+            val hueGap = minOf(abs(h[0] - bgH[0]), 360 - abs(h[0] - bgH[0])) / 180f
+            c to (h[1] * 1.6f + share * 1.2f + hueGap * 0.5f)
+        }.sortedByDescending { it.second }.map { it.first }
+        val first = ranked.firstOrNull() ?: Color.WHITE
+        val fh = hsl(first)
+        val second = ranked.drop(1).firstOrNull { c -> val h = hsl(c); minOf(abs(h[0] - fh[0]), 360 - abs(h[0] - fh[0])) > 22 } ?: run {
+            // monochrome photo: a neighbouring hue of the main colour
+            androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf((fh[0] + 35) % 360, fh[1].coerceAtLeast(0.35f), fh[2]))
         }
-        var sum = FloatArray(3)
-        for (y in 0 until 24) for (x in 0 until 24) { Color.colorToHSV(small.getPixel(x, y), hsv); sum[0] += hsv[0]; sum[1] += hsv[1]; sum[2] += hsv[2] }
-        sum = sum.map { it / 576f }.toFloatArray()
-        val darkBg = sum[2] < 0.55f
-        // light tint of the area + vivid accent from the photo, kept readable on the area
-        val light = Color.HSVToColor(floatArrayOf(sum[0], (sum[1] * 0.35f).coerceAtMost(0.3f), if (darkBg) 0.98f else 0.18f))
-        Color.colorToHSV(best, hsv)
-        val vivid = Color.HSVToColor(floatArrayOf(hsv[0], hsv[1].coerceIn(0.45f, 0.9f), if (darkBg) 0.95f else 0.35f))
-        return light to vivid
+        fun vivid(c: Int): Int { val h = hsl(c); h[1] = h[1].coerceIn(0.35f, 0.85f); return androidx.core.graphics.ColorUtils.HSLToColor(h) }
+        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(bg) < 0.4
+        // a near-white (or near-black) tint of the main colour on top, the vivid accent below
+        val tint = androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(fh[0], (fh[1] * 0.5f).coerceAtMost(0.45f), if (dark) 0.92f else 0.14f))
+        val a = readable(tint, bg, 4.5)
+        val b = readable(vivid(second), bg, 3.0)
+        return a to b
     }
 
     private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime) {

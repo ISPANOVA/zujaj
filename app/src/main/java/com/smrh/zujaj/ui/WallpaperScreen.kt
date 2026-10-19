@@ -432,7 +432,7 @@ fun WallpaperScreen(nav: Nav) {
         if (l == null) colorFor = null
         else LayerColorSheet(l, onAuto = {
             val p = photo ?: return@LayerColorSheet
-            val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1))
+            val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1), design.dim)
             change(id) { it.copy(color = a, color2 = b, gDir = 0) }
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
