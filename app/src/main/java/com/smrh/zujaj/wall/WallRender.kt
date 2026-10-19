@@ -316,10 +316,13 @@ object WallRender {
             clusters(wp, 6).maxByOrNull { hsl(it.first)[1] * (0.4f + it.second) }?.first?.let { if (hsl(it)[1] >= 0.15f) src = it }
         }
         val sh = hsl(src)
-        val dark = androidx.core.graphics.ColorUtils.calculateLuminance(bg) < 0.45
+        // light or dark text: whichever stays readable against every big tone behind the layer, not just the first
+        val big = area3.filter { it.second > 0.18f }.map { it.first.let { c -> if (dim > 0) androidx.core.graphics.ColorUtils.blendARGB(c, Color.BLACK, dim / 100f) else c } }
+        fun worst(t: Int) = big.minOf { androidx.core.graphics.ColorUtils.calculateContrast(t, it or 0xFF000000.toInt()) }
+        val dark = worst(Color.WHITE) >= worst(0xFF151515.toInt())
         val sat = if (sh[1] < 0.15f) 0.08f else sh[1]
         // tone-on-tone: a pale tint on top fading into a richer shade of the same hue, both readable on the spot
-        val top = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.6f).coerceIn(0.05f, 0.45f), if (dark) 0.94f else 0.12f)), bg, 4.5)
+        val top = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.7f).coerceIn(0.05f, 0.55f), if (dark) 0.9f else 0.14f)), bg, 3.6)
         val bottom = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], sat.coerceIn(0.08f, 0.85f).let { if (sat > 0.15f) maxOf(it, 0.6f) else it }, if (dark) 0.74f else 0.3f)), bg, 2.4)
         return top to bottom
     }
