@@ -39,6 +39,7 @@ object Ads {
     private var started = false
     private var reward: RewardedAd? = null
     private var loading = false
+    private var retry = 0L
     private val _ready = MutableStateFlow(false)
     val ready: StateFlow<Boolean> = _ready
     private val _ver = MutableStateFlow(0)
@@ -94,8 +95,13 @@ object Ads {
         loading = true
         runCatching {
             RewardedAd.load(ctx, rewardId(), AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
-                override fun onAdLoaded(ad: RewardedAd) { reward = ad; loading = false; _ready.value = true }
-                override fun onAdFailedToLoad(e: LoadAdError) { reward = null; loading = false; _ready.value = false; Log.w("Zujaj", "reward: ${e.message}") }
+                override fun onAdLoaded(ad: RewardedAd) { retry = 0L; reward = ad; loading = false; _ready.value = true }
+                override fun onAdFailedToLoad(e: LoadAdError) {
+                    reward = null; loading = false; _ready.value = false; Log.w("Zujaj", "reward: ${e.code} ${e.message}")
+                    // no ad right now (new account, no fill…) — try again a bit later
+                    retry = (retry * 2).coerceIn(15_000L, 300_000L)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ preload(ctx) }, retry)
+                }
             })
         }.onFailure { loading = false }
     }
