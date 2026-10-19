@@ -73,6 +73,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -127,7 +128,9 @@ fun HomeScreen(nav: Nav) {
                 }
             }
         }
-        DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it }
+        // labels follow the app language even when it changes while this screen is open
+        val ver by Prefs.version.collectAsState()
+        key(ver, Prefs.isArabicUi) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
     }
 }
 

@@ -16,6 +16,7 @@ android {
         versionCode = 26
         versionName = "1.0.0"
         vectorDrawables { useSupportLibrary = true }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -112,4 +113,7 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
