@@ -624,22 +624,18 @@ object WallRender {
         val shade = (d?.topShade ?: 0) / 100f * when { f < 0.25f -> 1f - 0.6f * f / 0.25f; f < 0.5f -> 0.4f * (1f - (f - 0.25f) / 0.25f); else -> 0f }
         val darkK = 1f - (1f - dim / 100f) * (1f - shade)
         val bg = area3.first().first.let { if (darkK > 0f) androidx.core.graphics.ColorUtils.blendARGB(it, Color.BLACK, darkK) else it }
-        // the hue to build on: the most colourful tone right behind the layer, else the photo's most vivid colour
-        var src = area3.maxByOrNull { hsl(it.first)[1] * (0.5f + it.second) }!!.first
-        if (hsl(src)[1] < 0.15f && (d?.filter ?: 0) !in 6..7) {
-            val whole = Bitmap.createScaledBitmap(photo, 64, 64, true)
-            val wp = IntArray(4096); whole.getPixels(wp, 0, 64, 0, 0, 64, 64)
-            clusters(wp, 6).maxByOrNull { hsl(it.first)[1] * (0.4f + it.second) }?.first?.let { if (hsl(it)[1] >= 0.15f) src = it }
-        }
+        // the hue to build on: the main tone right behind the layer (what the eye actually sees there)
+        var src = area3.first().first
+        if (hsl(src)[1] < 0.12f) area3.firstOrNull { hsl(it.first)[1] >= 0.12f && it.second > 0.15f }?.let { src = it.first }
         val sh = hsl(src)
-        // light or dark text: whichever stays readable against every big tone behind the layer, not just the first
+        // light or dark text: whichever stays readable against every big tone behind the layer
         val big = area3.filter { it.second > 0.18f }.map { it.first.let { c -> if (darkK > 0f) androidx.core.graphics.ColorUtils.blendARGB(c, Color.BLACK, darkK) else c } }
         fun worst(t: Int) = big.minOf { androidx.core.graphics.ColorUtils.calculateContrast(t, it or 0xFF000000.toInt()) }
         val dark = worst(Color.WHITE) >= worst(0xFF151515.toInt())
-        val sat = if (sh[1] < 0.15f) 0.08f else sh[1]
-        // tone-on-tone: a pale tint on top fading into a richer shade of the same hue, both readable on the spot
-        val top = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.7f).coerceIn(0.05f, 0.55f), if (dark) 0.9f else 0.14f)), bg, 3.6, dark)
-        val bottom = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], sat.coerceIn(0.08f, 0.85f).let { if (sat > 0.15f) maxOf(it, 0.6f) else it }, if (dark) 0.74f else 0.3f)), bg, 2.4, dark)
+        // restrained, iPhone-like: almost white (or almost black) with only a whisper of the photo's hue
+        val sat = if (sh[1] < 0.12f || (d?.filter ?: 0) in 6..7) 0f else sh[1]
+        val top = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.35f).coerceAtMost(0.22f), if (dark) 0.96f else 0.12f)), bg, 4.0, dark)
+        val bottom = readable(androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(sh[0], (sat * 0.55f).coerceAtMost(0.32f), if (dark) 0.84f else 0.24f)), bg, 3.2, dark)
         return top to bottom
     }
 

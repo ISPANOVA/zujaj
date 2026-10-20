@@ -28,8 +28,8 @@ object WallTemplates {
     val all = listOf(
         Template("depth", "Depth", "عمق", depth = true, tint = true) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.26f, w = 0.84f, behind = true, fit = true, hide = 0.3f),
-                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.1f, w = 0.6f, stick = true),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.26f, w = 0.86f, behind = true),
+                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.085f, w = 0.5f, stick = false),
             )
         },
         Template("liquid", "Liquid glass", "زجاج سائل", topShade = 0) {
@@ -66,14 +66,14 @@ object WallTemplates {
         },
         Template("cinema", "Cinema", "سينما", filter = 4, topShade = 25, tint = true) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.84f, behind = true, fit = true, hide = 0.4f),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.84f, behind = true),
                 WallLayer(id = id(), kind = "dual_full", cx = 0.5f, cy = 0.085f, w = 0.62f),
             )
         },
         Template("noir", "Noir", "نوار", depth = true, filter = 7, autoColor = false) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.88f, behind = true, fit = true, hide = 0.25f, color = 0xFFFFFFFF.toInt()),
-                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.1f, w = 0.6f, stick = true, color = 0xFFFFFFFF.toInt()),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.88f, behind = true, color = 0xFFFFFFFF.toInt()),
+                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.085f, w = 0.5f, stick = false, color = 0xFFFFFFFF.toInt()),
             )
         },
     )
