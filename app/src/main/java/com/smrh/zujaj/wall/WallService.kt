@@ -38,7 +38,8 @@ class WallService : WallpaperService() {
             if (!visible) return
             val ctx = applicationContext
             Prefs.init(ctx)
-            val d = WallDesign.load(ctx)
+            // auto-change: one of the saved designs, picked by the time
+            val d = WallRotation.current(ctx)?.let { WallRotation.designIn(it) } ?: WallDesign.load(ctx)
             val key = d.image + "|" + d.mask
             if (key != loadedFor) {
                 photo = WallRender.loadImage(d.image); mask = WallRender.loadImage(d.mask, 1600, trim = false); loadedFor = key

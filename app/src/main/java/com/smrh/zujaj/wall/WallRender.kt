@@ -82,6 +82,43 @@ object WallRender {
         return Matrix().apply { setScale(sc, sc); postTranslate((W - iw * sc) / 2f + (d?.px ?: 0f) * W, (H - ih * sc) / 2f + (d?.py ?: 0f) * H) }
     }
 
+    // ------------------------------------------------------------------ photo looks
+    /** Name (en, ar) of each photo filter, by index. */
+    val filters = listOf("Original" to "الأصلية", "Vivid" to "زاهية", "Warm" to "دافئة", "Cool" to "باردة",
+        "Cinema" to "سينمائية", "Matte" to "مطفية", "Mono" to "أبيض وأسود", "Noir" to "نوار")
+
+    private fun contrast(k: Float) = android.graphics.ColorMatrix(floatArrayOf(
+        k, 0f, 0f, 0f, 128f * (1 - k), 0f, k, 0f, 0f, 128f * (1 - k), 0f, 0f, k, 0f, 128f * (1 - k), 0f, 0f, 0f, 1f, 0f))
+
+    /** Colour filter for the photo, or null for the original. */
+    fun filterOf(i: Int): android.graphics.ColorFilter? {
+        val m = android.graphics.ColorMatrix()
+        when (i) {
+            1 -> { m.setSaturation(1.35f); m.postConcat(contrast(1.08f)) }
+            2 -> { m.set(floatArrayOf(1.08f, 0f, 0f, 0f, 8f, 0f, 1.02f, 0f, 0f, 2f, 0f, 0f, 0.86f, 0f, -6f, 0f, 0f, 0f, 1f, 0f)); m.postConcat(android.graphics.ColorMatrix().apply { setSaturation(1.08f) }) }
+            3 -> { m.set(floatArrayOf(0.9f, 0f, 0f, 0f, -4f, 0f, 1.0f, 0f, 0f, 2f, 0f, 0f, 1.1f, 0f, 10f, 0f, 0f, 0f, 1f, 0f)) }
+            4 -> { // teal shadows, warm highlights, a bit of contrast
+                m.setSaturation(0.88f); m.postConcat(contrast(1.12f))
+                m.postConcat(android.graphics.ColorMatrix(floatArrayOf(1.06f, 0f, 0f, 0f, -2f, 0f, 1.0f, 0f, 0f, 4f, 0f, 0f, 0.92f, 0f, 14f, 0f, 0f, 0f, 1f, 0f)))
+            }
+            5 -> { m.setSaturation(0.8f); m.postConcat(contrast(0.82f)); m.postConcat(android.graphics.ColorMatrix(floatArrayOf(1f, 0f, 0f, 0f, 12f, 0f, 1f, 0f, 0f, 10f, 0f, 0f, 1f, 0f, 8f, 0f, 0f, 0f, 1f, 0f))) }
+            6 -> { m.setSaturation(0f); m.postConcat(contrast(1.05f)) }
+            7 -> { m.setSaturation(0f); m.postConcat(contrast(1.4f)) }
+            else -> return null
+        }
+        return android.graphics.ColorMatrixColorFilter(m)
+    }
+
+    /** Darkening from the top, so a clock up there is always readable. */
+    private fun topShade(c: Canvas, d: WallDesign, W: Int, H: Int, atop: Boolean) {
+        if (d.topShade <= 0) return
+        val a = d.topShade.coerceIn(0, 80) * 255 / 100
+        c.drawRect(0f, 0f, W.toFloat(), H * 0.5f, Paint().apply {
+            shader = android.graphics.LinearGradient(0f, 0f, 0f, H * 0.5f, intArrayOf(Color.argb(a, 0, 0, 0), Color.argb(a * 2 / 5, 0, 0, 0), Color.TRANSPARENT), floatArrayOf(0f, 0.5f, 1f), android.graphics.Shader.TileMode.CLAMP)
+            if (atop) xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+        })
+    }
+
     /** Smooth (not blocky) blur: shrink in halves, then grow back in doubles. */
     fun smoothBlur(src: Bitmap, factor: Int): Bitmap {
         var b = src; var f = 1
@@ -139,7 +176,7 @@ object WallRender {
         // the photo itself too, so the blur never mixes in empty (dark) pixels at the seam
         if (d.fillMode < 2) e.drawBitmap(photo, null, r, p)
         val blurred = smoothBlur(ext, when (d.fillMode) { 2 -> 32; 1 -> 8; 3 -> 1; else -> 6 })
-        c.drawBitmap(blurred, 0f, 0f, p)
+        c.drawBitmap(blurred, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = filterOf(d.filter) })
     }
 
     /** Draws the photo; where it meets a filled gap its edge is feathered so the seam disappears. */
@@ -161,52 +198,125 @@ object WallRender {
         c.drawBitmap(layer, 0f, 0f, null)
     }
 
-    /** Frosted glass plate for the area [rc] of an already-drawn wallpaper [under]. */
-    fun glassPlate(under: Bitmap, rc: RectF): Bitmap? {
-        val pad = minOf(rc.width(), rc.height()) * 0.12f
-        val r = RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad)
+    // ------------------------------------------------------------------ liquid glass (iOS style)
+    private fun saturate(k: Float, bright: Float = 1f) = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply {
+        setSaturation(k); postConcat(android.graphics.ColorMatrix().apply { setScale(bright, bright, bright, 1f) })
+    })
+
+    /** Crop of [under] for [r] (clamped to the picture), drawn into a w×h canvas at the right place. */
+    private fun backdrop(under: Bitmap, r: RectF, w: Int, h: Int, blur: Int, zoom: Float = 1f): Bitmap {
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val x0 = r.left.toInt().coerceIn(0, under.width - 2); val y0 = r.top.toInt().coerceIn(0, under.height - 2)
         val x1 = r.right.toInt().coerceIn(x0 + 1, under.width); val y1 = r.bottom.toInt().coerceIn(y0 + 1, under.height)
-        val w = (r.width().toInt()).coerceAtLeast(2); val h = (r.height().toInt()).coerceAtLeast(2)
-        val crop = Bitmap.createBitmap(under, x0, y0, x1 - x0, y1 - y0)
-        val small = Bitmap.createScaledBitmap(crop, (crop.width / 14).coerceAtLeast(2), (crop.height / 14).coerceAtLeast(2), true)
-        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        var crop = Bitmap.createBitmap(under, x0, y0, x1 - x0, y1 - y0)
+        if (blur > 1) crop = smoothBlur(crop, blur)
+        val sx = w / r.width(); val sy = h / r.height()
+        val dst = RectF((x0 - r.left) * sx, (y0 - r.top) * sy, (x1 - r.left) * sx, (y1 - r.top) * sy)
         val c = Canvas(out)
-        val rad = minOf(w, h) * 0.24f
-        val path = android.graphics.Path().apply { addRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), rad, rad, android.graphics.Path.Direction.CW) }
-        c.save(); c.clipPath(path)
-        c.drawBitmap(small, null, RectF(x0 - r.left, y0 - r.top, x1 - r.left, y1 - r.top), Paint(Paint.FILTER_BITMAP_FLAG))
-        c.drawColor(Color.argb(46, 255, 255, 255))
-        c.drawRect(0f, 0f, w.toFloat(), h * 0.5f, Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h * 0.5f, Color.argb(34, 255, 255, 255), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP) })
-        c.restore()
-        val st = minOf(w, h) * 0.012f + 1f
-        c.drawRoundRect(RectF(st / 2, st / 2, w - st / 2, h - st / 2), rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = st; color = Color.argb(90, 255, 255, 255) })
+        // anything outside the picture: stretch the nearest edge
+        c.drawBitmap(crop, null, RectF(0f, 0f, w.toFloat(), h.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
+        c.drawBitmap(crop, null, dst, Paint(Paint.FILTER_BITMAP_FLAG))
+        if (zoom != 1f) {
+            val z = Bitmap.createBitmap(out)
+            c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            c.save(); c.scale(zoom, zoom, w / 2f, h / 2f); c.drawBitmap(z, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG)); c.restore()
+        }
         return out
     }
-    /** Turns a layer into glass: its shapes are filled with the blurred wallpaper behind them, with a soft shine and a bright rim. */
+
+    /** Margin around a glass plate (room for its soft shadow). */
+    fun glassRect(rc: RectF): RectF {
+        val pad = minOf(rc.width(), rc.height()) * 0.12f
+        val m = minOf(rc.width(), rc.height()) * 0.10f
+        return RectF(rc.left - pad - m, rc.top - pad - m, rc.right + pad + m, rc.bottom + pad + m)
+    }
+
+    /**
+     * Liquid-glass plate behind [rc]: almost clear, the picture slightly magnified and bent at the edges,
+     * a bright specular rim (strong top-left, softer bottom-right) and a soft shadow.
+     */
+    fun glassPlate(under: Bitmap, rc: RectF): Bitmap? {
+        val mn = minOf(rc.width(), rc.height())
+        val pad = mn * 0.12f; val m = mn * 0.10f
+        val r = RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad)
+        val w = r.width().toInt().coerceAtLeast(4); val h = r.height().toInt().coerceAtLeast(4)
+        val mi = m.toInt()
+        val out = Bitmap.createBitmap(w + 2 * mi, h + 2 * mi, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val rad = minOf(w, h) * 0.30f
+        val body = RectF(mi.toFloat(), mi.toFloat(), (mi + w).toFloat(), (mi + h).toFloat())
+        // soft shadow under the glass
+        c.drawRoundRect(RectF(body.left, body.top + m * 0.35f, body.right, body.bottom + m * 0.35f), rad, rad,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(46, 0, 0, 0); maskFilter = BlurMaskFilter(m * 0.8f + 1f, BlurMaskFilter.Blur.NORMAL) })
+        val glass = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val g = Canvas(glass)
+        val shape = android.graphics.Path().apply { addRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), rad, rad, android.graphics.Path.Direction.CW) }
+        g.clipPath(shape)
+        // 1) the picture behind, lightly softened, more vivid and a touch brighter (clear glass, not frosted)
+        g.drawBitmap(backdrop(under, r, w, h, 3, 1.04f), 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = saturate(1.35f, 1.06f) })
+        // 2) refraction: near the rim the picture is magnified (bent by the thick glass edge)
+        val lens = backdrop(under, r, w, h, 2, 1.22f)
+        val band = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        Canvas(band).apply {
+            drawRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK })
+            val ins = mn * 0.16f
+            drawRoundRect(RectF(ins, ins, w - ins, h - ins), (rad - ins).coerceAtLeast(1f), (rad - ins).coerceAtLeast(1f),
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT); maskFilter = BlurMaskFilter(ins * 0.9f, BlurMaskFilter.Blur.NORMAL) })
+        }
+        Canvas(lens).drawBitmap(band, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) })
+        g.drawBitmap(lens, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = saturate(1.5f, 1.12f) })
+        // 3) a whisper of white and light falling from the top
+        g.drawColor(Color.argb(20, 255, 255, 255))
+        g.drawRect(0f, 0f, w.toFloat(), h * 0.55f, Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h * 0.55f, Color.argb(38, 255, 255, 255), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP) })
+        // 4) inner glow along the rim
+        val st = mn * 0.018f + 1f
+        g.drawRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = st * 5f; color = Color.argb(40, 255, 255, 255); maskFilter = BlurMaskFilter(st * 3f, BlurMaskFilter.Blur.NORMAL)
+        })
+        c.drawBitmap(glass, body.left, body.top, null)
+        // 5) specular rim: bright where the light hits (top-left), a softer echo bottom-right
+        val i = st / 2
+        c.drawRoundRect(RectF(body.left + i, body.top + i, body.right - i, body.bottom - i), rad - i, rad - i, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = st
+            shader = android.graphics.LinearGradient(body.left, body.top, body.right, body.bottom,
+                intArrayOf(Color.argb(235, 255, 255, 255), Color.argb(40, 255, 255, 255), Color.argb(25, 255, 255, 255), Color.argb(170, 255, 255, 255)),
+                floatArrayOf(0f, 0.35f, 0.65f, 1f), android.graphics.Shader.TileMode.CLAMP)
+        })
+        return out
+    }
+
+    /**
+     * Liquid-glass glyphs: the numbers / shapes are clear glass — the picture behind shows through,
+     * magnified a little, with a bevel of light on the top-left edges and a softer one bottom-right.
+     */
     fun glassify(layer: Bitmap, under: Bitmap, dst: RectF): Bitmap {
         val w = layer.width; val h = layer.height
         val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
-        val x0 = dst.left.toInt().coerceIn(0, under.width - 2); val y0 = dst.top.toInt().coerceIn(0, under.height - 2)
-        val x1 = dst.right.toInt().coerceIn(x0 + 1, under.width); val y1 = dst.bottom.toInt().coerceIn(y0 + 1, under.height)
-        val crop = Bitmap.createBitmap(under, x0, y0, x1 - x0, y1 - y0)
-        val small = Bitmap.createScaledBitmap(crop, (crop.width / 10).coerceAtLeast(2), (crop.height / 10).coerceAtLeast(2), true)
-        val sx = w / dst.width(); val sy = h / dst.height()
-        c.drawBitmap(small, null, RectF((x0 - dst.left) * sx, (y0 - dst.top) * sy, (x1 - dst.left) * sx, (y1 - dst.top) * sy), Paint(Paint.FILTER_BITMAP_FLAG))
-        // milky frost + light from the top
-        c.drawColor(Color.argb(70, 255, 255, 255))
-        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), Color.argb(80, 255, 255, 255), Color.argb(0, 255, 255, 255), android.graphics.Shader.TileMode.CLAMP) })
+        c.drawBitmap(backdrop(under, dst, w, h, 2, 1.08f), 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = saturate(1.45f, 1.18f) })
+        c.drawColor(Color.argb(46, 255, 255, 255))
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), Color.argb(50, 255, 255, 255), Color.argb(0, 255, 255, 255), android.graphics.Shader.TileMode.CLAMP) })
         // keep only the shapes of the layer
-        c.drawBitmap(layer, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) })
-        // glossy inner rim
-        val a = layer.extractAlpha()
-        val r = (minOf(w, h) * 0.035f).coerceIn(1.5f, 14f)
-        c.drawBitmap(a, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 255, 255, 255); maskFilter = BlurMaskFilter(r, BlurMaskFilter.Blur.INNER) })
+        val mask = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
+        c.drawBitmap(layer, 0f, 0f, mask)
+        // bevel bands: shape minus itself shifted → thin edges facing the light
+        val s = (minOf(w, h) * 0.022f).coerceIn(1.5f, 10f)
+        val white = android.graphics.PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
+        fun band(dx: Float, dy: Float, alpha: Int) {
+            val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val bc = Canvas(b)
+            bc.drawBitmap(layer, 0f, 0f, Paint().apply { colorFilter = white })
+            bc.drawBitmap(layer, dx, dy, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) })
+            c.drawBitmap(b, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { this.alpha = alpha; maskFilter = BlurMaskFilter(s * 0.35f, BlurMaskFilter.Blur.NORMAL) })
+        }
+        band(s, s, 235)          // top-left edges: bright
+        band(-s * 0.8f, -s * 0.8f, 120) // bottom-right edges: softer
+        // inner glow to give the glass thickness
+        c.drawBitmap(layer.extractAlpha(), 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(90, 255, 255, 255); maskFilter = BlurMaskFilter(s * 1.6f, BlurMaskFilter.Blur.INNER) })
+        // clean edges
+        c.drawBitmap(layer, 0f, 0f, mask)
         return out
     }
-
-    fun glassRect(rc: RectF): RectF { val pad = minOf(rc.width(), rc.height()) * 0.12f; return RectF(rc.left - pad, rc.top - pad, rc.right + pad, rc.bottom + pad) }
 
     /** Box of a layer in px. */
     fun rect(l: WallLayer, W: Int, H: Int): RectF {
@@ -328,13 +438,14 @@ object WallRender {
         if (photo == null) return out
         fill(c, photo, d, W, H)
         val m = cropMatrix(photo.width, photo.height, W, H, d)
-        val bp = Paint(Paint.FILTER_BITMAP_FLAG)
+        val bp = Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = filterOf(d.filter) }
         if (d.blur > 0) {
             val k = (1 + d.blur / 4).coerceAtMost(24)
             val small = Bitmap.createScaledBitmap(photo, (photo.width / k).coerceAtLeast(2), (photo.height / k).coerceAtLeast(2), true)
             drawPhoto(c, small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, photoRect(photo, d, W, H), W, H, bp)
         } else drawPhoto(c, photo, m, photoRect(photo, d, W, H), W, H, bp)
         if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
+        topShade(c, d, W, H, false)
         return out
     }
 
@@ -343,8 +454,9 @@ object WallRender {
         val m = cropMatrix(photo.width, photo.height, W, H, d)
         val sub = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val sc = Canvas(sub)
-        sc.drawBitmap(photo, m, Paint(Paint.FILTER_BITMAP_FLAG))
+        sc.drawBitmap(photo, m, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = filterOf(d.filter) })
         if (d.dim > 0) sc.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0), PorterDuff.Mode.SRC_ATOP)
+        topShade(sc, d, W, H, true)
         val mp = Paint(Paint.FILTER_BITMAP_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
         sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
         return sub
@@ -458,13 +570,16 @@ object WallRender {
         val x0 = ((rc.left - ox) / sc).toInt().coerceIn(0, photo.width - 2); val x1 = ((rc.right - ox) / sc).toInt().coerceIn(x0 + 1, photo.width)
         val y0 = ((rc.top - oy) / sc).toInt().coerceIn(0, photo.height - 2); val y1 = ((rc.bottom - oy) / sc).toInt().coerceIn(y0 + 1, photo.height)
         // what's right behind the layer
-        val area = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0), 40, 40, true)
+        val area = Bitmap.createScaledBitmap(Bitmap.createBitmap(photo, x0, y0, x1 - x0, y1 - y0), 40, 40, true).let { raw ->
+            val f = d?.let { filterOf(it.filter) } ?: return@let raw
+            Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888).also { Canvas(it).drawBitmap(raw, 0f, 0f, Paint().apply { colorFilter = f }) }
+        }
         val ap = IntArray(1600); area.getPixels(ap, 0, 40, 0, 0, 40, 40)
         val area3 = clusters(ap, 3)
         val bg = area3.first().first.let { if (dim > 0) androidx.core.graphics.ColorUtils.blendARGB(it, Color.BLACK, dim / 100f) else it }
         // the hue to build on: the most colourful tone right behind the layer, else the photo's most vivid colour
         var src = area3.maxByOrNull { hsl(it.first)[1] * (0.5f + it.second) }!!.first
-        if (hsl(src)[1] < 0.15f) {
+        if (hsl(src)[1] < 0.15f && (d?.filter ?: 0) !in 6..7) {
             val whole = Bitmap.createScaledBitmap(photo, 64, 64, true)
             val wp = IntArray(4096); whole.getPixels(wp, 0, 64, 0, 0, 64, 64)
             clusters(wp, 6).maxByOrNull { hsl(it.first)[1] * (0.4f + it.second) }?.first?.let { if (hsl(it)[1] >= 0.15f) src = it }
@@ -506,21 +621,23 @@ object WallRender {
         if (photo != null) fill(c, photo, d, W, H)
         val m = photo?.let { cropMatrix(it.width, it.height, W, H, d) }
         if (photo != null) {
-            val bp = Paint(Paint.FILTER_BITMAP_FLAG)
+            val bp = Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = filterOf(d.filter) }
             if (d.blur > 0) {
                 val k = (1 + d.blur / 4).coerceAtMost(24)
                 val small = Bitmap.createScaledBitmap(photo, (photo.width / k).coerceAtLeast(2), (photo.height / k).coerceAtLeast(2), true)
                 drawPhoto(c, small, Matrix(m).apply { preScale(photo.width / small.width.toFloat(), photo.height / small.height.toFloat()) }, photoRect(photo, d, W, H), W, H, bp)
             } else drawPhoto(c, photo, m!!, photoRect(photo, d, W, H), W, H, bp)
             if (d.dim > 0) c.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0))
+            topShade(c, d, W, H, false)
         }
         for (l in d.layers.filter { it.behind && mask != null }) drawLayer(ctx, c, l, W, H, now, out)
         if (photo != null && mask != null && d.layers.any { it.behind }) {
             // the subject, cut out with the mask, drawn over the "behind" layers
             val sub = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
             val sc = Canvas(sub)
-            sc.drawBitmap(photo, m!!, Paint(Paint.FILTER_BITMAP_FLAG))
+            sc.drawBitmap(photo, m!!, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = filterOf(d.filter) })
             if (d.dim > 0) sc.drawColor(Color.argb(d.dim * 255 / 100, 0, 0, 0), PorterDuff.Mode.SRC_ATOP)
+            topShade(sc, d, W, H, true)
             val mp = Paint(Paint.FILTER_BITMAP_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
             sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
             c.drawBitmap(sub, 0f, 0f, Paint().apply { alpha = (255 * reveal).toInt() })

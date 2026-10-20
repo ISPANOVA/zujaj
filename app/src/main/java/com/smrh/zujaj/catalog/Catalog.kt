@@ -27,6 +27,8 @@ import com.smrh.zujaj.render.SearchR
 import com.smrh.zujaj.render.SystemR
 import com.smrh.zujaj.render.ToolsR
 import com.smrh.zujaj.render.WeatherR
+import com.smrh.zujaj.render.VerseR
+import com.smrh.zujaj.render.EventR
 
 /** Grid footprint and the design size (dp) every renderer lays out against. */
 enum class Shape(val cols: Int, val rows: Int, val dw: Float, val dh: Float) {
@@ -59,7 +61,7 @@ enum class Cat(val en: String, val ar: String, val tags: String = "") {
 }
 
 /** Extra editor controls a style needs (beyond the common ones). */
-enum class Feat { HUB, COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
+enum class Feat { VERSE, EVENT, HUB, COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
 
 /** What makes a widget need refreshing. */
 enum class Upd { DAILY, PRAYER, WEATHER, MEDIA, SYSTEM, PHOTO, NONE }
@@ -123,7 +125,7 @@ object Catalog {
     private val fF = setOf(Feat.TITLE, Feat.GOAL, Feat.ACCENT)
     private val fD: (WidgetConfig) -> WidgetConfig = { it.copy(goal = 25, accent = 0xFFE5484D.toInt()) }
 
-    private fun glass(c: WidgetConfig) = c.copy(fill = Fill.GLASS, texture = Texture.NOISE)
+    private fun glass(c: WidgetConfig) = c.copy(fill = Fill.GLASS, texture = Texture.OFF)
     private fun aurora(c: WidgetConfig) = c.copy(fill = Fill.AURORA, bgColor = 0xFF0E0E16.toInt(), bgColor2 = 0xFF4C3BCF.toInt(), accent = 0xFFE8478B.toInt())
 
     val all: List<WidgetStyle> = listOf(
@@ -258,6 +260,13 @@ object Catalog {
         WidgetStyle("share_app", Cat.PHOTO, "Share the app", "شارك التطبيق", S, upd = none) { ToolsR.share(it) },
 
         // ------------------------------------------------------------------ COUNTERS
+        WidgetStyle("photo_verse", Cat.PHOTO, "Photo & Verse", "صورة وآية", W, isNew = true, popular = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 0, variant = 1) }) { VerseR.wide(it) },
+        WidgetStyle("photo_verse_sq", Cat.PHOTO, "Photo & Dhikr", "صورة وذكر", S, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 0) }) { VerseR.square(it) },
+        WidgetStyle("photo_verse_lg", Cat.PHOTO, "Photo Journal", "صورة ويومية", L, pro = true, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 12, variant = 1, bgColor = 0xFF15131A.toInt()) }) { VerseR.large(it) },
+        WidgetStyle("event_ring", Cat.COUNTERS, "Event Ring", "حلقة المناسبة", S, isNew = true, popular = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "ramadan", fill = Fill.GRADIENT, bgColor = 0xFF14102A.toInt(), bgColor2 = 0xFF2A1B4D.toInt(), accent = 0xFFE7B75F.toInt(), accent2 = 0xFFB07BF0.toInt()) }) { EventR.ring(it) },
+        WidgetStyle("event_card", Cat.COUNTERS, "Event Card", "كارت المناسبة", W, isNew = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "fitr", fill = Fill.GRADIENT, bgColor = 0xFF0E2420.toInt(), bgColor2 = 0xFF1C4A3F.toInt(), accent = 0xFF3DDCB5.toInt(), accent2 = 0xFFB7E34A.toInt()) }) { EventR.card(it) },
+        WidgetStyle("event_flip", Cat.COUNTERS, "Event Flip", "عدّاد قلّاب", W, pro = true, isNew = true, feats = setOf(Feat.EVENT), defaults = { it.copy(event = "exams", fill = Fill.GRADIENT, bgColor = 0xFF1A1A1F.toInt(), bgColor2 = 0xFF2E2E38.toInt()) }) { EventR.flip(it) },
+        WidgetStyle("event_banner", Cat.COUNTERS, "Event Banner", "شريط المناسبة", B, isNew = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "birthday", accent = 0xFFFF6B9A.toInt(), accent2 = 0xFFB07BF0.toInt()) }) { EventR.banner(it) },
         WidgetStyle("countdown_simple", Cat.COUNTERS, "Countdown Simple", "عد تنازلي", B, popular = true, feats = setOf(Feat.TITLE, Feat.TARGET_DATE, Feat.COLOR2)) { CounterR.countdownBanner(it) },
         WidgetStyle("countdown_small", Cat.COUNTERS, "Countdown Circle", "عد تنازلي دائري", S, feats = setOf(Feat.TITLE, Feat.TARGET_DATE, Feat.COLOR2)) { CounterR.countdownSmall(it) },
         WidgetStyle("counter", Cat.COUNTERS, "Counter", "عداد", S, feats = setOf(Feat.TITLE, Feat.COLOR2), upd = none) { CounterR.counter(it) },

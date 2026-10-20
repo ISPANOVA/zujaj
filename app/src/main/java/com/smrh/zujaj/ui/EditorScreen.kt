@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -82,7 +83,7 @@ import java.util.UUID
 private val presets = listOf(
     // name, fill, bg, bg2, c1, c2, texture
     Triple("Graphite", "جرافيت", WidgetConfig("x")),
-    Triple("Glass", "زجاج", WidgetConfig("x", fill = Fill.GLASS, bgColor = 0xFF20202A.toInt(), texture = Texture.NOISE)),
+    Triple("Glass", "زجاج", WidgetConfig("x", fill = Fill.GLASS, bgColor = 0xFF20202A.toInt(), texture = Texture.OFF)),
     Triple("Aurora", "شفق", WidgetConfig("x", fill = Fill.AURORA, bgColor = 0xFF0E0E16.toInt(), bgColor2 = 0xFF4C3BCF.toInt(), accent = 0xFFE8478B.toInt())),
     Triple("Gold", "ذهبي", WidgetConfig("x", fill = Fill.GRADIENT, bgColor = 0xFF17130B.toInt(), bgColor2 = 0xFF3A2C12.toInt(), color1 = 0xFFF2D49A.toInt(), color2 = 0xFFB8995E.toInt(), accent = 0xFFE7B75F.toInt())),
     Triple("Paper", "ورق", WidgetConfig("x", bgColor = 0xFFF2EFE8.toInt(), color1 = 0xFF1B1B1F.toInt(), color2 = 0xFF6E6A62.toInt(), texture = Texture.GRAIN)),
@@ -289,6 +290,35 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         Divider()
                         val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
                         RowBase(tr("Target date", "التاريخ المستهدف"), sub = label, onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
+                    }
+                    if (Feat.VERSE in f) {
+                        Divider()
+                        ChoiceRow(tr("Words on the photo", "الكلام على الصورة"), cfg.variant, listOf(
+                            1 to tr("Verse of the day", "آية اليوم"), 0 to tr("Dhikr of the day", "ذكر اليوم"),
+                            2 to tr("My own words", "كلامي أنا"), 3 to tr("Nothing", "بدون كلام"),
+                        )) { cfg = cfg.copy(variant = it) }
+                        if (cfg.variant == 2) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
+                    }
+                    if (Feat.EVENT in f) {
+                        Divider()
+                        Text(tr("Count down to", "العد لـ"), color = Z.sub, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
+                        androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val evs = listOf("ramadan" to tr("Ramadan", "رمضان"), "fitr" to tr("Eid al-Fitr", "عيد الفطر"), "adha" to tr("Eid al-Adha", "عيد الأضحى"),
+                                "birthday" to tr("Birthday", "عيد ميلاد"), "exams" to tr("Exams", "الامتحانات"), "newyear" to tr("New Year", "السنة الجديدة"), "" to tr("Any date", "تاريخ تختاره"))
+                            items(evs.size) { i -> val (k, l) = evs[i]; ZChip(l, cfg.event == k) { cfg = cfg.copy(event = k) } }
+                        }
+                        if (cfg.event in setOf("birthday", "exams", "")) {
+                            Divider()
+                            val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
+                            RowBase(if (cfg.event == "birthday") tr("Birthday date", "تاريخ الميلاد") else tr("Date", "التاريخ"), sub = label,
+                                onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
+                        }
+                        Divider(); TextInput(tr("Title (optional)", "العنوان (اختياري)"), cfg.title) { cfg = cfg.copy(title = it) }
+                    }
+                    if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) {
+                        Divider()
+                        SwitchRow(tr("Colours follow the time of day", "الألوان تتغير مع الوقت"), cfg.dayTint,
+                            tr("Dawn, day, sunset and night colours on their own", "ألوان الفجر والنهار والمغرب والليل لوحدها")) { cfg = cfg.copy(dayTint = it) }
                     }
                     if (Feat.APPS in f) {
                         Divider()

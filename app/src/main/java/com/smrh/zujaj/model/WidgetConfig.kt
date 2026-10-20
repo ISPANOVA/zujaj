@@ -113,6 +113,10 @@ data class WidgetConfig(
     val padding: Int = 16,
     val tap: Tap = Tap.DEFAULT,
     val tapApp: AppRef? = null,
+    /** Countdown event: ramadan, fitr, adha, newyear, birthday, exams or "" (a date the user picks). */
+    val event: String = "",
+    /** Prayer & weather: background colours follow the time of day. */
+    val dayTint: Boolean = false,
 ) {
     fun toJson(): String = json.encodeToString(this)
 

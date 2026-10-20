@@ -48,6 +48,10 @@ data class WallDesign(
     val py: Float = 0f,
     /** how empty space around a smaller photo is filled: 0 extend the edges, 1 mirror, 2 soft blur, 3 colour gradient */
     val fillMode: Int = 0,
+    /** colour look of the photo: see WallRender.filters */
+    val filter: Int = 0,
+    /** darkens the top of the photo (0–80 %) so the clock stands out */
+    val topShade: Int = 0,
 ) {
     fun toJson() = J.encodeToString(this)
 

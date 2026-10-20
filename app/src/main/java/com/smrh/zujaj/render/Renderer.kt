@@ -43,7 +43,7 @@ object Renderer {
         val bw = max(1, (wDp * scale).toInt())
         val bh = max(1, (hDp * scale).toInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
-        val rc = RenderCtx(ctx, bmp, style, cfg, preview, scale, data)
+        val rc = RenderCtx(ctx, bmp, style, tinted(ctx, cfg, style, bmp, scale, data), preview, scale, data)
         rc.bakeLive = bake
         drawBackground(rc)
         val save = rc.canvas.save()
@@ -75,14 +75,14 @@ object Renderer {
         // 1) full-size card: background, texture and border only
         val bw = max(1, (wDp * scale).toInt()); val bh = max(1, (hDp * scale).toInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
-        val bgCtx = RenderCtx(ctx, bmp, style, cfg, false, scale)
+        val bgCtx = RenderCtx(ctx, bmp, style, tinted(ctx, cfg, style, bmp, scale, RenderData()), false, scale)
         drawBackground(bgCtx)
         // 2) the design at its own proportions, without its own card
         val pad = 6f
         val availW = wDp - 2 * pad; val availH = hDp - 2 * pad
         val rw: Float; val rh: Float
         if (availW / availH > aspect) { rh = availH; rw = availH * aspect } else { rw = availW; rh = availW / aspect }
-        val inner = render(ctx, cfg.copy(bg = false), rw, rh, false, scale, bake = bake)
+        val inner = render(ctx, bgCtx.cfg.copy(bg = false, dayTint = false), rw, rh, false, scale, bake = bake)
         val ox = (bw - inner.bitmap.width) / 2f
         val oy = (bh - inner.bitmap.height) / 2f
         Canvas(bmp).drawBitmap(inner.bitmap, ox, oy, Paint(Paint.FILTER_BITMAP_FLAG))
@@ -99,6 +99,13 @@ object Renderer {
         }
         val hits = inner.hits.map { it.copy(rect = it.rect.off()) }
         return RenderResult(bmp, lives, hits, scale, fx)
+    }
+
+    /** "Colours follow the time of day": the sky's colours for the background, white text. */
+    private fun tinted(ctx: Context, cfg: WidgetConfig, style: WidgetStyle, bmp: Bitmap, scale: Float, data: RenderData): WidgetConfig {
+        if (!cfg.dayTint || !cfg.bg) return cfg
+        val (a, b) = runCatching { DayTint.palette(RenderCtx(ctx, bmp, style, cfg, true, scale, data)) }.getOrNull() ?: return cfg
+        return cfg.copy(fill = Fill.GRADIENT, bgColor = a, bgColor2 = b, bgAlpha = 100, color1 = Color.WHITE, color2 = 0xCCFFFFFF.toInt())
     }
 
     fun cornerPx(rc: RenderCtx) = min(rc.cfg.corner * rc.u, min(rc.w, rc.h) / 2f)
@@ -137,15 +144,7 @@ object Renderer {
                 p.shader = LinearGradient(0f, 0f, rc.w, rc.h, withAlpha(cfg.bgColor, a), withAlpha(cfg.bgColor2, a), Shader.TileMode.CLAMP)
                 c.drawRoundRect(r, rad, rad, p)
             }
-            Fill.GLASS -> {
-                p.color = withAlpha(cfg.bgColor, (a * 0.42f).toInt())
-                c.drawRoundRect(r, rad, rad, p)
-                p.color = Color.WHITE
-                p.shader = LinearGradient(0f, 0f, rc.w, rc.h,
-                    intArrayOf(withAlpha(Color.WHITE, (a * 0.22f).toInt()), withAlpha(Color.WHITE, (a * 0.06f).toInt()), withAlpha(Color.WHITE, (a * 0.12f).toInt())),
-                    floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
-                c.drawRoundRect(r, rad, rad, p)
-            }
+            Fill.GLASS -> liquidGlass(c, r, rad, rc.u, cfg.bgColor, a)
             Fill.AURORA -> {
                 p.color = withAlpha(cfg.bgColor, a)
                 c.drawRoundRect(r, rad, rad, p)
@@ -206,7 +205,7 @@ object Renderer {
             }
             c.restoreToCount(save)
         }
-        if (cfg.border) {
+        if (cfg.border && cfg.fill != Fill.GLASS) {
             val bp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
                 strokeWidth = max(1f, rc.u * 0.9f)
@@ -217,6 +216,49 @@ object Renderer {
             val i = bp.strokeWidth / 2
             c.drawRoundRect(RectF(i, i, rc.w - i, rc.h - i), rad - i, rad - i, bp)
         }
+    }
+
+    /**
+     * iOS-style liquid glass card for the home screen: nearly clear body with a faint tint, light
+     * pooling at the top, a thick soft rim (the "lens" edge) and a crisp specular outline that is
+     * bright at the top-left and bottom-right corners.
+     */
+    fun liquidGlass(c: Canvas, r: RectF, rad: Float, u: Float, tint: Int, a: Int) {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        // body: faint tint + a little white so it reads as glass on any wallpaper
+        p.color = withAlpha(tint, (a * 0.20f).toInt()); c.drawRoundRect(r, rad, rad, p)
+        p.color = withAlpha(Color.WHITE, (a * 0.07f).toInt()); c.drawRoundRect(r, rad, rad, p)
+        val save = c.save()
+        c.clipPath(Path().roundRect(r, rad))
+        // light pooling at the top, darker towards the bottom (thickness)
+        p.color = Color.WHITE
+        p.shader = LinearGradient(0f, r.top, 0f, r.bottom,
+            intArrayOf(withAlpha(Color.WHITE, (a * 0.16f).toInt()), withAlpha(Color.WHITE, 0), withAlpha(Color.BLACK, (a * 0.06f).toInt())),
+            floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(r, p)
+        p.shader = null
+        // the lens edge: a soft bright band just inside the rim
+        val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = 9 * u; color = withAlpha(Color.WHITE, (a * 0.16f).toInt())
+            maskFilter = android.graphics.BlurMaskFilter(5 * u, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        }
+        c.drawRoundRect(r, rad, rad, edge)
+        // a diagonal sheen across the top-left
+        p.shader = LinearGradient(r.left, r.top, r.left + r.width() * 0.6f, r.top + r.height() * 0.6f,
+            intArrayOf(withAlpha(Color.WHITE, (a * 0.12f).toInt()), withAlpha(Color.WHITE, 0)), null, Shader.TileMode.CLAMP)
+        c.drawRect(r, p)
+        p.shader = null
+        c.restoreToCount(save)
+        // specular rim
+        val sw = max(1.2f, u * 1.3f)
+        val i = sw / 2
+        val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = sw
+            shader = LinearGradient(r.left, r.top, r.right, r.bottom,
+                intArrayOf(withAlpha(Color.WHITE, (a * 0.95f).toInt()), withAlpha(Color.WHITE, (a * 0.18f).toInt()), withAlpha(Color.WHITE, (a * 0.10f).toInt()), withAlpha(Color.WHITE, (a * 0.70f).toInt())),
+                floatArrayOf(0f, 0.35f, 0.65f, 1f), Shader.TileMode.CLAMP)
+        }
+        c.drawRoundRect(RectF(r.left + i, r.top + i, r.right - i, r.bottom - i), rad - i, rad - i, rim)
     }
 
     /** Draws [src] centre-cropped into [dst] with rounded corners. */

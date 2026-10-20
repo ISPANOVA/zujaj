@@ -143,6 +143,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     var taps by remember { mutableIntStateOf(0) }
     var showGate by remember { mutableStateOf(false) }
     var showRedeem by remember { mutableStateOf(false) }
+    var showThemes by remember { mutableStateOf(false) }
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
@@ -206,6 +207,8 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 StepperRow(tr("Hijri adjustment", "تعديل الهجري"), Prefs.hijriOffset, -2..2, 1) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
             }
             Section(tr("Widgets", "الويدجت")) {
+                RowBase(tr("Widget themes", "ثيمات الويدجت"), sub = tr("One look for all your widgets", "شكل واحد لكل الويدجت"), onClick = { showThemes = true }) { Text("›", color = LocalAccent.current) }
+                Divider()
                 SwitchRow(tr("Fahrenheit", "فهرنهايت"), Prefs.fahrenheit) { Prefs.fahrenheit = it; WidgetUpdater.updateAll(ctx) }
                 Divider()
                 RowBase(tr("Music access", "الوصول للميديا"), sub = if (MediaRepo.hasAccess(ctx)) tr("Enabled ✓", "مفعّل ✓") else tr("Needed for media widgets", "مطلوب لويدجت الميديا"),
@@ -256,6 +259,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             Spacer(Modifier.height(130.dp))
         }
     }
+    if (showThemes) ThemesDialog { showThemes = false }
     if (showGate) AdminGateDialog({ showGate = false }) { showGate = false; nav.go(Screen.Admin) }
     if (showRedeem) RedeemDialog { showRedeem = false }
     if (showCity) CityPickerDialog({ showCity = false }) { c ->
