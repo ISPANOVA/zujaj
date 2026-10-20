@@ -1,6 +1,8 @@
 package com.smrh.zujaj.ui
 
 import android.app.Activity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.runtime.collectAsState
