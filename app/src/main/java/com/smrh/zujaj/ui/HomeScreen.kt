@@ -453,7 +453,7 @@ fun DiscoverTab(nav: Nav) {
         }
         // ---- collection tabs (stay on top while scrolling)
         stickyHeader(key = "tabs") {
-            LazyRow(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Z.bg, Z.bg, Z.bg.copy(alpha = 0.92f)))),
+            LazyRow(Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val keys = listOf("popular", "new", "free") + cats.map { it.name }
                 items(keys, key = { it }) { k -> TabPill(collectionTitle(k), chip == k, accent) { chip = k } }
@@ -496,11 +496,12 @@ fun DiscoverTab(nav: Nav) {
 /** Collection tab: the selected one fills with colour and grows a little (springy). */
 @Composable
 private fun TabPill(text: String, sel: Boolean, accent: Color, onClick: () -> Unit) {
-    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color.White.copy(alpha = 0.06f), androidx.compose.animation.core.tween(260), label = "tbg")
+    // tabs float over the page (no bar behind them), so each pill carries its own frosted fill
+    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color(0xE6202028), androidx.compose.animation.core.tween(260), label = "tbg")
     val fg by androidx.compose.animation.animateColorAsState(if (sel) Color(0xFF14110A) else Z.text, androidx.compose.animation.core.tween(260), label = "tfg")
     val k by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.06f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f), label = "tk")
     Box(Modifier.graphicsLayer { scaleX = k; scaleY = k }.clip(RoundedCornerShape(50)).background(bg)
-        .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
+        .border(1.dp, if (sel) Color.Transparent else Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
         .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp)) {
         Text(text, color = fg, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
