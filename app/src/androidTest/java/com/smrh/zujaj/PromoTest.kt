@@ -53,7 +53,7 @@ class PromoTest {
         }
         val mask = (runBlocking { Segment.run(ctx, mt) } as? Segment.Result.Ok)?.mask ?: WallRender.skyMask(mt)
         for (t in WallTemplates.all.filter { it.id in setOf("depth", "liquid", "minimal", "noir") }) runCatching {
-            val d = WallTemplates.apply(t, WallDesign(), mt, 1080, 2340, mask != null)
+            val d = WallTemplates.apply(t, WallDesign(py = 0.09f), mt, 1080, 2340, mask != null)
             save(WallRender.compose(ctx, d, mt, mask, 1080, 2340), "wall_${t.id}")
         }
         save(WallRender.compose(ctx, WallDesign(), mt, null, 1080, 2340), "wall_plain")
