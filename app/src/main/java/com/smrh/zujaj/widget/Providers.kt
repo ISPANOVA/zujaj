@@ -56,6 +56,7 @@ class SmallProvider : BaseProvider()
 class WideProvider : BaseProvider()
 class BannerProvider : BaseProvider()
 class LargeProvider : BaseProvider()
+class TallProvider : BaseProvider()
 
 /** Receives the launcher callback after requestPinAppWidget succeeded. */
 class PinReceiver : BroadcastReceiver() {

@@ -4,6 +4,7 @@
     <string name="w_small">Zujaj · Small 2×2</string>
     <string name="w_wide">Zujaj · Wide 4×2</string>
     <string name="w_banner">Zujaj · Banner 4×1</string>
+    <string name="w_tall">Zujaj · Tall 2×4</string>
     <string name="w_large">Zujaj · Large 4×3</string>
     <string name="w_desc">Clocks, prayer, weather, media, calendar and more</string>
     <string name="media_listener">Zujaj media widgets</string>

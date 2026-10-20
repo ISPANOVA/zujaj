@@ -790,7 +790,7 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
                     }
                 } else {
                     val list = pack(Flags.visible().filter { it.cat.name == k && it.shape != com.smrh.zujaj.catalog.Shape.LARGE })
-                    items(list, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL) 1 else 2) }) { st ->
+                    items(list, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL || it.shape == com.smrh.zujaj.catalog.Shape.TALL) 1 else 2) }) { st ->
                         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
                             .clickable { onAdd(WallLayer(kind = "widget", styleId = st.id, w = if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) 0.45f else 0.9f, cy = 0.35f)) }.padding(10.dp)) {
                             WidgetPreview(st.defaultConfig().copy(bg = false), Modifier.fillMaxWidth(), density = 1.6f)

@@ -199,77 +199,108 @@ object Moments2R {
         }
     }
 
-    // =============================================================================  4 · sport card
-    /** Italic two-tone time, the day in big 3D calligraphy, battery bar, date pills and the next prayer. */
+    // =============================================================================  4 · sport card (tall)
+    /** Tall card: slanted two-tone time, the day standing up in big 3D letters with a battery bar beside it,
+     *  then slanted 3D pills for the hijri and gregorian dates and the next prayer with its progress. */
     fun sport(r: RenderCtx) {
         val ar = r.ar
-        val acc = r.accent; val ink = r.c1; val pillB = r.c2
+        val acc = r.accent; val ink = r.c1; val grey = r.c2
         val p0 = r.pad
-        val colW = r.w * 0.36f
-        // side column (left in Arabic, right in English)
-        val cx0 = if (ar) p0 else r.w - p0 - colW
-        val mainL = if (ar) cx0 + colW + 10 * r.u else p0
-        val mainR = if (ar) r.w - p0 else cx0 - 10 * r.u
-        val mainW = mainR - mainL
-        // time: HH in the main colour, mm in the accent, slanted
+        val L = p0; val R = r.w - p0; val W = R - L
+        val c = r.canvas
+        // ---- time
         val hh = Kit.bakedTime(r, r.hh()); val mm = Kit.bakedTime(r, "mm")
-        val tp = r.paint(ink, r.h * 0.3f * r.s1, F.CLK_BEBAS).apply { textSkewX = -0.22f; isFakeBoldText = true }
-        val wTot = tp.measureText(hh + mm)
-        if (wTot > mainW) tp.textSize *= mainW / wTot
+        val tp = r.paint(ink, 100f, F.CLK_BEBAS).apply { textSkewX = -0.24f; isFakeBoldText = true }
         val tb = android.graphics.Rect(); tp.getTextBounds("00", 0, 2, tb)
-        val ty = p0 + tb.height() + 2 * r.u
-        val tx = if (ar) mainR - tp.measureText(hh + mm) else mainL
-        r.canvas.drawText(hh, tx, ty, tp)
-        r.canvas.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })
-        // day: 3D — accent extrusion under a white face
-        val day = Calendars.dayName(r.today, ar)
-        val dayTop = ty + 6 * r.u
-        val dayH = r.h - p0 - dayTop
-        val dcx = (mainL + mainR) / 2 - (if (ar) 0f else 0f)
-        val dcy = dayTop + dayH / 2
-        val font = if (ar) r.calliFont else F.PLAYFAIR
-        for (k in 6 downTo 1) {
-            val o = k * 0.7f * r.u
-            r.textTight(day, dcx + o, dcy + o, dayH * 0.95f * r.s1, RenderCtx.mix(acc, Color.BLACK, k / 14f), font, maxW = mainW - 22 * r.u, maxH = dayH * 0.9f)
+        val maxTH = r.h * 0.15f * r.s1
+        tp.textSize = 100f * minOf(maxTH / tb.height(), W * 0.98f / tp.measureText(hh + mm))
+        tp.getTextBounds("00", 0, 2, tb)
+        val ty = p0 + tb.height()
+        val tw = tp.measureText(hh + mm)
+        val tx = if (ar) R - tw else L
+        c.drawText(hh, tx + r.u, ty + 2 * r.u, Paint(tp).apply { color = withAlpha(Color.BLACK, 120) })
+        c.drawText(hh, tx, ty, tp)
+        c.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })
+        // ---- lower block: pills + prayer
+        val gap = r.h * 0.018f
+        val barH = 4 * r.u
+        val prH = r.h * 0.15f; val pillH = r.h * 0.065f
+        val barY = r.h - p0 - barH / 2
+        val prBot = barY - barH / 2 - gap
+        val prTop = prBot - prH
+        val gBot = prTop - gap; val gTop = gBot - pillH
+        val hBot = gTop - gap * 0.8f; val hTop = hBot - pillH
+        val pw = W * 0.86f
+        val px0 = if (ar) R - pw else L
+        fun slab(top: Float, bot: Float, x0: Float, w: Float, cTop: Int, cBot: Int) {
+            val rc = RectF(x0, top, x0 + w, bot)
+            val rad = (bot - top) * 0.22f
+            c.save()
+            c.skew(-0.14f, 0f); val dx = rc.centerY() * 0.14f
+            val rr = RectF(rc.left + dx, rc.top, rc.right + dx, rc.bottom)
+            c.drawRoundRect(RectF(rr.left + 2.5f * r.u, rr.top + 3.5f * r.u, rr.right + 2.5f * r.u, rr.bottom + 3.5f * r.u), rad, rad,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = withAlpha(Color.BLACK, 150); maskFilter = BlurMaskFilter(3 * r.u, BlurMaskFilter.Blur.NORMAL) })
+            c.drawRoundRect(RectF(rr.left, rr.top + 2 * r.u, rr.right, rr.bottom + 2 * r.u), rad, rad, r.fillPaint(RenderCtx.mix(cBot, Color.BLACK, 0.45f)))
+            c.drawRoundRect(rr, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, rr.top, 0f, rr.bottom, cTop, cBot, Shader.TileMode.CLAMP) })
+            c.drawRoundRect(RectF(rr.left + r.u, rr.top + r.u, rr.right - r.u, rr.top + rr.height() * 0.45f), rad, rad,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, rr.top, 0f, rr.top + rr.height() * 0.45f, withAlpha(Color.WHITE, 90), withAlpha(Color.WHITE, 0), Shader.TileMode.CLAMP) })
+            c.restore()
         }
-        r.textTight(day, dcx, dcy, dayH * 0.95f * r.s1, ink, font, maxW = mainW - 22 * r.u, maxH = dayH * 0.9f)
-        // battery: thin vertical bar with %
-        val bat = Kit.battery(r)
-        val bx = if (ar) mainL + 4 * r.u else mainR - 4 * r.u
-        val bTop = dayTop + dayH * 0.12f; val bBot = r.h - p0 - 18 * r.u
-        r.canvas.drawLine(bx, bTop, bx, bBot, r.strokePaint(withAlpha(ink, 60), 3 * r.u))
-        r.canvas.drawLine(bx, bBot, bx, bBot - (bBot - bTop) * bat / 100f, r.strokePaint(acc, 3 * r.u))
-        r.text(r.n("$bat%"), bx, bBot + 10 * r.u, 9 * r.u * r.s2, ink, r.sansBold, Paint.Align.CENTER)
-        // pills
-        val gap = 7 * r.u
-        val ph = (r.h - 2 * p0 - 3 * gap) * 0.2f
-        fun pill(top: Float, h: Float, c1: Int, c2: Int, txt: Int): RectF {
-            val rc = RectF(cx0, top, cx0 + colW, top + h)
-            val rad = h * 0.32f
-            r.canvas.drawRoundRect(RectF(rc.left + 2 * r.u, rc.top + 3 * r.u, rc.right + 2 * r.u, rc.bottom + 3 * r.u), rad, rad, r.fillPaint(withAlpha(Color.BLACK, 120)))
-            r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, rc.top, 0f, rc.bottom, c1, c2, Shader.TileMode.CLAMP) })
-            r.canvas.drawRoundRect(RectF(rc.left + r.u, rc.top + r.u, rc.right - r.u, rc.centerY()), rad, rad, r.fillPaint(withAlpha(Color.WHITE, 40)))
-            return rc
+        fun slText(s: String, cx: Float, cy: Float, size: Float, color: Int, font: F, maxW: Float, maxH: Float) {
+            c.save(); c.skew(-0.14f, 0f); val dx = cy * 0.14f
+            r.textTight(s, cx + dx, cy, size, color, font, maxW = maxW, maxH = maxH)
+            c.restore()
         }
-        val hRc = pill(p0, ph, RenderCtx.mix(acc, Color.WHITE, 0.15f), RenderCtx.mix(acc, Color.BLACK, 0.35f), ink)
-        r.text(hijriLine(r), hRc.centerX(), hRc.centerY(), ph * 0.42f * r.s2, ink, r.sansBold, Paint.Align.CENTER, maxW = colW - 14 * r.u)
-        val gRc = pill(hRc.bottom + gap, ph, RenderCtx.mix(pillB, Color.WHITE, 0.4f), RenderCtx.mix(pillB, Color.BLACK, 0.25f), Color.BLACK)
-        val gTxt = if (ar) "${r.n(r.today.dayOfMonth.toString().padStart(2, '0'))} ${Calendars.monthName(r.today.monthValue, true)}" else "${r.today.dayOfMonth.toString().padStart(2, '0')} ${Calendars.monthName(r.today.monthValue, false)}"
-        r.text(gTxt, gRc.centerX(), gRc.centerY(), ph * 0.42f * r.s2, 0xFF1A1A1A.toInt(), r.sansBold, Paint.Align.CENTER, maxW = colW - 14 * r.u)
-        // next prayer card
+        slab(hTop, hBot, px0, pw, RenderCtx.mix(acc, Color.WHITE, 0.18f), RenderCtx.mix(acc, Color.BLACK, 0.3f))
+        val hs = Calendars.hijri(r.today)
+        val hTxt = if (ar) "${r.n(hs.day)} ${Calendars.hijriMonth(hs.month, true)}" else "${hs.day} ${Calendars.hijriMonth(hs.month, false)}"
+        slText(hTxt, px0 + pw / 2, (hTop + hBot) / 2, pillH * 0.62f * r.s2, ink, if (ar) r.calliFont else r.sansBold, pw * 0.86f, pillH * 0.66f)
+        slab(gTop, gBot, px0 - (if (ar) W * 0.03f else -W * 0.03f), pw, RenderCtx.mix(grey, Color.WHITE, 0.55f), RenderCtx.mix(grey, Color.BLACK, 0.3f))
+        val gTxt = (if (ar) r.n(r.today.dayOfMonth.toString().padStart(2, '0')) else r.today.dayOfMonth.toString().padStart(2, '0')) + " " + Calendars.monthName(r.today.monthValue, ar)
+        slText(gTxt, px0 + pw / 2 - (if (ar) W * 0.03f else -W * 0.03f), (gTop + gBot) / 2, pillH * 0.62f * r.s2, 0xFF141414.toInt(), if (ar) r.calliFont else r.sansBold, pw * 0.86f, pillH * 0.66f)
         val d = Kit.day(r)
-        val barH = 5 * r.u
-        val cTop = gRc.bottom + gap; val cBot = r.h - p0 - barH - gap
-        val cRc = pill(cTop, cBot - cTop, RenderCtx.mix(acc, Color.WHITE, 0.12f), RenderCtx.mix(acc, Color.BLACK, 0.4f), ink)
-        r.textTight(Kit.pName(r, d.next), cRc.centerX(), cRc.top + cRc.height() * 0.32f, cRc.height() * 0.32f, ink, if (ar) r.calliFont else r.sansBold, maxW = colW - 16 * r.u, maxH = cRc.height() * 0.34f)
-        r.textTight(Kit.pTime(r, d.next.time), cRc.centerX(), cRc.top + cRc.height() * 0.74f, cRc.height() * 0.3f, ink, F.CLK_BEBAS, maxW = colW - 16 * r.u, maxH = cRc.height() * 0.3f)
-        // progress to it
-        val by = r.h - p0 - barH / 2
-        r.canvas.drawLine(cx0 + barH, by, cx0 + colW - barH, by, r.strokePaint(withAlpha(ink, 70), barH))
-        val f = d.progress.coerceIn(0f, 1f)
-        val len = (colW - 2 * barH) * f
-        if (ar) r.canvas.drawLine(cx0 + colW - barH, by, cx0 + colW - barH - len, by, r.strokePaint(ink, barH))
-        else r.canvas.drawLine(cx0 + barH, by, cx0 + barH + len, by, r.strokePaint(ink, barH))
+        val prW = W * 0.8f
+        val prX = if (ar) px0 - W * 0.06f else px0 + W * 0.06f + pw - prW
+        slab(prTop, prBot, prX, prW, RenderCtx.mix(acc, Color.WHITE, 0.12f), RenderCtx.mix(acc, Color.BLACK, 0.45f))
+        slText(Kit.pName(r, d.next), prX + prW / 2, prTop + prH * 0.32f, prH * 0.36f, ink, if (ar) r.calliFont else r.sansBold, prW * 0.8f, prH * 0.36f)
+        slText(Kit.pTime(r, d.next.time), prX + prW / 2, prTop + prH * 0.72f, prH * 0.34f, ink, F.CLK_BEBAS, prW * 0.8f, prH * 0.32f)
+        // progress
+        val bx0 = prX; val bx1 = prX + prW
+        c.drawLine(bx0 + barH, barY, bx1 - barH, barY, r.strokePaint(withAlpha(ink, 60), barH))
+        val f = d.progress.coerceIn(0f, 1f); val len = (bx1 - bx0 - 2 * barH) * f
+        if (ar) c.drawLine(bx1 - barH, barY, bx1 - barH - len, barY, r.strokePaint(ink, barH))
+        else c.drawLine(bx0 + barH, barY, bx0 + barH + len, barY, r.strokePaint(ink, barH))
+        // ---- the day, standing up (reads bottom → top), 3D with an accent extrusion
+        val top = ty + r.h * 0.03f; val bot = hTop - gap * 1.2f
+        val batW = W * 0.2f
+        val dayL = if (ar) L + batW else L; val dayR = if (ar) R else R - batW
+        val dcx = (dayL + dayR) / 2; val dcy = (top + bot) / 2
+        val day = Calendars.dayName(r.today, ar)
+        val font = if (ar) r.calliFont else F.PLAYFAIR
+        val len2 = bot - top; val thick = dayR - dayL
+        c.save(); c.rotate(-90f, dcx, dcy)
+        for (k in 5 downTo 1) {
+            val o = k * 0.8f * r.u
+            r.textTight(day, dcx - o, dcy + o, thick * 1.2f * r.s1, RenderCtx.mix(acc, Color.BLACK, k / 12f), font, maxW = len2 * 0.98f, maxH = thick * 0.98f)
+        }
+        r.textTight(day, dcx, dcy, thick * 1.2f * r.s1, ink, font, maxW = len2 * 0.98f, maxH = thick * 0.98f)
+        c.restore()
+        // ---- battery: thin standing bar with a bolt and the % turned sideways
+        val bat = Kit.battery(r)
+        val bx = if (ar) L + batW * 0.62f else R - batW * 0.62f
+        val bTop = top + len2 * 0.32f; val bBot = bot - len2 * 0.14f
+        c.drawLine(bx, bTop, bx, bBot, r.strokePaint(withAlpha(ink, 70), 3.2f * r.u))
+        c.drawLine(bx, bBot, bx, bBot - (bBot - bTop) * bat / 100f, r.strokePaint(acc, 3.2f * r.u))
+        val bolt = android.graphics.Path().apply {
+            val s0 = 5 * r.u; val ox = bx - (if (ar) 9 else -9) * r.u; val oy = bBot - (bBot - bTop) * 0.42f
+            moveTo(ox + s0 * 0.2f, oy - s0); lineTo(ox - s0 * 0.5f, oy + s0 * 0.1f); lineTo(ox, oy + s0 * 0.1f)
+            lineTo(ox - s0 * 0.2f, oy + s0); lineTo(ox + s0 * 0.5f, oy - s0 * 0.1f); lineTo(ox, oy - s0 * 0.1f); close()
+        }
+        c.drawPath(bolt, r.fillPaint(ink))
+        c.save(); val pcx = bx - (if (ar) 9 else -9) * r.u; val pcy = bBot - (bBot - bTop) * 0.12f
+        c.rotate(-90f, pcx, pcy)
+        r.text(r.n("$bat%"), pcx, pcy, 9 * r.u * r.s2, acc, F.CLK_BEBAS, Paint.Align.CENTER)
+        c.restore()
     }
 
     @Suppress("unused") private fun keep() = min(1, 2)
