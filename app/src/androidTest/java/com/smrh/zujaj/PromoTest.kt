@@ -24,7 +24,39 @@ class PromoTest {
     fun promo() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         Prefs.init(ctx)
-        for (lang in listOf("ar", "en")) render(ctx, lang)
+        render(ctx, "ar")
+        english(ctx)
+    }
+
+    /** English set: no Arabic and nothing religious — a mountain photo and everyday widgets. */
+    private fun english(ctx: android.content.Context) {
+        Prefs.appLanguage = "en"
+        val out = File(ctx.getExternalFilesDir(null), "device/promo_en").apply { deleteRecursively(); mkdirs() }
+        fun save(b: Bitmap, n: String) = FileOutputStream(File(out, "$n.png")).use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val testCtx = InstrumentationRegistry.getInstrumentation().context
+        val mt = testCtx.assets.open("mountains.jpg").use { BitmapFactory.decodeStream(it) }
+        val photo = File(ctx.getExternalFilesDir(null), "promo_mt.jpg").also { f -> FileOutputStream(f).use { mt.compress(Bitmap.CompressFormat.JPEG, 92, it) } }
+        val soon = System.currentTimeMillis() + 23L * 86_400_000L
+        val ids = mapOf<String, (com.smrh.zujaj.model.WidgetConfig) -> com.smrh.zujaj.model.WidgetConfig>(
+            "clock_minimal" to { it }, "clock_modern" to { it }, "clock_orbit" to { it }, "digital_stacked" to { it }, "digital_neon" to { it },
+            "digital_clock" to { it }, "weather_big" to { it }, "weather_small" to { it }, "w_today_tomorrow" to { it }, "date_calendar" to { it }, "dots_year" to { it },
+            "event_ring" to { it.copy(event = "birthday", targetMillis = soon) }, "event_card" to { it.copy(event = "newyear") },
+            "event_flip" to { it.copy(event = "", title = "Summer trip", targetMillis = soon) }, "event_banner" to { it.copy(event = "birthday", targetMillis = soon) },
+            "photo_verse" to { it.copy(variant = 2, text = "Make today count") }, "photo_verse_sq" to { it.copy(variant = 2, text = "Good vibes only") },
+        )
+        for ((id, f) in ids) runCatching {
+            val st = Catalog.byId(id) ?: return@runCatching
+            var cfg = f(st.defaultConfig().copy(photos = listOf(photo.path), language = com.smrh.zujaj.model.Lang.EN))
+            save(Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, true, 4f).bitmap, "w_$id")
+            cfg = com.smrh.zujaj.ui.WidgetThemes.all.first { it.id == "liquid" }.apply(cfg)
+            save(Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, true, 4f).bitmap, "wl_$id")
+        }
+        val mask = (runBlocking { Segment.run(ctx, mt) } as? Segment.Result.Ok)?.mask ?: WallRender.skyMask(mt)
+        for (t in WallTemplates.all.filter { it.id in setOf("depth", "liquid", "minimal", "noir") }) runCatching {
+            val d = WallTemplates.apply(t, WallDesign(), mt, 1080, 2340, mask != null)
+            save(WallRender.compose(ctx, d, mt, mask, 1080, 2340), "wall_${t.id}")
+        }
+        save(WallRender.compose(ctx, WallDesign(), mt, null, 1080, 2340), "wall_plain")
     }
 
     private fun render(ctx: android.content.Context, lang: String) {
