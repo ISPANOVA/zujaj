@@ -1,5 +1,17 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Redeem
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.MonetizationOn
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.rounded.AdminPanelSettings
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -136,11 +148,40 @@ fun AdminScreen(nav: Nav) {
                 Text(tr("Live", "مباشر"), color = Color(0xFF34C77B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Segmented(listOf(tr("Widgets", "الويدجت"), tr("Codes", "الأكواد"), tr("General", "عام")), tab, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { tab = it }
-        when (tab) {
-            0 -> WidgetsAdmin()
-            1 -> CodesAdmin()
-            else -> GeneralAdmin(user?.email ?: "")
+        // sections of the panel, one per tab
+        val tabs = listOf(
+            Icons.Rounded.Widgets to tr("Widgets", "الويدجت"),
+            Icons.Rounded.Star to tr("Editor's choice", "المختارات"),
+            Icons.Rounded.Redeem to tr("Codes", "الأكواد"),
+            Icons.Rounded.Campaign to tr("Messages", "الرسائل"),
+            Icons.Rounded.MonetizationOn to tr("Ads", "الإعلانات"),
+            Icons.Rounded.Security to tr("Security", "الحماية"),
+        )
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(tabs.size) { i ->
+                val (ic, l) = tabs[i]
+                val sel = tab == i
+                val bg by androidx.compose.animation.animateColorAsState(if (sel) LocalAccent.current else Color.White.copy(alpha = 0.06f), label = "at")
+                Row(Modifier.clip(RoundedCornerShape(16.dp)).background(bg).border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(16.dp))
+                    .clickable { tab = i }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(ic, null, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(l, color = if (sel) Color(0xFF14110A) else Z.text, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, fontSize = 13.sp)
+                }
+            }
+        }
+        androidx.compose.animation.AnimatedContent(tab, transitionSpec = {
+            (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) + androidx.compose.animation.slideInVertically { it / 12 })
+                .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)))
+        }, label = "admin") { t ->
+            when (t) {
+                0 -> WidgetsAdmin()
+                1 -> PicksAdmin()
+                2 -> CodesAdmin()
+                3 -> GeneralAdmin(user?.email ?: "", 0)
+                4 -> GeneralAdmin(user?.email ?: "", 1)
+                else -> GeneralAdmin(user?.email ?: "", 2)
+            }
         }
     }
 }
@@ -570,7 +611,7 @@ private fun copy(ctx: Context, s: String) {
 // =============================================================================== general
 @Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-private fun GeneralAdmin(email: String) {
+private fun GeneralAdmin(email: String, page: Int) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val flags by Flags.flags.collectAsState()
@@ -587,10 +628,10 @@ private fun GeneralAdmin(email: String) {
     var adPer by remember(flags) { mutableStateOf(flags.adWallPerDay.toString()) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Section(tr("Promotion", "العروض")) {
+        if (page == 0) Section(tr("Promotion", "العروض")) {
             SwitchRow(tr("Everything free", "كل حاجة مجاني"), freeAll, tr("Every Pro widget unlocked for all users", "كل ويدجت البرو مفتوحة لكل المستخدمين")) { freeAll = it }
         }
-        Section(tr("Message to all users", "رسالة لكل المستخدمين")) {
+        if (page == 0) Section(tr("Message to all users", "رسالة لكل المستخدمين")) {
             OutlinedTextField(notice, { notice = it }, placeholder = { Text(tr("Shown on the home page (leave empty to hide)", "بتظهر في الصفحة الرئيسية (سيبها فاضية عشان تختفي)")) },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
             Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -599,7 +640,7 @@ private fun GeneralAdmin(email: String) {
                 }
             }
         }
-        Section(tr("App update", "تحديث التطبيق")) {
+        if (page == 0) Section(tr("App update", "تحديث التطبيق")) {
             Text(tr("Latest version code on Google Play. Phones with an older copy get asked to update. This phone: ${com.smrh.zujaj.BuildConfig.VERSION_CODE}",
                 "رقم آخر إصدار (versionCode) على جوجل بلاي. اللي عنده نسخة أقدم هيطلع له طلب تحديث. التليفون ده: ${com.smrh.zujaj.BuildConfig.VERSION_CODE}"),
                 color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
@@ -610,7 +651,7 @@ private fun GeneralAdmin(email: String) {
             OutlinedTextField(upNote, { upNote = it }, placeholder = { Text(tr("What's new (optional)", "إيه الجديد (اختياري)")) },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
-        Section(tr("Ads", "الإعلانات")) {
+        if (page == 1) Section(tr("Ads", "الإعلانات")) {
             SwitchRow(tr("Show ads to free users", "إعلانات للمستخدمين المجانيين"), adsOn, tr("Pro & wallpaper subscribers never see ads", "المشتركين مبيشوفوش إعلانات")) { adsOn = it }
             OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner ad unit ID", "كود البانر (Ad unit ID)")) }, placeholder = { Text("ca-app-pub-…/…") },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
@@ -620,7 +661,7 @@ private fun GeneralAdmin(email: String) {
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
-        Section(tr("Anti-piracy", "الحماية من التهكير")) {
+        if (page == 2) Section(tr("Anti-piracy", "الحماية من التهكير")) {
             Text(tr("After uploading to Google Play, paste the SHA-256 of the \"App signing key certificate\" (Play Console → Test and release → App integrity). Copies signed with any other key never get Pro.",
                 "بعد ما ترفع على جوجل بلاي، الصق SHA-256 بتاع \"App signing key certificate\" (Play Console ← Test and release ← App integrity). أي نسخة متوقعة بمفتاح تاني مش هتاخد برو أبداً."),
                 color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
@@ -631,7 +672,7 @@ private fun GeneralAdmin(email: String) {
                 (if (com.smrh.zujaj.security.Guard.compromised()) tr(" · ⚠ untrusted", " · ⚠ غير موثوقة") else " · ✓"),
                 color = Z.sub, fontSize = 11.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
         }
-        Section(tr("Email code for this panel", "كود الإيميل للوحة التحكم")) {
+        if (page == 2) Section(tr("Email code for this panel", "كود الإيميل للوحة التحكم")) {
             Text(tr("Web-app URL of the email-code service. When set, entering the panel needs the password, the email AND a 6-digit code sent to your Gmail.",
                 "رابط خدمة كود الإيميل. لما يتحط، الدخول للوحة محتاج الباسوورد والإيميل وكود من ٦ أرقام بيوصل على الجيميل."),
                 color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
@@ -646,6 +687,69 @@ private fun GeneralAdmin(email: String) {
             }
         }
         Text(tr("Signed in as $email", "مسجل دخول بـ $email"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(40.dp))
+    }
+}
+
+// =============================================================================== editor's choice
+/** Pick and order the "Editor's choice" cards on the home page. */
+@Composable
+private fun PicksAdmin() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val flags by Flags.flags.collectAsState()
+    var picks by remember(flags) { mutableStateOf(flags.featured.ifEmpty { DEFAULT_PICKS }.filter { Catalog.byId(it) != null }) }
+    var q by remember { mutableStateOf("") }
+    val changed = picks != flags.featured.ifEmpty { DEFAULT_PICKS }.filter { Catalog.byId(it) != null }
+    val rest = Catalog.all.filter { it.id !in picks && (q.isBlank() || it.en.contains(q, true) || it.ar.contains(q) || it.id.contains(q, true)) }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
+            item {
+                Text(tr("These cards slide at the top of the home page, in this order.", "الكروت دي بتتقلب أول الصفحة الرئيسية، بالترتيب ده."),
+                    color = Z.sub, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+            }
+            itemsIndexed(picks, key = { _, id -> "p_$id" }) { i, id ->
+                val st = Catalog.byId(id) ?: return@itemsIndexed
+                Row(Modifier.animateItem().fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(18.dp))
+                    .background(LocalAccent.current.copy(alpha = 0.08f)).border(1.dp, LocalAccent.current.copy(alpha = 0.3f), RoundedCornerShape(18.dp)).padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("${i + 1}", color = LocalAccent.current, fontWeight = FontWeight.Bold, modifier = Modifier.width(22.dp))
+                    Box(Modifier.width(74.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF101015)).padding(4.dp)) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1f) }
+                    Spacer(Modifier.width(10.dp))
+                    Text(st.name(Prefs.isArabicUi), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    RoundBtn(Icons.Rounded.KeyboardArrowUp) { if (i > 0) picks = picks.toMutableList().also { java.util.Collections.swap(it, i, i - 1) } }
+                    Spacer(Modifier.width(4.dp))
+                    RoundBtn(Icons.Rounded.KeyboardArrowDown) { if (i < picks.size - 1) picks = picks.toMutableList().also { java.util.Collections.swap(it, i, i + 1) } }
+                    Spacer(Modifier.width(4.dp))
+                    RoundBtn(Icons.Rounded.Close) { picks = picks - id }
+                }
+            }
+            item {
+                OutlinedTextField(q, { q = it }, singleLine = true, placeholder = { Text(tr("Add a widget…", "ضيف ويدجت…")) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = LocalAccent.current, unfocusedBorderColor = Z.line),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
+            }
+            items(rest.take(60), key = { "a_" + it.id }) { st ->
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(18.dp))
+                    .background(Color.White.copy(alpha = 0.04f)).clickable { picks = picks + st.id }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(74.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF101015)).padding(4.dp)) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1f) }
+                    Spacer(Modifier.width(10.dp))
+                    Text(st.name(Prefs.isArabicUi), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Icon(Icons.Rounded.Add, null, tint = LocalAccent.current)
+                }
+            }
+        }
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.95f), Z.bg)))
+            .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 12.dp)) {
+            PrimaryButton(if (changed) tr("Publish picks", "نشر المختارات") else tr("Published · live", "منشور · مباشر"), Modifier.fillMaxWidth()) {
+                scope.launch {
+                    val r = runCatching { Flags.save(flags.copy(featured = picks)) }
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓", "اتنشر ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 }
 

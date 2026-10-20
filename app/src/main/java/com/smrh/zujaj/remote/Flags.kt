@@ -48,6 +48,8 @@ data class CatalogFlags(
     val adReward: String = "",
     /** How many wallpaper Apply/Save a free user gets per 24 h by watching ads. */
     val adWallPerDay: Int = 3,
+    /** "Editor's choice" on the home page, in order (empty = the app's own picks). */
+    val featured: List<String> = emptyList(),
 )
 
 object Flags {
@@ -109,6 +111,7 @@ object Flags {
                 adBanner = snap.getString("adBanner") ?: "",
                 adReward = snap.getString("adReward") ?: "",
                 adWallPerDay = snap.getLong("adWallPerDay")?.toInt() ?: 3,
+                featured = (snap.get("featured") as? List<String>) ?: emptyList(),
             )
             com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
             _flags.value = f
@@ -149,6 +152,7 @@ object Flags {
             "adBanner" to f.adBanner,
             "adReward" to f.adReward,
             "adWallPerDay" to f.adWallPerDay,
+            "featured" to f.featured,
             "updatedAt" to System.currentTimeMillis(),
         )
         doc().set(data, SetOptions.merge()).await()

@@ -234,8 +234,8 @@ fun collectionTitle(key: String): String = when (key) {
     else -> Cat.valueOf(key).let { if (Prefs.isArabicUi) it.ar else it.en }
 }
 
-/** Size groups in the order they are shown: big first, small last. */
-fun shapeOrder(s: Shape) = when (s) { Shape.LARGE -> 0; Shape.WIDE -> 1; Shape.BANNER -> 2; Shape.SMALL -> 3 }
+/** Size groups in the order they are shown: small first, big after. */
+fun shapeOrder(s: Shape) = when (s) { Shape.SMALL -> 0; Shape.WIDE -> 1; Shape.BANNER -> 2; Shape.LARGE -> 3 }
 
 fun shapeGroupTitle(s: Shape) = when (s) {
     Shape.LARGE -> tr("Large", "كبيرة")
@@ -248,9 +248,15 @@ fun shapeGroupTitle(s: Shape) = when (s) {
 fun tidy(list: List<WidgetStyle>): List<WidgetStyle> =
     list.withIndex().sortedWith(compareBy({ shapeOrder(it.value.shape) }, { if (Flags.isPro(it.value)) 1 else 0 }, { it.index })).map { it.value }
 
+/** How many cards share a row: small widgets 2 (3–4 on big screens), wide ones 2 (3 on big screens). */
+fun perRow(shape: Shape, widthDp: Int): Int = when (shape) {
+    Shape.SMALL -> if (widthDp >= 600) 4 else if (widthDp >= 480) 3 else 2
+    else -> if (widthDp >= 600) 3 else 2
+}
+
 /** A widget on a soft stage that looks like a bit of a home screen; badge in the corner, name under it. */
 @Composable
-fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, onClick: () -> Unit) {
+fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, compact: Boolean = false, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
@@ -262,14 +268,14 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
             Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(24.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF101015))))
                 .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(24.dp))
-                .padding(if (small) 16.dp else 14.dp),
+                .padding(if (compact) 8.dp else if (small) 16.dp else 14.dp),
             contentAlignment = Alignment.Center,
         ) {
             WidgetPreview(st.defaultConfig(), if (stage != null) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), density = 2f)
         }
         if (showName) {
             Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 9.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(st.name(Prefs.isArabicUi), color = Z.text.copy(alpha = 0.9f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                Text(st.name(Prefs.isArabicUi), color = Z.text.copy(alpha = 0.9f), fontSize = if (compact) 12.sp else 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Spacer(Modifier.width(6.dp))
                 if (Flags.isPro(st)) ProBadge() else if (Flags.isNew(st)) NewBadge()
@@ -319,6 +325,9 @@ private fun GroupLabel(text: String) {
 }
 
 // =============================================================================== discover
+/** The app's own "Editor's choice" when the control panel hasn't set one. */
+val DEFAULT_PICKS = listOf("prayer_hub", "calli_lawn", "photo_verse", "event_card", "prayer_journey", "clock_neon", "w_today_tomorrow", "event_ring")
+
 /**
  * Home: a living aurora header, an auto-sliding showcase, an animated Wallpapers card, collection
  * tabs that stay on top, and the chosen collection below — big widgets first, small ones in pairs,
@@ -337,8 +346,7 @@ fun DiscoverTab(nav: Nav) {
     var chip by rememberSaveable { mutableStateOf("popular") }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val featured = remember(flags) {
-        listOf("prayer_hub", "calli_lawn", "photo_verse", "event_card", "prayer_journey", "clock_neon", "w_today_tomorrow", "event_ring")
-            .mapNotNull { id -> all.firstOrNull { it.id == id } }
+        flags.featured.ifEmpty { DEFAULT_PICKS }.mapNotNull { id -> all.firstOrNull { it.id == id } }
     }
     val hour = LocalTime.now().hour
     val greet = when (hour) { in 5..11 -> tr("Good morning", "صباح الخير"); in 12..16 -> tr("Good afternoon", "طاب يومك"); else -> tr("Good evening", "مساء الخير") }
@@ -354,6 +362,7 @@ fun DiscoverTab(nav: Nav) {
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
 
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
+    val screenDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.coerceAtMost(720)
     val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "home")
     val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
 
@@ -464,11 +473,12 @@ fun DiscoverTab(nav: Nav) {
         var rowsSinceAd = 0
         var slot = 0
         var idx = 0
-        listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).forEach { shape ->
+        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.LARGE).forEach { shape ->
             val group = list.filter { it.shape == shape }
             if (group.isEmpty()) return@forEach
             item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
-            val rows = if (shape == Shape.SMALL) group.chunked(2) else group.map { listOf(it) }
+            val per = perRow(shape, screenDp)
+            val rows = group.chunked(per)
             rows.forEach { row ->
                 val order = idx++
                 item(key = "r_${chip}_${row.joinToString { it.id }}") {
@@ -477,12 +487,12 @@ fun DiscoverTab(nav: Nav) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp)
                         .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 46.dp.toPx(); val k = 0.94f + 0.06f * shown.value; scaleX = k; scaleY = k },
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
-                        if (row.size == 1 && shape == Shape.SMALL) Spacer(Modifier.weight(1f))
+                        row.forEach { st -> PreviewTile(st, Modifier.weight(1f), compact = shape != Shape.SMALL) { nav.go(Screen.Editor(st.id)) } }
+                        repeat(per - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
                 rowsSinceAd++
-                if (rowsSinceAd >= 4) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
+                if (rowsSinceAd >= 5) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
             }
         }
     }
@@ -547,22 +557,35 @@ fun pack(list: List<WidgetStyle>): List<WidgetStyle> {
 
 @Composable
 fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null, ads: Boolean = true, onPick: (WidgetStyle) -> Unit) {
-    // big ones first, then small ones in pairs; free before Pro; a small ad every few rows
-    val ordered = pack(tidy(list))
+    // small ones first, then the bigger sizes; each size under its own label, several per row;
+    // free before Pro; a small ad every few rows
+    val ordered = tidy(list)
+    val w = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.coerceAtMost(720)
+    val cols = 12 // every row count used (2, 3, 4) divides 12
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Fixed(cols),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (header != null) item(span = { GridItemSpan(2) }) { header() }
-        var cells = 0
+        if (header != null) item(span = { GridItemSpan(cols) }) { header() }
         var slot = 0
-        ordered.forEach { st ->
-            item(key = st.id, span = { GridItemSpan(if (st.shape == Shape.SMALL) 1 else 2) }) { PreviewTile(st, Modifier.animateItem()) { onPick(st) } }
-            cells += if (st.shape == Shape.SMALL) 1 else 2
-            if (ads && cells >= 10 && cells % 2 == 0) { cells = 0; val sl = slot++; item(key = "ad_g_${st.id}", span = { GridItemSpan(2) }) { com.smrh.zujaj.ads.AdBanner(sl) } }
+        var rows = 0
+        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.LARGE).forEach { shape ->
+            val group = ordered.filter { it.shape == shape }
+            if (group.isEmpty()) return@forEach
+            val per = perRow(shape, w)
+            item(key = "grp_$shape", span = { GridItemSpan(cols) }) { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
+            group.chunked(per).forEach { row ->
+                row.forEach { st ->
+                    item(key = st.id, span = { GridItemSpan(cols / per) }) { PreviewTile(st, Modifier.animateItem(), compact = shape != Shape.SMALL) { onPick(st) } }
+                }
+                // keep the grid aligned when a row isn't full
+                if (row.size < per) item(key = "pad_${row.first().id}", span = { GridItemSpan(cols / per * (per - row.size)) }) { Spacer(Modifier) }
+                rows++
+                if (ads && rows % 5 == 0) { val sl = slot++; item(key = "ad_g_${row.first().id}", span = { GridItemSpan(cols) }) { com.smrh.zujaj.ads.AdBanner(sl) } }
+            }
         }
     }
 }
