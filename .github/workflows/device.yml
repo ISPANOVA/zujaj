@@ -1,16 +1,14 @@
 name: device
 
+# Emulator tests are long: run them only from the "Run workflow" button (never on push).
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   device:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[device]')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
