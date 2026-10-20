@@ -22,7 +22,6 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.ui.graphics.Brush
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
