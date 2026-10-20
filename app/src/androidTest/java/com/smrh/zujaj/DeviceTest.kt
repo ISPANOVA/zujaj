@@ -83,10 +83,19 @@ class DeviceTest {
             ctx.startActivity(i)
             Thread.sleep(4500)
             ui.takeScreenshot()?.let { save(it, "app_home_$lang") }
+            for (n in 2..4) {
+                ui.executeShellCommand("input swipe 540 1900 540 500 400").close()
+                Thread.sleep(1800)
+                ui.takeScreenshot()?.let { save(it, "app_home_${lang}_$n") }
+            }
             for ((k, extra) in listOf("settings" to "settings", "paywall" to "paywall")) {
                 ctx.startActivity(Intent(ctx, com.smrh.zujaj.ui.MainActivity::class.java).putExtra(com.smrh.zujaj.ui.MainActivity.EXTRA_OPEN, extra).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
                 Thread.sleep(3000)
                 ui.takeScreenshot()?.let { save(it, "app_${k}_$lang") }
+                if (k == "settings") {
+                    ui.executeShellCommand("input swipe 540 1900 540 500 400").close(); Thread.sleep(1500)
+                    ui.takeScreenshot()?.let { save(it, "app_settings_${lang}_2") }
+                }
             }
             ctx.startActivity(Intent(ctx, com.smrh.zujaj.ui.MainActivity::class.java).putExtra(com.smrh.zujaj.ui.MainActivity.EXTRA_EDIT_WIDGET, -5).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         }

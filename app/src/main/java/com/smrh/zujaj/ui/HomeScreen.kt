@@ -46,6 +46,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FormatQuote
@@ -233,29 +234,45 @@ fun collectionTitle(key: String): String = when (key) {
     else -> Cat.valueOf(key).let { if (Prefs.isArabicUi) it.ar else it.en }
 }
 
-/** A widget shown on a soft dark stage, name centred under it. */
+/** Size groups in the order they are shown: big first, small last. */
+fun shapeOrder(s: Shape) = when (s) { Shape.LARGE -> 0; Shape.WIDE -> 1; Shape.BANNER -> 2; Shape.SMALL -> 3 }
+
+fun shapeGroupTitle(s: Shape) = when (s) {
+    Shape.LARGE -> tr("Large", "كبيرة")
+    Shape.WIDE -> tr("Wide", "عريضة")
+    Shape.BANNER -> tr("Banners", "شرائط")
+    Shape.SMALL -> tr("Small", "صغيرة")
+}
+
+/** Tidy order: by size (big → small), then free before Pro, then the catalogue order. */
+fun tidy(list: List<WidgetStyle>): List<WidgetStyle> =
+    list.withIndex().sortedWith(compareBy({ shapeOrder(it.value.shape) }, { if (Flags.isPro(it.value)) 1 else 0 }, { it.index })).map { it.value }
+
+/** A widget on a soft stage that looks like a bit of a home screen; badge in the corner, name under it. */
 @Composable
 fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
-    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.95f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "press")
-    Column(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(28.dp))
-        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "press")
+    val tint = catColor(st.cat)
+    Column(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
+        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)) {
         Box(
-            Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(28.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF0E0E13))))
-                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.02f))), RoundedCornerShape(28.dp))
-                .padding(if (small) 18.dp else 16.dp),
+            Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(24.dp))
+                .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.16f), Color(0xFF111117), Color(0xFF0C0C11))))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.02f))), RoundedCornerShape(24.dp))
+                .padding(if (small) 16.dp else 14.dp),
             contentAlignment = Alignment.Center,
         ) {
             WidgetPreview(st.defaultConfig(), if (stage != null) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), density = 2f)
         }
         if (showName) {
-            Row(Modifier.padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(st.name(Prefs.isArabicUi), color = Z.text.copy(alpha = 0.86f), fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (Flags.isPro(st)) ProBadge()
-                else if (Flags.isNew(st)) NewBadge()
+            Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 9.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(st.name(Prefs.isArabicUi), color = Z.text.copy(alpha = 0.9f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Spacer(Modifier.width(6.dp))
+                if (Flags.isPro(st)) ProBadge() else if (Flags.isNew(st)) NewBadge()
             }
         }
     }
@@ -269,20 +286,39 @@ fun sizeLabel(s: Shape) = when (s) {
 }
 
 @Composable
-private fun SectionHeader(title: String, count: Int?, onAll: (() -> Unit)?) {
-    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 26.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
-        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+private fun SectionHeader(title: String, count: Int?, onAll: (() -> Unit)?, icon: ImageVector? = null, color: Color = LocalAccent.current) {
+    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 22.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(color.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            if (count != null) Text(tr("$count widgets", "$count ويدجت"), color = Z.sub, fontSize = 12.sp)
+        }
         if (onAll != null) {
-            Row(Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onAll).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text((count?.let { "$it · " } ?: "") + tr("See all", "عرض الكل"), color = LocalAccent.current, fontSize = 13.sp)
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
+            Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onAll).padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("See all", "الكل"), color = Z.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
 
+/** Small subheading inside a list, e.g. "Wide · 12". */
+@Composable
+private fun GroupLabel(text: String) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = Z.sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(Z.line))
+    }
+}
+
 // =============================================================================== discover
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DiscoverTab(nav: Nav) {
     val pro by Billing.pro.collectAsState()
@@ -291,11 +327,9 @@ fun DiscoverTab(nav: Nav) {
     touch(ver)
     val accent = LocalAccent.current
     val all = Flags.visible()
-    var chip by rememberSaveable { mutableStateOf("all") }
-    val featured = remember(flags) {
-        listOf("calli_lawn", "prayer_hub", "prayer_journey", "clock_neon", "cal_hijri_grid", "w_today_tomorrow", "prayer_spotlight", "calli_between")
-            .mapNotNull { id -> all.firstOrNull { it.id == id } }
-    }
+    var chip by rememberSaveable { mutableStateOf("all") }       // category / collection
+    var tier by rememberSaveable { mutableIntStateOf(0) }        // 0 all · 1 free · 2 pro
+    var size by rememberSaveable { mutableStateOf("") }          // "" or Shape name
     val hour = LocalTime.now().hour
     val greet = when (hour) {
         in 5..11 -> tr("Good morning", "صباح الخير")
@@ -303,215 +337,178 @@ fun DiscoverTab(nav: Nav) {
         else -> tr("Good evening", "مساء الخير")
     }
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
+    fun pass(st: WidgetStyle) = (tier == 0 || (tier == 1) == !Flags.isPro(st)) && (size.isEmpty() || st.shape.name == size)
     // "What's new": introduce Wallpapers once (after the first-run battery guide)
     var showNew by remember { mutableStateOf(false) }
+    var showThemes by remember { mutableStateOf(false) }
+    if (showThemes) ThemesDialog { showThemes = false }
     LaunchedEffect(Unit) { delay(2200); showNew = Prefs.getString("wall_intro") != "1" && Prefs.getString("bat_intro") == "1" }
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
+    var adSlot = 0
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 130.dp)) {
-        // ---- header: greeting + round actions
-        item {
-            // slow drifting aurora behind the greeting
-            val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "aurora")
-            val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
-            Box(Modifier.fillMaxWidth().drawBehind {
-                val w = size.width; val h = size.height
-                drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(w * (0.15f + 0.5f * t), h * 0.2f), radius = w * 0.55f), radius = w * 0.55f, center = androidx.compose.ui.geometry.Offset(w * (0.15f + 0.5f * t), h * 0.2f))
-                drawCircle(Brush.radialGradient(listOf(Color(0xFF7C6CF2).copy(alpha = 0.16f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(w * (0.9f - 0.4f * t), h * 0.6f), radius = w * 0.5f), radius = w * 0.5f, center = androidx.compose.ui.geometry.Offset(w * (0.9f - 0.4f * t), h * 0.6f))
-            }) {
-            Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 16.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        // ---- header
+        item(key = "head") {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 14.dp, top = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(greet, color = Z.sub, fontSize = 13.sp)
-                    Text(tr("Zujaj", "زجاج"), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false,
-                        letterSpacing = if (Prefs.isArabicUi) 0.sp else (-0.5).sp)
-                    Text(tr("${all.size} widgets · made to be yours", "${all.size} ويدجت · صمّمها على مزاجك"), color = Z.sub, fontSize = 12.sp, maxLines = 1)
+                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
                 }
-                RoundAction(Icons.Rounded.Wallpaper, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Wallpapers) }
-                Spacer(Modifier.width(10.dp))
-                RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
-                Spacer(Modifier.width(10.dp))
-                RoundAction(
-                    Icons.Rounded.WorkspacePremium,
-                    if (pro) Color(0xFF2A2210) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05),
-                ) { nav.go(Screen.Paywall) }
-            }
+                RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Color(0xFF2A2210) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
             }
         }
-        if (flags.notice.isNotBlank() && !flags.noticeOnce) item {
-            Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), radius = 18.dp, alpha = 0.08f) {
+        // ---- search pill
+        item(key = "search") {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).clip(RoundedCornerShape(18.dp))
+                .background(Color.White.copy(alpha = 0.06f)).border(1.dp, Z.line, RoundedCornerShape(18.dp))
+                .clickable { nav.go(Screen.Search) }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Search, null, tint = Z.sub, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(tr("Search ${all.size} widgets", "ابحث في ${all.size} ويدجت"), color = Z.sub, fontSize = 14.sp)
+            }
+        }
+        if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
+            Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), radius = 18.dp, alpha = 0.08f) {
                 Text(flags.notice, modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
-        // ---- category chips (filter the feed in place)
-        item {
-            val keys = listOf("all", "popular", "new") + cats.map { it.name }
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(keys) { key ->
-                    val sel = key == chip
-                    val cat = Cat.values().firstOrNull { it.name == key }
-                    val icon = cat?.let { catIcon(it) } ?: when (key) { "popular" -> Icons.Rounded.Whatshot; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.GridView }
-                    Row(
-                        Modifier.clip(RoundedCornerShape(50))
-                            .background(if (sel) Z.text else Color.White.copy(alpha = 0.06f))
-                            .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
-                            .clickable { chip = key }
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(icon, null, tint = if (sel) Z.bg else (cat?.let { catColor(it) } ?: accent), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (key == "all") tr("All", "الكل") else collectionTitle(key), fontSize = 13.sp,
-                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = if (sel) Z.bg else Z.text)
+        // ---- bento: wallpapers + themes + pro
+        item(key = "bento") {
+            Row(Modifier.fillMaxWidth().height(164.dp).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                BentoCard(Modifier.weight(1.15f).fillMaxHeight(), listOf(Color(0xFFF2A26B), Color(0xFF8E5BD6), Color(0xFF2B2F6B)),
+                    Icons.Rounded.Wallpaper, tr("Wallpapers", "الخلفيات"), tr("Clock behind the photo", "الساعة ورا الصورة"), tr("NEW", "جديد")) { nav.go(Screen.Wallpapers) }
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BentoCard(Modifier.fillMaxWidth().weight(1f), listOf(Color(0xFF13B5A8), Color(0xFF0E3B44)),
+                        Icons.Rounded.Palette, tr("Themes", "ثيمات"), null, null, compact = true) { showThemes = true }
+                    BentoCard(Modifier.fillMaxWidth().weight(1f), if (pro) listOf(Color(0xFF3A2C12), Color(0xFF17130B)) else listOf(Color(0xFFF6D98B), Color(0xFFC9963A)),
+                        Icons.Rounded.WorkspacePremium, if (pro) tr("You're Pro", "أنت برو") else tr("Go Pro", "اشترك برو"), null, null, compact = true, dark = !pro) { nav.go(Screen.Paywall) }
+                }
+            }
+        }
+        val topSlot = adSlot++
+        item(key = "ad_top") { com.smrh.zujaj.ads.AdBanner(topSlot) }
+        // ---- filters: free / pro, size, category
+        item(key = "filters") {
+            Column {
+                Segmented(listOf(tr("All", "الكل"), tr("Free", "مجاني"), "Pro"), tier, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { tier = it }
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val opts = listOf("" to tr("All sizes", "كل المقاسات")) + listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).map { it.name to shapeGroupTitle(it) }
+                    items(opts) { (k, l) -> FilterPill(l, size == k, null, accent) { size = k } }
+                }
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val keys = listOf("all", "popular", "new") + cats.map { it.name }
+                    items(keys) { key ->
+                        val cat = Cat.values().firstOrNull { it.name == key }
+                        val icon = cat?.let { catIcon(it) } ?: when (key) { "popular" -> Icons.Rounded.Whatshot; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.GridView }
+                        FilterPill(if (key == "all") tr("All", "الكل") else collectionTitle(key), chip == key, icon, cat?.let { catColor(it) } ?: accent) { chip = key }
                     }
                 }
             }
         }
         if (chip == "all") {
-            // ---- featured pager
-            if (featured.isNotEmpty()) item {
-                val pager = rememberPagerState { featured.size }
-                LaunchedEffect(pager) {
-                    while (true) {
-                        delay(5000)
-                        pager.animateScrollToPage((pager.currentPage + 1) % featured.size)
-                    }
-                }
-                Column {
-                    HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { page ->
-                        val st = featured[page]
-                        val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                        Box(
-                            Modifier.fillMaxWidth().height(280.dp)
-                                .graphicsLayer { val k = 1f - 0.07f * kotlin.math.abs(off); scaleX = k; scaleY = k; alpha = 1f - 0.35f * kotlin.math.abs(off) }
-                                .clip(RoundedCornerShape(32.dp))
-                                .background(Backdrops.brush(page + 1))
-                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(32.dp))
-                                .clickable { nav.go(Screen.Editor(st.id)) },
-                        ) {
-                            Box(
-                                Modifier.fillMaxWidth().padding(
-                                    start = if (st.shape == Shape.SMALL) 92.dp else 22.dp,
-                                    end = if (st.shape == Shape.SMALL) 92.dp else 22.dp, top = 24.dp,
-                                ),
-                                contentAlignment = Alignment.TopCenter,
-                            ) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.4f) }
-                            Row(
-                                Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC0000000))))
-                                    .padding(start = 22.dp, end = 14.dp, top = 22.dp, bottom = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(tr("FEATURED", "مختارات"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                                    Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                                }
-                                Box(Modifier.size(42.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.Center) {
-                        repeat(featured.size) { i ->
-                            val sel = i == pager.currentPage
-                            Box(Modifier.padding(horizontal = 3.dp).height(5.dp).width(if (sel) 20.dp else 5.dp).clip(RoundedCornerShape(50))
-                                .background(if (sel) accent else Color.White.copy(alpha = 0.2f)))
-                        }
-                    }
-                }
-            }
-            // ---- browse by category: colourful tiles
-            item(key = "cats") {
-                Column {
-                    SectionHeader(tr("Browse", "تصفح الأقسام"), null, null)
-                    androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
-                        androidx.compose.foundation.lazy.grid.GridCells.Fixed(2), Modifier.fillMaxWidth().height(156.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(cats.size) { i -> CategoryTile(cats[i], all.count { it.cat == cats[i] }, i) { chip = cats[i].name } }
-                    }
-                }
-            }
-            // ---- one shelf per category
-            cats.forEachIndexed { ci, cat ->
-                val list = all.filter { it.cat == cat }
-                if (ci % 2 == 0) item(key = "ad_$ci") { com.smrh.zujaj.ads.AdBanner(ci / 2) }
-                item(key = "row_${cat.name}") {
+            // ---- one section per category: big ones together, small ones together, free before Pro
+            var shown = 0
+            cats.forEach { cat ->
+                val list = tidy(all.filter { it.cat == cat && pass(it) })
+                if (list.isEmpty()) return@forEach
+                val big = list.filter { it.shape != Shape.SMALL }
+                val small = list.filter { it.shape == Shape.SMALL }
+                item(key = "sec_${cat.name}") {
                     Column(Modifier.animateItem()) {
-                    SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size) { chip = cat.name }
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        items(list.take(12).size, key = { list[it].id }) { idx ->
-                            val st = list[idx]
-                            val shown = remember { androidx.compose.animation.core.Animatable(0f) }
-                            LaunchedEffect(Unit) { delay((idx * 60L).coerceAtMost(300L)); shown.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 220f)) }
-                            // every card in a shelf has the same height so rows line up calmly
-                            PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 168.dp else 300.dp)
-                                .graphicsLayer { alpha = shown.value; translationX = (1f - shown.value) * 60.dp.toPx() * (if (Prefs.isArabicUi) -1 else 1) },
-                                stage = 168.dp) { nav.go(Screen.Editor(st.id)) }
+                        SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size, { chip = cat.name }, catIcon(cat), catColor(cat))
+                        if (big.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(big.take(10), key = { it.id }) { st -> PreviewTile(st, Modifier.width(292.dp), stage = 150.dp) { nav.go(Screen.Editor(st.id)) } }
+                        }
+                        if (big.isNotEmpty() && small.isNotEmpty()) Spacer(Modifier.height(12.dp))
+                        if (small.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(small.take(12), key = { it.id }) { st -> PreviewTile(st, Modifier.width(150.dp), stage = 150.dp) { nav.go(Screen.Editor(st.id)) } }
                         }
                     }
-                    }
                 }
+                shown++
+                if (shown % 2 == 0) { val slot = adSlot++; item(key = "ad_c$shown") { com.smrh.zujaj.ads.AdBanner(slot) } }
             }
+            if (shown == 0) item(key = "empty") { EmptyNote() }
         } else {
-            // ---- filtered feed: a calm vertical showcase
-            val list = collection(chip)
-            val rows = feedRows(list)
+            // ---- one category / collection: grouped by size, free before Pro
+            val list = tidy(collection(chip).filter { pass(it) })
             item(key = "title_$chip") {
-                Text(
-                    "${collectionTitle(chip)} · ${list.size}", color = Z.sub, fontSize = 13.sp,
-                    modifier = Modifier.animateItem().padding(start = 22.dp, end = 22.dp, bottom = 10.dp),
-                )
+                Text("${collectionTitle(chip)} · ${list.size}", fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.animateItem().padding(start = 20.dp, end = 20.dp, top = 12.dp))
             }
-            // keyed rows: switching Clock ↔ Digital fades the old cards out and the new ones in, sliding up
-            items(rows.size, key = { i -> "f_${chip}_" + rows[i].joinToString { it.id } }) { i ->
-                val row = rows[i]
-                val shown = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { kotlinx.coroutines.delay((i * 45L).coerceAtMost(270L)); shown.animateTo(1f, androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
-                Column(Modifier.animateItem()) {
-                Row(Modifier.graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 40.dp.toPx() }
-                    .fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
-                    if (row.size == 1 && row[0].shape == Shape.SMALL) Spacer(Modifier.weight(1f))
-                }
-                if (i % 4 == 2) com.smrh.zujaj.ads.AdBanner(i / 4)
+            if (list.isEmpty()) item(key = "empty") { EmptyNote() }
+            var rowsSinceAd = 0
+            listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).forEach { shape ->
+                val group = list.filter { it.shape == shape }
+                if (group.isEmpty()) return@forEach
+                item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
+                val rows = if (shape == Shape.SMALL) group.chunked(2) else group.map { listOf(it) }
+                rows.forEachIndexed { i, row ->
+                    item(key = "r_${chip}_${row.joinToString { it.id }}") {
+                        Row(Modifier.animateItem().fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
+                            if (row.size == 1 && shape == Shape.SMALL) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    rowsSinceAd++
+                    if (rowsSinceAd >= 4) { rowsSinceAd = 0; val slot = adSlot++; item(key = "ad_${chip}_${shape}_$i") { com.smrh.zujaj.ads.AdBanner(slot) } }
                 }
             }
         }
     }
-}
-
-/** Two small widgets per row, wide ones on their own row. */
-private fun feedRows(list: List<WidgetStyle>): List<List<WidgetStyle>> {
-    val out = ArrayList<List<WidgetStyle>>()
-    for (s in pack(list)) {
-        val last = out.lastOrNull()
-        if (s.shape == Shape.SMALL && last != null && last.size == 1 && last[0].shape == Shape.SMALL) out[out.size - 1] = last + s
-        else out += listOf(s)
-    }
-    return out
 }
 
 @Composable
-private fun CategoryTile(cat: Cat, count: Int, i: Int, onClick: () -> Unit) {
-    val c = catColor(cat)
-    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.94f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 600f), label = "cat")
+private fun EmptyNote() {
+    Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(Icons.Rounded.GridView, null, tint = Z.sub, modifier = Modifier.size(34.dp))
+        Spacer(Modifier.height(10.dp))
+        Text(tr("Nothing matches these filters", "مفيش ويدجت بالفلاتر دي"), color = Z.sub, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun FilterPill(text: String, sel: Boolean, icon: ImageVector?, color: Color, onClick: () -> Unit) {
     Row(
-        Modifier.width(176.dp).fillMaxHeight().graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(c.copy(alpha = 0.26f), c.copy(alpha = 0.06f))))
-            .border(1.dp, c.copy(alpha = 0.22f), RoundedCornerShape(22.dp))
-            .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)
-            .padding(horizontal = 12.dp),
+        Modifier.clip(RoundedCornerShape(50))
+            .background(if (sel) Z.text else Color.White.copy(alpha = 0.05f))
+            .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(c.copy(alpha = 0.28f)), contentAlignment = Alignment.Center) {
-            Icon(catIcon(cat), null, tint = c, modifier = Modifier.size(21.dp))
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(if (Prefs.isArabicUi) cat.ar else cat.en, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(tr("$count widgets", "$count ويدجت"), color = Z.sub, fontSize = 11.sp, maxLines = 1)
+        if (icon != null) { Icon(icon, null, tint = if (sel) Z.bg else color, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)) }
+        Text(text, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = if (sel) Z.bg else Z.text, maxLines = 1)
+    }
+}
+
+@Composable
+private fun BentoCard(modifier: Modifier, colors: List<Color>, icon: ImageVector, title: String, sub: String?, badge: String?, compact: Boolean = false, dark: Boolean = false, onClick: () -> Unit) {
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "bento")
+    val fg = if (dark) Color(0xFF2A1C05) else Color.White
+    Box(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
+        .background(Brush.linearGradient(colors))
+        .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(24.dp))
+        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)
+        .padding(14.dp)) {
+        if (compact) {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(fg.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = fg, modifier = Modifier.size(19.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(title, color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2, lineHeight = 17.sp)
+            }
+        } else {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(fg.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = fg, modifier = Modifier.size(22.dp))
+            }
+            if (badge != null) Text(badge, color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 8.dp, vertical = 2.dp))
+            Column(Modifier.align(Alignment.BottomStart)) {
+                Text(title, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 1)
+                if (sub != null) Text(sub, color = fg.copy(alpha = 0.85f), fontSize = 12.sp, maxLines = 2, lineHeight = 15.sp)
+            }
         }
     }
 }
@@ -539,7 +536,9 @@ fun pack(list: List<WidgetStyle>): List<WidgetStyle> {
 }
 
 @Composable
-fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null, onPick: (WidgetStyle) -> Unit) {
+fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null, ads: Boolean = true, onPick: (WidgetStyle) -> Unit) {
+    // big ones first, then small ones in pairs; free before Pro; a small ad every few rows
+    val ordered = pack(tidy(list))
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
@@ -548,8 +547,12 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
         modifier = Modifier.fillMaxSize(),
     ) {
         if (header != null) item(span = { GridItemSpan(2) }) { header() }
-        items(pack(list), key = { it.id }, span = { GridItemSpan(if (it.shape == Shape.SMALL) 1 else 2) }) { st ->
-            PreviewTile(st, Modifier.animateItem()) { onPick(st) }
+        var cells = 0
+        var slot = 0
+        ordered.forEach { st ->
+            item(key = st.id, span = { GridItemSpan(if (st.shape == Shape.SMALL) 1 else 2) }) { PreviewTile(st, Modifier.animateItem()) { onPick(st) } }
+            cells += if (st.shape == Shape.SMALL) 1 else 2
+            if (ads && cells >= 10 && cells % 2 == 0) { cells = 0; val sl = slot++; item(key = "ad_g_${st.id}", span = { GridItemSpan(2) }) { com.smrh.zujaj.ads.AdBanner(sl) } }
         }
     }
 }

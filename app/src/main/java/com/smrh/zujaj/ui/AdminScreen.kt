@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -119,7 +120,23 @@ fun AdminScreen(nav: Nav) {
             return
         }
         var tab by remember { mutableIntStateOf(0) }
-        Segmented(listOf(tr("Widgets", "الويدجت"), tr("Codes", "الأكواد"), tr("General", "عام")), tab, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { tab = it }
+        // header: who is signed in, and that changes go live
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF2A1F4D), Color(0xFF15151B))))
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconTile(Icons.Rounded.AdminPanelSettings, Color(0xFF8B7CFF), 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr("Admin", "المسؤول"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(user?.email ?: "", color = Z.sub, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Row(Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF34C77B).copy(alpha = 0.15f)).padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF34C77B)))
+                Spacer(Modifier.width(6.dp))
+                Text(tr("Live", "مباشر"), color = Color(0xFF34C77B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Segmented(listOf(tr("Widgets", "الويدجت"), tr("Codes", "الأكواد"), tr("General", "عام")), tab, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { tab = it }
         when (tab) {
             0 -> WidgetsAdmin()
             1 -> CodesAdmin()

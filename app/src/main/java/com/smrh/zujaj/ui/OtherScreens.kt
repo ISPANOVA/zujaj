@@ -1,5 +1,28 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.LocationCity
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Redeem
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.ui.graphics.Brush
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -152,41 +175,56 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             Toast.makeText(ctx, if (ok) tr("Location updated ✓", "تم تحديث الموقع ✓") else tr("Turn on location and try again", "شغّل الموقع وحاول مرة أخرى"), Toast.LENGTH_SHORT).show()
         }
     }
+    val purple = Color(0xFF8B7CFF); val teal = Color(0xFF13B5A8); val gold = Color(0xFFE0A93B); val blue = Color(0xFF4D8DFF)
+    val green = Color(0xFF34C77B); val rose = Color(0xFFFF5C8A); val orange = Color(0xFFFF8A4C); val grey = Color(0xFF7A7A86)
     Column(Modifier.fillMaxSize()) {
-        TopBar(tr("Settings", "الإعدادات"), if (asTab) null else ({ nav.back() }))
+        if (!asTab) TopBar("", { nav.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Glass(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clickable { nav.go(Screen.Paywall) }, radius = 22.dp, alpha = 0.09f) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(34.dp))
+            Text(tr("Settings", "الإعدادات"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = if (asTab) 18.dp else 0.dp, bottom = 12.dp))
+            // ---- Pro card
+            val isPro = Prefs.isPro
+            Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(26.dp))
+                .background(Brush.linearGradient(if (isPro) listOf(Color(0xFF3A2C12), Color(0xFF17130B)) else listOf(Color(0xFFF6D98B), Color(0xFFD6A445), Color(0xFFB07A2A))))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(26.dp))
+                .clickable { nav.go(Screen.Paywall) }.padding(18.dp)) {
+                val fg = if (isPro) Z.pro else Color(0xFF2A1C05)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(fg.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.WorkspacePremium, null, tint = fg, modifier = Modifier.size(30.dp))
+                    }
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(if (Prefs.isPro) tr("You are Pro ✓", "أنت مشترك برو ✓") else tr("Zujaj Pro", "زجاج برو"), style = MaterialTheme.typography.titleMedium)
-                        Text(tr("All widgets & every future widget", "كل الويدجت وكل الويدجت القادمة"), color = Z.sub, style = MaterialTheme.typography.bodySmall)
+                        Text(if (isPro) tr("You are Pro ✓", "أنت مشترك برو ✓") else tr("Zujaj Pro", "زجاج برو"), color = fg, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(if (isPro) tr("Every widget is yours — thank you!", "كل الويدجت بتاعتك — شكراً ليك!") else tr("All widgets, no ads, every new design", "كل الويدجت، من غير إعلانات، وكل تصميم جديد"),
+                            color = fg.copy(alpha = 0.8f), fontSize = 13.sp)
                     }
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = fg)
                 }
             }
             Section(tr("Appearance", "المظهر")) {
-                ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام"), "en" to "English", "ar" to "العربية")) {
+                ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام"), "en" to "English", "ar" to "العربية"), Icons.Rounded.Language, blue) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
                 }
                 Divider()
-                RowBase(tr("Accent", "لون التطبيق")) {
+                RowBase(tr("App colour", "لون التطبيق"), icon = Icons.Rounded.Palette, iconColor = rose) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Z.accents.forEachIndexed { i, a ->
-                            Box(Modifier.size(24.dp).clip(CircleShape).background(a.color)
+                            Box(Modifier.size(22.dp).clip(CircleShape).background(a.color)
                                 .border(2.dp, if (i == Prefs.accentIndex) Color.White else Color.Transparent, CircleShape)
                                 .clickable { Prefs.accentIndex = i })
                         }
                     }
                 }
+                Divider()
+                RowBase(tr("Widget themes", "ثيمات الويدجت"), sub = tr("One look for all your widgets", "شكل واحد لكل الويدجت"), onClick = { showThemes = true }, icon = Icons.Rounded.AutoAwesome, iconColor = purple) { Chevron() }
             }
             Section(tr("Location", "الموقع")) {
                 RowBase(tr("Use my location", "استخدم موقعي"), sub = Prefs.cityName.ifBlank { if (Prefs.hasLocation) "%.2f, %.2f".format(Prefs.lat, Prefs.lng) else tr("Not set (Cairo)", "غير محدد (القاهرة)") },
-                    onClick = { perm.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) }) {
-                    Text(tr("Detect", "تحديد"), color = LocalAccent.current)
+                    onClick = { perm.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) }, icon = Icons.Rounded.MyLocation, iconColor = teal) {
+                    Text(tr("Detect", "تحديد"), color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 }
                 Divider()
-                RowBase(tr("Choose city", "اختر مدينة"), onClick = { showCity = true }) { Text("▾", color = LocalAccent.current) }
+                RowBase(tr("Choose city", "اختر مدينة"), onClick = { showCity = true }, icon = Icons.Rounded.LocationCity, iconColor = blue) { Chevron() }
             }
             Section(tr("Prayer times", "مواقيت الصلاة")) {
                 ChoiceRow(tr("Method", "طريقة الحساب"), Prefs.prayerMethod, listOf(
@@ -200,61 +238,62 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     "NORTH_AMERICA" to tr("ISNA", "أمريكا الشمالية"),
                     "MOON_SIGHTING_COMMITTEE" to tr("Moonsighting", "لجنة رؤية الهلال"),
                     "SINGAPORE" to tr("Singapore", "سنغافورة"),
-                )) { Prefs.prayerMethod = it; WidgetUpdater.updateAll(ctx); Scheduler.scheduleAlarms(ctx) }
+                ), Icons.Rounded.Explore, green) { Prefs.prayerMethod = it; WidgetUpdater.updateAll(ctx); Scheduler.scheduleAlarms(ctx) }
                 Divider()
-                SwitchRow(tr("Hanafi Asr", "العصر حنفي"), Prefs.hanafi) { Prefs.hanafi = it; WidgetUpdater.updateAll(ctx) }
+                SwitchRow(tr("Hanafi Asr", "العصر حنفي"), Prefs.hanafi, icon = Icons.Rounded.WbTwilight, iconColor = orange) { Prefs.hanafi = it; WidgetUpdater.updateAll(ctx) }
                 Divider()
-                StepperRow(tr("Hijri adjustment", "تعديل الهجري"), Prefs.hijriOffset, -2..2, 1) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
+                StepperRow(tr("Hijri adjustment", "تعديل الهجري"), Prefs.hijriOffset, -2..2, 1, icon = Icons.Rounded.DarkMode, iconColor = purple) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
             }
             Section(tr("Widgets", "الويدجت")) {
-                RowBase(tr("Widget themes", "ثيمات الويدجت"), sub = tr("One look for all your widgets", "شكل واحد لكل الويدجت"), onClick = { showThemes = true }) { Text("›", color = LocalAccent.current) }
-                Divider()
-                SwitchRow(tr("Fahrenheit", "فهرنهايت"), Prefs.fahrenheit) { Prefs.fahrenheit = it; WidgetUpdater.updateAll(ctx) }
+                SwitchRow(tr("Fahrenheit", "فهرنهايت"), Prefs.fahrenheit, icon = Icons.Rounded.Thermostat, iconColor = orange) { Prefs.fahrenheit = it; WidgetUpdater.updateAll(ctx) }
                 Divider()
                 RowBase(tr("Music access", "الوصول للميديا"), sub = if (MediaRepo.hasAccess(ctx)) tr("Enabled ✓", "مفعّل ✓") else tr("Needed for media widgets", "مطلوب لويدجت الميديا"),
-                    onClick = { nav.go(Screen.MediaAccess) }) {}
+                    onClick = { nav.go(Screen.MediaAccess) }, icon = Icons.Rounded.MusicNote, iconColor = rose) { Chevron() }
                 Divider()
                 RowBase(tr("Refresh all widgets", "تحديث كل الويدجت"), onClick = {
                     scope.launch(Dispatchers.IO) { Scheduler.refreshWeatherIfNeeded(ctx, true); WidgetUpdater.updateAll(ctx) }
                     Toast.makeText(ctx, tr("Refreshing…", "جارٍ التحديث…"), Toast.LENGTH_SHORT).show()
-                }) {}
+                }, icon = Icons.Rounded.Refresh, iconColor = teal) {}
                 Divider()
                 RowBase(tr("Battery optimisation", "تحسين البطارية"), sub = tr("Allow Zujaj to run so widgets stay fresh", "اسمح للتطبيق بالعمل لتبقى الويدجت محدّثة"), onClick = {
                     runCatching { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
-                }) {}
-                Divider()
+                }, icon = Icons.Rounded.BatteryChargingFull, iconColor = green) { Chevron() }
                 if (com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null) {
+                    Divider()
                     RowBase(tr("Auto-start (${com.smrh.zujaj.widget.Oem.brand})", "التشغيل التلقائي (${com.smrh.zujaj.widget.Oem.brand})"),
                         sub = tr("Turn Zujaj on so widgets never freeze", "فعّل زجاج عشان الويدجت متقفش أبداً"),
-                        onClick = { com.smrh.zujaj.widget.Oem.openAutoStart(ctx) }) {}
-                    Divider()
-                }
-                RowBase(tr("How to add widgets", "طريقة إضافة الويدجت"), onClick = { nav.go(Screen.Tutorial) }) {}
-            }
-            Section(tr("Subscription", "الاشتراك")) {
-                RowBase(tr("Redeem code", "استخدام كود"), sub = codeStatus(), onClick = { showRedeem = true }) {
-                    Text(tr("Enter", "إدخال"), color = LocalAccent.current)
+                        onClick = { com.smrh.zujaj.widget.Oem.openAutoStart(ctx) }, icon = Icons.Rounded.PowerSettingsNew, iconColor = orange) { Chevron() }
                 }
                 Divider()
-                RowBase(tr("Restore purchases", "استعادة المشتريات"), onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking…", "جارٍ التحقق…"), Toast.LENGTH_SHORT).show() }) {}
+                RowBase(tr("How to add widgets", "طريقة إضافة الويدجت"), onClick = { nav.go(Screen.Tutorial) }, icon = Icons.Rounded.HelpOutline, iconColor = blue) { Chevron() }
+            }
+            com.smrh.zujaj.ads.AdBanner(1, Modifier.padding(top = 10.dp))
+            Section(tr("Subscription", "الاشتراك")) {
+                RowBase(tr("Redeem code", "استخدام كود"), sub = codeStatus(), onClick = { showRedeem = true }, icon = Icons.Rounded.Redeem, iconColor = gold) {
+                    Text(tr("Enter", "إدخال"), color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
+                }
+                Divider()
+                RowBase(tr("Restore purchases", "استعادة المشتريات"), onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking…", "جارٍ التحقق…"), Toast.LENGTH_SHORT).show() },
+                    icon = Icons.Rounded.Restore, iconColor = teal) {}
                 Divider()
                 RowBase(tr("Manage subscription", "إدارة الاشتراك"), onClick = {
                     runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/account/subscriptions?package=${ctx.packageName}"))) }
-                }) {}
+                }, icon = Icons.Rounded.CreditCard, iconColor = blue) { Chevron() }
             }
             Section(tr("About", "حول")) {
                 RowBase(tr("Rate Zujaj", "قيّم التطبيق"), onClick = {
                     runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${ctx.packageName}"))) }
-                }) {}
+                }, icon = Icons.Rounded.Star, iconColor = gold) { Chevron() }
                 Divider()
-                RowBase(tr("Share the app", "شارك التطبيق"), onClick = { ctx.startActivity(Intent.createChooser(WidgetUpdater.shareIntent(ctx), null)) }) {}
+                RowBase(tr("Share the app", "شارك التطبيق"), onClick = { ctx.startActivity(Intent.createChooser(WidgetUpdater.shareIntent(ctx), null)) },
+                    icon = Icons.Rounded.Share, iconColor = green) { Chevron() }
                 Divider()
-                RowBase(tr("Privacy & credits", "الخصوصية والحقوق"), onClick = { nav.go(Screen.About) }) {}
+                RowBase(tr("Privacy & credits", "الخصوصية والحقوق"), onClick = { nav.go(Screen.About) }, icon = Icons.Rounded.Shield, iconColor = grey) { Chevron() }
                 Divider()
                 RowBase(tr("Version", "الإصدار"), sub = BuildConfig.VERSION_NAME + " · by SMRH", onClick = {
                     taps++
                     if (taps >= 7) { taps = 0; showGate = true }
-                }) {}
+                }, icon = Icons.Rounded.Info, iconColor = grey) {}
             }
             Spacer(Modifier.height(130.dp))
         }
@@ -720,3 +759,7 @@ fun ProUnlocked(until: String, grants: String = "pro") {
         }
     }
 }
+
+
+@Composable
+private fun Chevron() = Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub, modifier = Modifier.size(20.dp))

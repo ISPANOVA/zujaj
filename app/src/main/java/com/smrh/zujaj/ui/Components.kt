@@ -199,17 +199,31 @@ fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier,
 // ------------------------------------------------------------------ setting rows
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Text(title, color = Z.sub, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp))
-    Glass(Modifier.fillMaxWidth().padding(horizontal = 14.dp), radius = 20.dp, content = content)
+    Text(title, color = Z.sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 8.dp))
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(22.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF18181F), Color(0xFF131319))))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.03f))), RoundedCornerShape(22.dp)),
+        content = content,
+    )
+}
+
+/** Coloured rounded square with an icon, used at the start of setting rows. */
+@Composable
+fun IconTile(icon: ImageVector, color: Color, size: Dp = 32.dp) {
+    Box(Modifier.size(size).clip(RoundedCornerShape(size * 0.32f)).background(Brush.linearGradient(listOf(color, color.copy(alpha = 0.72f)))), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.56f))
+    }
 }
 
 @Composable
-fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
+fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), trailing: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = if (icon != null) 11.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) { IconTile(icon, iconColor); Spacer(Modifier.width(14.dp)) }
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge, color = Z.text)
             if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = Z.sub)
@@ -219,16 +233,16 @@ fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, t
 }
 
 @Composable
-fun SwitchRow(label: String, value: Boolean, sub: String? = null, onChange: (Boolean) -> Unit) {
-    RowBase(label, sub, { onChange(!value) }) {
+fun SwitchRow(label: String, value: Boolean, sub: String? = null, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), onChange: (Boolean) -> Unit) {
+    RowBase(label, sub, { onChange(!value) }, icon, iconColor) {
         Switch(value, onChange, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
     }
 }
 
 @Composable
-fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, onChange: (T) -> Unit) {
+fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), onChange: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    RowBase(label, onClick = { open = true }) {
+    RowBase(label, onClick = { open = true }, icon = icon, iconColor = iconColor) {
         Box {
             Text((options.firstOrNull { it.first == value }?.second ?: "") + "  ▾", color = LocalAccent.current, style = MaterialTheme.typography.labelLarge)
             DropdownMenu(open, { open = false }, modifier = Modifier.background(Z.surface2)) {
@@ -239,8 +253,8 @@ fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, onCha
 }
 
 @Composable
-fun StepperRow(label: String, value: Int, range: IntRange, step: Int = 1, suffix: String = "", onChange: (Int) -> Unit) {
-    RowBase(label) {
+fun StepperRow(label: String, value: Int, range: IntRange, step: Int = 1, suffix: String = "", icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), onChange: (Int) -> Unit) {
+    RowBase(label, icon = icon, iconColor = iconColor) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             RoundIcon(Icons.Rounded.Remove) { onChange((value - step).coerceIn(range)) }
             Text("$value$suffix", modifier = Modifier.width(56.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelLarge)
@@ -262,7 +276,7 @@ fun ColorDot(color: Int, size: Dp = 26.dp, onClick: () -> Unit) {
 }
 
 @Composable
-fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Z.line))
+fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color.White.copy(alpha = 0.06f)))
 
 @Composable
 fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
