@@ -626,6 +626,7 @@ private fun GeneralAdmin(email: String, page: Int) {
     var adBanner by remember(flags) { mutableStateOf(flags.adBanner) }
     var adReward by remember(flags) { mutableStateOf(flags.adReward) }
     var adPer by remember(flags) { mutableStateOf(flags.adWallPerDay.toString()) }
+    var adLock by remember(flags) { mutableStateOf(flags.adblockLock) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (page == 0) Section(tr("Promotion", "العروض")) {
@@ -653,6 +654,8 @@ private fun GeneralAdmin(email: String, page: Int) {
         }
         if (page == 1) Section(tr("Ads", "الإعلانات")) {
             SwitchRow(tr("Show ads to free users", "إعلانات للمستخدمين المجانيين"), adsOn, tr("Pro & wallpaper subscribers never see ads", "المشتركين مبيشوفوش إعلانات")) { adsOn = it }
+            SwitchRow(tr("Lock the app for ad blockers", "اقفل التطبيق على اللي بيمنع الإعلانات"), adLock,
+                tr("AdGuard, private DNS, Blokada… must be turned off (subscribers aren't affected)", "AdGuard أو DNS خاص أو Blokada… لازم يتقفلوا (المشتركين مش متأثرين)")) { adLock = it }
             OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner ad unit ID", "كود البانر (Ad unit ID)")) }, placeholder = { Text("ca-app-pub-…/…") },
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             OutlinedTextField(adReward, { adReward = it.trim() }, singleLine = true, label = { Text(tr("Rewarded ad unit ID", "كود إعلان المكافأة (Rewarded)")) }, placeholder = { Text("ca-app-pub-…/…") },
@@ -682,7 +685,7 @@ private fun GeneralAdmin(email: String, page: Int) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3)) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
             }
         }

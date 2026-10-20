@@ -50,6 +50,8 @@ data class CatalogFlags(
     val adWallPerDay: Int = 3,
     /** "Editor's choice" on the home page, in order (empty = the app's own picks). */
     val featured: List<String> = emptyList(),
+    /** Lock the app for free users who block ads (AdGuard, private DNS, …). */
+    val adblockLock: Boolean = true,
 )
 
 object Flags {
@@ -112,6 +114,7 @@ object Flags {
                 adReward = snap.getString("adReward") ?: "",
                 adWallPerDay = snap.getLong("adWallPerDay")?.toInt() ?: 3,
                 featured = (snap.get("featured") as? List<String>) ?: emptyList(),
+                adblockLock = snap.getBoolean("adblockLock") ?: true,
             )
             com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
             _flags.value = f
@@ -153,6 +156,7 @@ object Flags {
             "adReward" to f.adReward,
             "adWallPerDay" to f.adWallPerDay,
             "featured" to f.featured,
+            "adblockLock" to f.adblockLock,
             "updatedAt" to System.currentTimeMillis(),
         )
         doc().set(data, SetOptions.merge()).await()

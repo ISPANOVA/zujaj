@@ -83,7 +83,7 @@ open class MainActivity : ComponentActivity() {
             key(ver.coerceAtMost(0), Prefs.isArabicUi, Prefs.accentIndex) {
                 ZujajTheme {
                     Root(nav)
-                    if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates()
+                    if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates(nav)
                     Splash(show = configureId == AppWidgetManager.INVALID_APPWIDGET_ID && savedInstanceState == null)
                 }
             }

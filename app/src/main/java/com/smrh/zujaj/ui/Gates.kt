@@ -34,6 +34,8 @@ import com.smrh.zujaj.R
 import com.smrh.zujaj.data.Prefs
 import com.smrh.zujaj.remote.Flags
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.rounded.Block
 
 /** Logo + "Loading" shown for a moment when the app opens. */
 @Composable
@@ -63,9 +65,30 @@ fun Splash(show: Boolean) {
 
 /** Update prompt (optional or required) and the one-time message from the control panel. */
 @Composable
-fun AppGates() {
+fun AppGates(nav: Nav? = null) {
     val ctx = LocalContext.current
     val f by Flags.flags.collectAsState()
+    // ---- ad blockers: checked on start and every time the app comes back
+    val pro by com.smrh.zujaj.billing.Billing.pro.collectAsState()
+    val wall by com.smrh.zujaj.billing.Billing.wall.collectAsState()
+    val blocked by com.smrh.zujaj.security.AdBlock.state.collectAsState()
+    var checking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) scope.launch { com.smrh.zujaj.security.AdBlock.check(ctx) }
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    val lock = f.adsOn && f.adblockLock && !pro && !wall && blocked != com.smrh.zujaj.security.AdBlock.Why.NONE && nav?.top !is Screen.Paywall
+    if (lock) {
+        AdBlockWall(blocked, checking, onCheck = {
+            scope.launch { checking = true; com.smrh.zujaj.security.AdBlock.check(ctx); delay(400); checking = false }
+        }, onPro = { nav?.go(Screen.Paywall) })
+        return
+    }
     val outdated = f.latestCode > BuildConfig.VERSION_CODE
     var laterFor by remember { mutableLongStateOf(Prefs.getString("upd_later").toLongOrNull() ?: 0L) }
     var seen by remember { mutableStateOf(Prefs.getString("notice_seen")) }
@@ -205,5 +228,40 @@ private fun StepRow(n: Int, title: String, sub: String, ok: Boolean, onClick: ()
             Text(sub, color = Z.sub, fontSize = 12.sp)
         }
         Text(if (ok) tr("Done", "تم") else tr("Open", "افتح"), color = if (ok) Color(0xFF3DDC97) else gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    }
+}
+
+
+/** Full-screen stop while an ad blocker is on. Nothing behind it can be touched. */
+@Composable
+private fun AdBlockWall(why: com.smrh.zujaj.security.AdBlock.Why, checking: Boolean, onCheck: () -> Unit, onPro: () -> Unit) {
+    val ctx = LocalContext.current
+    val accent = LocalAccent.current
+    Box(Modifier.fillMaxSize().background(Color(0xFA08080D)).clickable(MutableInteractionSource(), null) {}.systemBarsPadding().padding(26.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(84.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFE5484D).copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Block, null, tint = Color(0xFFE5484D), modifier = Modifier.size(44.dp))
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(tr("Ad blocker detected", "فيه مانع إعلانات شغال"), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(10.dp))
+            Text(tr("Zujaj is free thanks to a few small ads. Please turn off your ad blocker to keep using the app — or go Pro for no ads at all.",
+                "زجاج مجاني بفضل شوية إعلانات صغيرة. اقفل مانع الإعلانات عشان تكمل استخدام التطبيق — أو اشترك برو ومفيش إعلانات خالص."),
+                color = Color(0xFFBDBDC6), textAlign = TextAlign.Center)
+            Spacer(Modifier.height(14.dp))
+            Text(when (why) {
+                com.smrh.zujaj.security.AdBlock.Why.PRIVATE_DNS -> tr("Turn off “Private DNS” (Settings → Network → Private DNS → Off or Automatic).", "اقفل «DNS الخاص» (الإعدادات ← الشبكة ← DNS خاص ← إيقاف أو تلقائي).")
+                com.smrh.zujaj.security.AdBlock.Why.APP -> tr("Turn off AdGuard / Blokada / your blocking VPN.", "اقفل AdGuard أو Blokada أو الـ VPN اللي بيمنع الإعلانات.")
+                else -> tr("Turn off any ad-blocking app, VPN or DNS.", "اقفل أي تطبيق أو VPN أو DNS بيمنع الإعلانات.")
+            }, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, textAlign = TextAlign.Center,
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.06f)).padding(12.dp))
+            Spacer(Modifier.height(22.dp))
+            PrimaryButton(if (checking) tr("Checking…", "بتأكد…") else tr("I turned it off — check again", "قفلته — اتأكد تاني"), Modifier.fillMaxWidth()) { if (!checking) onCheck() }
+            Spacer(Modifier.height(8.dp))
+            if (why == com.smrh.zujaj.security.AdBlock.Why.PRIVATE_DNS) TextButton(onClick = {
+                runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }) { Text(tr("Open network settings", "افتح إعدادات الشبكة"), color = Color.White) }
+            TextButton(onClick = onPro) { Text(tr("Go Pro — no ads", "اشترك برو — من غير إعلانات"), color = accent, fontWeight = FontWeight.Bold) }
+        }
     }
 }
