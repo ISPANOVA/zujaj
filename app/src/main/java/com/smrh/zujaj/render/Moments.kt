@@ -276,7 +276,7 @@ object EventR {
     fun flip(r: RenderCtx) {
         val e = event(r)
         val n = daysLeft(r, e)
-        val digits = r.n(n.toString().padStart(3, '0'))
+        val digits = r.n(n.toString().padStart(2, '0'))
         val tiles = digits.length
         val gap = 8 * r.u
         val th = r.h * 0.5f

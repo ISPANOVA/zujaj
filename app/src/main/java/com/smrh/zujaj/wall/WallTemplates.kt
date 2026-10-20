@@ -36,15 +36,15 @@ object WallTemplates {
         },
         Template("minimal", "Minimal", "بسيط", topShade = 35) {
             listOf(
-                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.2f, w = 0.56f),
-                WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.075f, w = 0.4f),
+                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.215f, w = 0.42f),
+                WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.065f, w = 0.4f),
             )
         },
         Template("arabic", "Arabic", "عربي", topShade = 30) {
             listOf(
-                WallLayer(id = id(), kind = "day_calli", cx = 0.5f, cy = 0.17f, w = 0.66f),
-                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.36f, w = 0.42f),
-                WallLayer(id = id(), kind = "hijri_full", cx = 0.5f, cy = 0.065f, w = 0.62f),
+                WallLayer(id = id(), kind = "hijri_full", cx = 0.5f, cy = 0.06f, w = 0.6f),
+                WallLayer(id = id(), kind = "day_calli", cx = 0.5f, cy = 0.145f, w = 0.6f),
+                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.29f, w = 0.3f),
             )
         },
         Template("bottom", "Glass card", "كارت زجاج") {
@@ -55,7 +55,7 @@ object WallTemplates {
         },
         Template("prayer", "Prayer", "الصلاة", topShade = 40) {
             listOf(
-                WallLayer(id = id(), kind = "clock_stack", cx = 0.5f, cy = 0.24f, w = 0.36f),
+                WallLayer(id = id(), kind = "clock_stack", cx = 0.5f, cy = 0.235f, w = 0.25f),
                 WallLayer(id = id(), kind = "prayer_next", cx = 0.5f, cy = 0.075f, w = 0.6f),
                 WallLayer(id = id(), kind = "prayer_row", cx = 0.5f, cy = 0.84f, w = 0.86f, glass = true),
             )
