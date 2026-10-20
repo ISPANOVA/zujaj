@@ -45,6 +45,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
@@ -112,7 +113,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     val ctx = LocalContext.current
     val style = Catalog.byId(s.styleId) ?: return
     var cfg by remember(s) {
-        mutableStateOf(if (s.widgetId != -1) Prefs.widgetConfig(s.widgetId)?.takeIf { it.styleId == s.styleId } ?: style.defaultConfig() else style.defaultConfig())
+        mutableStateOf(if (s.shared.isNotEmpty()) ShareDesign.decode(s.shared) ?: style.defaultConfig() else if (s.widgetId != -1) Prefs.widgetConfig(s.widgetId)?.takeIf { it.styleId == s.styleId } ?: style.defaultConfig() else style.defaultConfig())
     }
     var fav by remember { mutableStateOf(Prefs.favorites.contains(style.id)) }
     var colorTarget by remember { mutableIntStateOf(-1) }
@@ -146,6 +147,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(style.name(ar), { if (!nav.back()) (ctx as? Activity)?.finish() }) {
+                val accentArgb = LocalAccent.current.let { android.graphics.Color.argb(255, (it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
+                IconButton(onClick = { Haptics.tick(ctx); runCatching { ShareDesign.share(ctx, cfg, accentArgb) } }) { Icon(Icons.Rounded.Share, null, tint = Z.text) }
                 IconButton(onClick = {
                     fav = !fav
                     Prefs.favorites = if (fav) Prefs.favorites + style.id else Prefs.favorites - style.id
@@ -174,7 +177,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     repeat(Backdrops.count) { i ->
                         Box(
                             Modifier.size(22.dp).clip(CircleShape).background(Backdrops.brush(i))
-                                .border(2.dp, if (i == stage) Color.White else Color.White.copy(alpha = 0.15f), CircleShape)
+                                .border(2.dp, if (i == stage) Color.White else Z.tint(0.15f), CircleShape)
                                 .clickable { stage = i }
                         )
                     }
@@ -425,13 +428,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 when {
                     locked -> nav.go(Screen.Paywall)
                     s.widgetId != -1 -> {
+                        Haptics.success(ctx)
                         Prefs.saveWidgetConfig(s.widgetId, cfg)
                         WidgetUpdater.update(ctx, s.widgetId)
                         if (cfg.cities.isNotEmpty()) Scheduler.refreshNow(ctx)
                         if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
                         else { Toast.makeText(ctx, tr("Saved ✓", "تم الحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
                     }
-                    else -> pin(ctx, cfg, style.shape)
+                    else -> { Haptics.success(ctx); pin(ctx, cfg, style.shape) }
                 }
             }
         }
@@ -523,7 +527,7 @@ private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "p")
     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(shape)
         .background(Brush.linearGradient(listOf(Color(0xFF7B5CD6).copy(alpha = 0.35f), Color(0xFFE7B75F).copy(alpha = 0.22f))))
-        .border(1.dp, Color.White.copy(alpha = 0.12f), shape)
+        .border(1.dp, Z.tint(0.12f), shape)
         .clickable {
             val a = ctx as? Activity ?: return@clickable
             val shown = com.smrh.zujaj.ads.Ads.showReward(a, quota = false) {
@@ -547,7 +551,7 @@ private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
             repeat(need) { i ->
                 val on = i < done
                 val f by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, label = "d$i")
-                Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.18f))) {
+                Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(50)).background(Z.tint(0.18f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Color.White))
                 }
             }

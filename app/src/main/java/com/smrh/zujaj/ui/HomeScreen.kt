@@ -159,7 +159,7 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
             Modifier.shadow(24.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(50))
                 .background(Brush.verticalGradient(listOf(Color(0xF2202028), Color(0xF2121218))))
-                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f))), RoundedCornerShape(50))
+                .border(1.dp, Brush.verticalGradient(listOf(Z.tint(0.16f), Z.tint(0.04f))), RoundedCornerShape(50))
                 .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -271,7 +271,7 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
         Box(
             Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(24.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF101015))))
-                .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(24.dp))
+                .border(1.dp, Z.tint(0.07f), RoundedCornerShape(24.dp))
                 .padding(if (compact) 8.dp else if (small) 16.dp else 14.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -310,7 +310,7 @@ private fun SectionHeader(title: String, count: Int?, onAll: (() -> Unit)?, icon
             if (count != null) Text(tr("$count widgets", "$count ويدجت"), color = Z.sub, fontSize = 12.sp)
         }
         if (onAll != null) {
-            Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onAll).padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+            Row(Modifier.clip(RoundedCornerShape(50)).background(Z.tint(0.06f)).clickable(onClick = onAll).padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("See all", "الكل"), color = Z.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub, modifier = Modifier.size(18.dp))
@@ -397,18 +397,18 @@ fun DiscoverTab(nav: Nav) {
                         Text(tr("Zujaj", "زجاج"), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1,
                             style = androidx.compose.ui.text.TextStyle(brush = Brush.linearGradient(listOf(Color.White, accent.copy(alpha = 0.9f)))))
                     }
-                    RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.08f), Z.text) { nav.go(Screen.Search) }
+                    RoundAction(Icons.Rounded.Search, Z.tint(0.08f), Z.text) { nav.go(Screen.Search) }
                     Spacer(Modifier.width(8.dp))
                     val pulse by drift.animateFloat(1f, 1.08f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
                     Box(Modifier.graphicsLayer { if (!pro) { scaleX = pulse; scaleY = pulse } }) {
-                        RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Color.White.copy(alpha = 0.08f) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
+                        RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Z.tint(0.08f) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
                     }
                 }
             }
         }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
             Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f)).padding(14.dp))
+                .clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f)).padding(14.dp))
         }
         // ---- showcase: auto-sliding, the side cards shrink and fade (parallax)
         if (featured.isNotEmpty()) item(key = "show") {
@@ -421,7 +421,7 @@ fun DiscoverTab(nav: Nav) {
                     Box(Modifier.fillMaxWidth().height(230.dp)
                         .graphicsLayer { val k = 1f - 0.08f * kotlin.math.abs(off); scaleX = k; scaleY = k; alpha = 1f - 0.4f * kotlin.math.abs(off) }
                         .clip(RoundedCornerShape(30.dp)).background(Backdrops.brush(page + 1))
-                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(30.dp))
+                        .border(1.dp, Z.tint(0.10f), RoundedCornerShape(30.dp))
                         .clickable { nav.go(Screen.Editor(st.id)) }) {
                         Box(Modifier.fillMaxWidth().padding(start = if (st.shape == Shape.SMALL) 80.dp else 22.dp, end = if (st.shape == Shape.SMALL) 80.dp else 22.dp, top = 20.dp)
                             .graphicsLayer { translationX = off * 60.dp.toPx() }, contentAlignment = Alignment.TopCenter) {
@@ -443,7 +443,7 @@ fun DiscoverTab(nav: Nav) {
                     repeat(featured.size) { i ->
                         val sel = i == pager.currentPage
                         val w by androidx.compose.animation.core.animateDpAsState(if (sel) 20.dp else 6.dp, label = "dot")
-                        Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(RoundedCornerShape(50)).background(if (sel) accent else Color.White.copy(alpha = 0.2f)))
+                        Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(RoundedCornerShape(50)).background(if (sel) accent else Z.tint(0.2f)))
                     }
                 }
             }
@@ -522,11 +522,11 @@ fun DiscoverTab(nav: Nav) {
 @Composable
 private fun TabPill(text: String, sel: Boolean, accent: Color, onClick: () -> Unit) {
     // tabs float over the page (no bar behind them), so each pill carries its own frosted fill
-    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color(0xE6202028), androidx.compose.animation.core.tween(260), label = "tbg")
+    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.surface2.copy(alpha = 0.92f), androidx.compose.animation.core.tween(260), label = "tbg")
     val fg by androidx.compose.animation.animateColorAsState(if (sel) Color(0xFF14110A) else Z.text, androidx.compose.animation.core.tween(260), label = "tfg")
     val k by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.06f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f), label = "tk")
     Box(Modifier.graphicsLayer { scaleX = k; scaleY = k }.clip(RoundedCornerShape(50)).background(bg)
-        .border(1.dp, if (sel) Color.Transparent else Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+        .border(1.dp, if (sel) Color.Transparent else Z.tint(0.12f), RoundedCornerShape(50))
         .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp)) {
         Text(text, color = fg, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
@@ -545,7 +545,7 @@ private fun EmptyNote() {
 private fun FilterPill(text: String, sel: Boolean, icon: ImageVector?, color: Color, onClick: () -> Unit) {
     Row(
         Modifier.clip(RoundedCornerShape(50))
-            .background(if (sel) Z.text else Color.White.copy(alpha = 0.05f))
+            .background(if (sel) Z.text else Z.tint(0.05f))
             .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
             .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -650,7 +650,7 @@ fun FavoritesTab(nav: Nav) {
         Text(tr("Saved", "المفضلة"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 10.dp))
         if (list.isEmpty()) {
             Column(Modifier.fillMaxWidth().padding(36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(72.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(72.dp).clip(CircleShape).background(Z.tint(0.06f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Favorite, null, tint = LocalAccent.current, modifier = Modifier.size(32.dp))
                 }
                 Spacer(Modifier.height(14.dp))
@@ -746,7 +746,7 @@ private fun AdUnlockIntro(onDismiss: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(need) { i ->
                     val on = step > i + 0.5f
-                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (on) Color.White else Color.White.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (on) Color.White else Z.tint(0.12f)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.PlayArrow, null, tint = if (on) Color(0xFF2B2140) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                     }
                 }

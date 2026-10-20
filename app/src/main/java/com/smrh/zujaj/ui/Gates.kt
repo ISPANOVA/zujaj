@@ -157,7 +157,7 @@ fun BatteryIntro() {
     if (done) return
     // wait until the splash has gone
     var ready by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(1700); ready = true }
+    LaunchedEffect(Unit) { delay(1700); while (!Onboarding.done()) delay(400); delay(500); ready = true }
     if (!ready) return
     val oem = remember { com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null }
     var battOk by remember { mutableStateOf(ignoringBattery(ctx)) }
@@ -214,7 +214,7 @@ fun BatteryIntro() {
 private fun StepRow(n: Int, title: String, sub: String, ok: Boolean, onClick: () -> Unit) {
     val gold = Color(0xFFE7B75F)
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.05f))
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Z.tint(0.05f))
             .clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -254,7 +254,7 @@ private fun AdBlockWall(why: com.smrh.zujaj.security.AdBlock.Why, checking: Bool
                 com.smrh.zujaj.security.AdBlock.Why.APP -> tr("Turn off AdGuard / Blokada / your blocking VPN.", "اقفل AdGuard أو Blokada أو الـ VPN اللي بيمنع الإعلانات.")
                 else -> tr("Turn off any ad-blocking app, VPN or DNS.", "اقفل أي تطبيق أو VPN أو DNS بيمنع الإعلانات.")
             }, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, textAlign = TextAlign.Center,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.06f)).padding(12.dp))
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Z.tint(0.06f)).padding(12.dp))
             Spacer(Modifier.height(22.dp))
             PrimaryButton(if (checking) tr("Checking…", "بتأكد…") else tr("I turned it off — check again", "قفلته — اتأكد تاني"), Modifier.fillMaxWidth()) { if (!checking) onCheck() }
             Spacer(Modifier.height(8.dp))

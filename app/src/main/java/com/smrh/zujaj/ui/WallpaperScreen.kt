@@ -338,7 +338,7 @@ fun WallpaperScreen(nav: Nav) {
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.aspectRatio(aspect).clip(RoundedCornerShape(26.dp)).background(Color(0xFF141824))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
+                    .border(1.dp, Z.tint(0.08f), RoundedCornerShape(26.dp))
                     .onSizeChanged { size = it }
             ) {
                 if (photo == null) {
@@ -538,8 +538,8 @@ fun WallpaperScreen(nav: Nav) {
             (androidx.compose.animation.fadeIn(tween(220)) + androidx.compose.animation.slideInVertically(tween(260)) { it / 3 }) togetherWith androidx.compose.animation.fadeOut(tween(150))
         }) { adj ->
             if (adj) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f))
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp)).clickable { az = 1f; ax = 0f; ay = 0f }, contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(18.dp)).background(Z.tint(0.08f))
+                    .border(1.dp, Z.tint(0.1f), RoundedCornerShape(18.dp)).clickable { az = 1f; ax = 0f; ay = 0f }, contentAlignment = Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
                         Text(tr("Reset", "رجّعها"), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
@@ -557,8 +557,8 @@ fun WallpaperScreen(nav: Nav) {
                 }
             } else Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
                 // tools in one floating glass bar
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.06f))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp)).padding(vertical = 6.dp),
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Z.tint(0.06f))
+                    .border(1.dp, Z.tint(0.08f), RoundedCornerShape(22.dp)).padding(vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly) {
                     WallTool(Icons.Rounded.AutoAwesomeMosaic, tr("Styles", "قوالب")) { showTemplates = true }
                     WallTool(Icons.Rounded.Widgets, tr("Widgets", "ويدجت")) { showSheet = true }
@@ -568,8 +568,8 @@ fun WallpaperScreen(nav: Nav) {
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.08f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp))
+                    Box(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(18.dp)).background(Z.tint(0.08f))
+                        .border(1.dp, Z.tint(0.1f), RoundedCornerShape(18.dp))
                         .clickable { if (!owned) { pending = "save"; showBuy = true } else doSave() }, contentAlignment = Alignment.Center) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Download, null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
@@ -591,7 +591,7 @@ fun WallpaperScreen(nav: Nav) {
     }
 
     // ---------------------------------------------------------------- sheets & dialogs
-    if (showSheet) ModalBottomSheet(onDismissRequest = { showSheet = false }, containerColor = Color(0xFF1D2231)) { WidgetPickerSheet(onAdd = { add(it) }) }
+    if (showSheet) ModalBottomSheet(onDismissRequest = { showSheet = false }, containerColor = Z.surface2) { WidgetPickerSheet(onAdd = { add(it) }) }
     if (showText) {
         var t by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = { showText = false }, containerColor = Z.surface,
@@ -600,10 +600,10 @@ fun WallpaperScreen(nav: Nav) {
             confirmButton = { TextButton(onClick = { showText = false; if (t.isNotBlank()) add(WallLayer(kind = "text", text = t.trim(), w = 0.8f, cy = 0.62f)) }) { Text(tr("Add", "ضيف"), color = accent) } },
             dismissButton = { TextButton(onClick = { showText = false }) { Text(tr("Cancel", "إلغاء")) } })
     }
-    if (showBlur) ModalBottomSheet(onDismissRequest = { showBlur = false }, containerColor = Color(0xFF1D2231)) {
+    if (showBlur) ModalBottomSheet(onDismissRequest = { showBlur = false }, containerColor = Z.surface2) {
         LookSheet(design, photo) { update(it) }
     }
-    if (showTemplates) ModalBottomSheet(onDismissRequest = { showTemplates = false }, containerColor = Color(0xFF1D2231)) {
+    if (showTemplates) ModalBottomSheet(onDismissRequest = { showTemplates = false }, containerColor = Z.surface2) {
         TemplatesSheet(design, photo, mask, aspect) { t ->
             showTemplates = false
             val nd = WallTemplates.apply(t, design, photo, maxOf(size.width, 1), maxOf(size.height, 1), mask != null)
@@ -627,7 +627,7 @@ fun WallpaperScreen(nav: Nav) {
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
     if (showBuy) WallBuySheet(onReward = { if (pending == "apply") showApply = true else if (pending == "save") doSaveRef.value() }) { showBuy = false }
-    if (showHistory) ModalBottomSheet(onDismissRequest = { showHistory = false }, containerColor = Color(0xFF1D2231)) {
+    if (showHistory) ModalBottomSheet(onDismissRequest = { showHistory = false }, containerColor = Z.surface2) {
         var items by remember { mutableStateOf(WallHistory.list(ctx)) }
         var rotMode by remember { mutableStateOf(false) }
         var picked by remember { mutableStateOf(setOf<String>()) }
@@ -662,7 +662,7 @@ fun WallpaperScreen(nav: Nav) {
                 items(items, key = { it.dir.name }) { it ->
                     val bmp by produceState<ImageBitmap?>(null, it.thumb) { value = withContext(Dispatchers.IO) { runCatching { android.graphics.BitmapFactory.decodeFile(it.thumb.path).asImageBitmap() }.getOrNull() } }
                     val on = it.dir.name in picked
-                    Box(Modifier.aspectRatio(aspect).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.06f))
+                    Box(Modifier.aspectRatio(aspect).clip(RoundedCornerShape(14.dp)).background(Z.tint(0.06f))
                         .then(if (on) Modifier.border(2.5.dp, accent, RoundedCornerShape(14.dp)) else Modifier)
                         .pointerInput(it.dir.name, rotMode) {
                             detectTapGestures(
@@ -783,7 +783,7 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
                     val list = WallRender.kinds.filter { it.first != "text" }
                     items(list, span = { (_, a) -> GridItemSpan(if (a < 2f) 1 else 2) }) { (kind, a) ->
                         val bmp by produceState<ImageBitmap?>(null, kind) { value = withContext(Dispatchers.Default) { runCatching { WallRender.layerBitmap(ctx, WallLayer(kind = kind), 460).asImageBitmap() }.getOrNull() } }
-                        Box(Modifier.fillMaxWidth().height(if (a < 2f) 130.dp else 92.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
+                        Box(Modifier.fillMaxWidth().height(if (a < 2f) 130.dp else 92.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF232634))
                             .clickable { onAdd(WallLayer(kind = kind, w = if (a < 1.5f) 0.55f else 0.8f, cy = 0.3f)) }.padding(12.dp), contentAlignment = Alignment.Center) {
                             bmp?.let { Image(it, null, Modifier.fillMaxSize()) }
                         }
@@ -791,7 +791,7 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
                 } else {
                     val list = pack(Flags.visible().filter { it.cat.name == k && it.shape != com.smrh.zujaj.catalog.Shape.LARGE })
                     items(list, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL || it.shape == com.smrh.zujaj.catalog.Shape.TALL) 1 else 2) }) { st ->
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.07f))
+                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF232634))
                             .clickable { onAdd(WallLayer(kind = "widget", styleId = st.id, w = if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) 0.45f else 0.9f, cy = 0.35f)) }.padding(10.dp)) {
                             WidgetPreview(st.defaultConfig().copy(bg = false), Modifier.fillMaxWidth(), density = 1.6f)
                         }
@@ -808,7 +808,7 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
 private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit, onChange: (WallLayer) -> Unit, onDismiss: () -> Unit) {
     val swatches = listOf(0xFFFFFFFF, 0xFF111111, 0xFFE7B75F, 0xFFF2865E, 0xFFE5484D, 0xFFFF6B9A, 0xFFB07BF0, 0xFF5B8DEF, 0xFF38C6D9, 0xFF3DDC97, 0xFFB7E34A, 0xFFF3E3C2).map { it.toInt() }
     var custom by remember { mutableIntStateOf(0) } // 1 = first colour, 2 = second
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D2231)) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Z.surface2) {
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 28.dp).verticalScroll(rememberScrollState())) {
             if (l.kind == "date_line") {
                 Text(tr("Next to the date", "جنب التاريخ"), color = Z.sub, fontSize = 13.sp)
@@ -816,13 +816,13 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("" to tr("Weather", "الطقس"), "prayer" to tr("Next prayer", "الصلاة الجاية"), "none" to tr("Nothing", "ولا حاجة")).forEach { (k, s) -> ZChip(s, l.text == k) { onChange(l.copy(text = k)) } }
                 }
-                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))
                     .clickable { onChange(l.copy(stick = !l.stick)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Stay above the clock", "يفضل فوق الساعة"), fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
                     Switch(l.stick, { onChange(l.copy(stick = it)) })
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))
                 .clickable { onChange(l.copy(glass = !l.glass)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("Glass background", "خلفية زجاج"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -830,7 +830,7 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit
                 }
                 Switch(l.glass, { onChange(l.copy(glass = it)) })
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))
                 .clickable { onChange(l.copy(glassFill = !l.glassFill)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("Glass widget", "الويدجت نفسها زجاج"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -840,7 +840,7 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("Colour", "اللون"), fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))
-                Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).padding(3.dp)) {
+                Row(Modifier.clip(RoundedCornerShape(50)).background(Z.tint(0.08f)).padding(3.dp)) {
                     listOf(tr("Solid", "سادة") to false, tr("Gradient", "متدرج") to true).forEach { (s, g) ->
                         val on = (l.color2 != 0) == g
                         Text(s, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.Black else Z.text,
@@ -864,7 +864,7 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit
             }
             Spacer(Modifier.height(10.dp))
             // one soft colour from the photo, like iPhone
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))
                 .clickable(onClick = onTint).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Palette, null, tint = Color.White)
                 Spacer(Modifier.width(10.dp))
@@ -882,7 +882,7 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit
                     items(swatches.size) { i ->
                         val c = swatches[i]
                         Box(Modifier.size(36.dp).clip(CircleShape).background(Color(c))
-                            .border(if (c == value) 3.dp else 1.dp, if (c == value) LocalAccent.current else Color.White.copy(alpha = 0.2f), CircleShape)
+                            .border(if (c == value) 3.dp else 1.dp, if (c == value) LocalAccent.current else Z.tint(0.2f), CircleShape)
                             .clickable { onChange(set(c)) })
                     }
                     item {
@@ -946,7 +946,7 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
                     Text(tr("Wallpapers", "الخلفيات"), fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                     Text(tr("Your photos, with a clock that lives in them", "صورك، والساعة جوّاها"), color = Z.sub, fontSize = 13.sp)
                 }
-                if (items.size >= 2) Box(Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)).clickable(onClick = onAuto), contentAlignment = Alignment.Center) {
+                if (items.size >= 2) Box(Modifier.size(42.dp).clip(CircleShape).background(Z.tint(0.08f)).clickable(onClick = onAuto), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Autorenew, null, modifier = Modifier.size(21.dp))
                 }
             }
@@ -975,10 +975,10 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
         }
         if (draft != null) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.06f))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp)).clickable(onClick = onDraft).padding(10.dp),
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Z.tint(0.06f))
+                    .border(1.dp, Z.tint(0.08f), RoundedCornerShape(22.dp)).clickable(onClick = onDraft).padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.height(74.dp).aspectRatio(aspect).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.06f))) {
+                    Box(Modifier.height(74.dp).aspectRatio(aspect).clip(RoundedCornerShape(12.dp)).background(Z.tint(0.06f))) {
                         draftImg?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -995,7 +995,7 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
             Text(tr("My wallpapers", "خلفياتي"), fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
         }
         if (items.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.04f)).padding(vertical = 34.dp, horizontal = 20.dp),
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Z.tint(0.04f)).padding(vertical = 34.dp, horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Rounded.Collections, null, tint = Z.sub, modifier = Modifier.size(34.dp))
                 Spacer(Modifier.height(10.dp))
@@ -1008,7 +1008,7 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
             LaunchedEffect(Unit) { kotlinx.coroutines.delay(40L * (i % 12)); shown = true }
             val a by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, tween(380), label = "a")
             Box(Modifier.graphicsLayer { alpha = a; translationY = (1f - a) * 40f; val k = 0.94f + 0.06f * a; scaleX = k; scaleY = k }
-                .aspectRatio(aspect).clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.06f))
+                .aspectRatio(aspect).clip(RoundedCornerShape(22.dp)).background(Z.tint(0.06f))
                 .pointerInput(it.dir.name) { detectTapGestures(onTap = { _ -> onOpen(it) }, onLongPress = { _ -> toDelete = it }) }) {
                 bmp?.let { b -> Image(b, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
                 Box(Modifier.align(Alignment.TopEnd).padding(8.dp).size(30.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.4f)).clickable { toDelete = it },
@@ -1027,7 +1027,7 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
 @Composable
 private fun WallAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, locked: Boolean = false, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = if (enabled) 1f else 0.4f }) {
-        Box(Modifier.size(50.dp).clip(RoundedCornerShape(16.dp)).background(if (locked) Z.pro.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.08f)).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(50.dp).clip(RoundedCornerShape(16.dp)).background(if (locked) Z.pro.copy(alpha = 0.14f) else Z.tint(0.08f)).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, null, modifier = Modifier.size(23.dp))
             if (locked) Icon(Icons.Rounded.Lock, null, tint = Z.pro, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(13.dp))
         }
@@ -1141,8 +1141,8 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
             options.forEach { (id, name, sub) ->
                 val on = pick == id
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(18.dp))
-                    .background(if (on) Z.pro.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f))
-                    .border(if (on) 1.5.dp else 1.dp, if (on) Z.pro else Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                    .background(if (on) Z.pro.copy(alpha = 0.14f) else Z.tint(0.05f))
+                    .border(if (on) 1.5.dp else 1.dp, if (on) Z.pro else Z.tint(0.08f), RoundedCornerShape(18.dp))
                     .clickable { pick = id }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -1159,8 +1159,8 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
             if (flags.adsOn && flags.adWallPerDay > 0) {
                 val left = remember(adVer) { com.smrh.zujaj.ads.Ads.left() }
                 Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.06f))
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Z.tint(0.06f))
+                    .border(1.dp, Z.tint(0.1f), RoundedCornerShape(18.dp))
                     .clickable(enabled = left > 0) {
                         val a = ctx as? android.app.Activity ?: return@clickable
                         if (!com.smrh.zujaj.ads.Ads.showReward(a) { onDismiss(); onReward() })
@@ -1257,7 +1257,7 @@ private fun LookSheet(design: WallDesign, photo: Bitmap?, onChange: (WallDesign)
                     }.getOrNull() }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp).clickable { onChange(design.copy(filter = i)) }) {
-                    Box(Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                    Box(Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))
                         .border(if (on) 2.5.dp else 0.dp, if (on) accent else Color.Transparent, RoundedCornerShape(16.dp))) {
                         img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
                     }
@@ -1307,7 +1307,7 @@ private fun TemplatesSheet(design: WallDesign, photo: Bitmap?, mask: Bitmap?, as
                     }.getOrNull() }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onPick(t) }) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(aspect).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(aspect).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f))) {
                         val im = img
                         if (im == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(22.dp), strokeWidth = 2.dp, color = accent)
                         else Image(im, null, Modifier.fillMaxSize())

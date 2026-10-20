@@ -119,7 +119,7 @@ fun ThemesDialog(onDismiss: () -> Unit) {
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { confirm = t }) {
                         Box(Modifier.fillMaxWidth().aspectRatio(340f / 160f).clip(RoundedCornerShape(18.dp))
                             .background(Brush.linearGradient(listOf(Color(0xFF3B6EA8), Color(0xFFB0567A), Color(0xFFE9A15B))))
-                            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+                            .border(1.dp, Z.tint(0.08f), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                             img?.let { Image(it, null, Modifier.fillMaxWidth().padding(10.dp)) }
                         }
                         Spacer(Modifier.height(6.dp))

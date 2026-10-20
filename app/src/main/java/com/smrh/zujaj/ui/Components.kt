@@ -50,6 +50,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -79,9 +88,10 @@ fun AppBackdrop(content: @Composable BoxScope.() -> Unit) {
         Canvas(Modifier.fillMaxSize()) {
             fun glow(c: Color, a: Float, x: Float, y: Float, r: Float) =
                 drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), Color.Transparent), center = Offset(x, y), radius = r), radius = r, center = Offset(x, y))
-            glow(Color(0xFF6C5CE7), 0.30f, size.width * 0.05f, -size.width * 0.1f, size.width * 1.0f)
-            glow(Color(0xFF13B5A8), 0.16f, size.width * 1.05f, size.width * 0.15f, size.width * 0.8f)
-            glow(accent, 0.10f, size.width * 0.6f, size.height * 1.02f, size.width * 0.9f)
+            val k = if (Z.light) 0.45f else 1f
+            glow(Color(0xFF6C5CE7), 0.30f * k, size.width * 0.05f, -size.width * 0.1f, size.width * 1.0f)
+            glow(Color(0xFF13B5A8), 0.16f * k, size.width * 1.05f, size.width * 0.15f, size.width * 0.8f)
+            glow(accent, 0.10f * k + (if (Z.light) 0.06f else 0f), size.width * 0.6f, size.height * 1.02f, size.width * 0.9f)
         }
         content()
     }
@@ -93,7 +103,7 @@ fun Glass(modifier: Modifier = Modifier, radius: Dp = 22.dp, alpha: Float = 0.06
         modifier
             .clip(RoundedCornerShape(radius))
             .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = alpha + 0.03f), Color.White.copy(alpha = alpha))))
-            .border(BorderStroke(1.dp, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f)))), RoundedCornerShape(radius)),
+            .border(BorderStroke(1.dp, Brush.linearGradient(listOf(Z.tint(0.16f), Z.tint(0.04f)))), RoundedCornerShape(radius)),
         content = content,
     )
 }
@@ -129,11 +139,12 @@ fun Wordmark(modifier: Modifier = Modifier) {
 @Composable
 fun ZChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val accent = LocalAccent.current
-    val bg by animateColorAsState(if (selected) accent else Color.White.copy(alpha = 0.06f), label = "chip")
+    val ctx = LocalContext.current
+    val bg by animateColorAsState(if (selected) accent else Z.tint(0.06f), label = "chip")
     Box(
-        Modifier.clip(RoundedCornerShape(50)).background(bg)
+        Modifier.pressScale().then(if (selected) Modifier.glow(accent, 18.dp, 0.45f) else Modifier).clip(RoundedCornerShape(50)).background(bg)
             .border(1.dp, if (selected) Color.Transparent else Z.line, RoundedCornerShape(50))
-            .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { Haptics.tick(ctx); onClick() }.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(text, color = if (selected) Color(0xFF14110A) else Z.text, style = MaterialTheme.typography.labelLarge)
     }
@@ -202,8 +213,8 @@ fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Text(title, color = Z.sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 8.dp))
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF18181F), Color(0xFF131319))))
-            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.03f))), RoundedCornerShape(22.dp)),
+            .background(if (Z.light) Brush.verticalGradient(listOf(Z.surface, Z.surface)) else Brush.verticalGradient(listOf(Color(0xFF18181F), Color(0xFF131319))))
+            .border(1.dp, Brush.verticalGradient(listOf(Z.tint(0.09f), Z.tint(0.03f))), RoundedCornerShape(22.dp)),
         content = content,
     )
 }
@@ -234,8 +245,9 @@ fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, i
 
 @Composable
 fun SwitchRow(label: String, value: Boolean, sub: String? = null, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), onChange: (Boolean) -> Unit) {
-    RowBase(label, sub, { onChange(!value) }, icon, iconColor) {
-        Switch(value, onChange, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
+    val ctx = LocalContext.current
+    RowBase(label, sub, { Haptics.tick(ctx); onChange(!value) }, icon, iconColor) {
+        Switch(value, { Haptics.tick(ctx); onChange(it) }, colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
     }
 }
 
@@ -265,7 +277,8 @@ fun StepperRow(label: String, value: Int, range: IntRange, step: Int = 1, suffix
 
 @Composable
 fun RoundIcon(icon: ImageVector, size: Dp = 30.dp, onClick: () -> Unit) {
-    Box(Modifier.size(size).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    val ctx = LocalContext.current
+    Box(Modifier.pressScale().size(size).clip(CircleShape).background(Z.tint(0.08f)).clickable { Haptics.tick(ctx); onClick() }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Z.text, modifier = Modifier.size(size * 0.6f))
     }
 }
@@ -276,19 +289,52 @@ fun ColorDot(color: Int, size: Dp = 26.dp, onClick: () -> Unit) {
 }
 
 @Composable
-fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color.White.copy(alpha = 0.06f)))
+fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Z.tint(0.06f)))
 
 @Composable
 fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
     val accent = LocalAccent.current
+    val ctx = LocalContext.current
+    // a soft breathing glow under the button and a light sweep across it
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "btn")
+    val breathe by t.animateFloat(0.35f, 0.7f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600), androidx.compose.animation.core.RepeatMode.Reverse), label = "b")
+    val sweep by t.animateFloat(-0.5f, 1.6f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2600, delayMillis = 900)), label = "s")
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = 0.82f))))
-            .clickable(onClick = onClick).padding(horizontal = 26.dp, vertical = 15.dp),
+        modifier.pressScale().glow(accent, 26.dp, breathe).clip(RoundedCornerShape(50))
+            .background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = 0.82f))))
+            .drawWithContent {
+                drawContent()
+                val x = size.width * sweep
+                drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.Transparent), Offset(x - size.height * 1.4f, 0f), Offset(x, size.height)))
+            }
+            .clickable { Haptics.click(ctx); onClick() }.padding(horizontal = 26.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) { Icon(icon, null, tint = Color(0xFF14110A), modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
         Text(text, color = Color(0xFF14110A), style = MaterialTheme.typography.labelLarge, fontSize = 15.sp)
     }
+}
+
+/** Shrinks a touch while pressed and springs back — makes every tap feel physical. */
+fun Modifier.pressScale(min: Float = 0.94f): Modifier = composed {
+    var down by remember { mutableStateOf(false) }
+    val k by androidx.compose.animation.core.animateFloatAsState(if (down) min else 1f, androidx.compose.animation.core.spring(0.45f, 700f), label = "press")
+    this.graphicsLayer { scaleX = k; scaleY = k }.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false); down = true
+            waitForUpOrCancellation(); down = false
+        }
+    }
+}
+
+/** A coloured halo behind the element (drawn outside its bounds). */
+fun Modifier.glow(color: Color, radius: Dp, alpha: Float = 0.5f): Modifier = this.drawBehind {
+    val r = radius.toPx()
+    drawRoundRect(
+        Brush.radialGradient(listOf(color.copy(alpha = alpha), Color.Transparent), center = Offset(size.width / 2, size.height / 2 + r * 0.25f), radius = maxOf(size.width, size.height) / 2 + r),
+        topLeft = Offset(-r, -r * 0.6f), size = androidx.compose.ui.geometry.Size(size.width + 2 * r, size.height + 2 * r),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2 + r),
+    )
 }
 
 // ------------------------------------------------------------------ live preview of a widget

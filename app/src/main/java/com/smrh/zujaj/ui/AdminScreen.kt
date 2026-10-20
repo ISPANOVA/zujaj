@@ -135,7 +135,7 @@ fun AdminScreen(nav: Nav) {
         // header: who is signed in, and that changes go live
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(22.dp))
             .background(Brush.linearGradient(listOf(Color(0xFF2A1F4D), Color(0xFF15151B))))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            .border(1.dp, Z.tint(0.1f), RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             IconTile(Icons.Rounded.AdminPanelSettings, Color(0xFF8B7CFF), 44.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -161,7 +161,7 @@ fun AdminScreen(nav: Nav) {
             items(tabs.size) { i ->
                 val (ic, l) = tabs[i]
                 val sel = tab == i
-                val bg by androidx.compose.animation.animateColorAsState(if (sel) LocalAccent.current else Color.White.copy(alpha = 0.06f), label = "at")
+                val bg by androidx.compose.animation.animateColorAsState(if (sel) LocalAccent.current else Z.tint(0.06f), label = "at")
                 Row(Modifier.clip(RoundedCornerShape(16.dp)).background(bg).border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(16.dp))
                     .clickable { tab = i }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(ic, null, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(18.dp))
@@ -282,7 +282,7 @@ private fun WidgetsAdmin() {
 @Composable
 private fun Stat(label: String, n: Int, color: Color, modifier: Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Z.line, RoundedCornerShape(16.dp)).padding(vertical = 10.dp),
+        modifier.clip(RoundedCornerShape(16.dp)).background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(16.dp)).padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("$n", color = color, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -470,7 +470,7 @@ private fun Counter(label: String, value: Int, min: Int, max: Int, onChange: (In
 
 @Composable
 private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(36.dp).clip(CircleShape).background(Z.tint(0.08f)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Z.text, modifier = Modifier.size(18.dp))
     }
 }
@@ -488,7 +488,7 @@ private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> U
     }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f)).border(1.dp, Z.line, RoundedCornerShape(20.dp)).padding(14.dp)
+            .background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(20.dp)).padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(c.code, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))
@@ -507,7 +507,7 @@ private fun CodeCard(c: RedeemCode, onCopy: () -> Unit, onActive: (Boolean) -> U
             )
         }
         if (c.maxUses > 0) {
-            Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(5.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f))) {
+            Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(5.dp).clip(RoundedCornerShape(50)).background(Z.tint(0.08f))) {
                 Box(Modifier.fillMaxWidth((c.uses.toFloat() / c.maxUses).coerceIn(0f, 1f)).height(5.dp).clip(RoundedCornerShape(50)).background(LocalAccent.current))
             }
         }
@@ -563,7 +563,7 @@ private fun CodeUsersDialog(code: String, onDismiss: () -> Unit) {
                 items(list ?: emptyList(), key = { it.device }) { r ->
                     val ended = !r.revoked && r.until != Long.MAX_VALUE && r.until < System.currentTimeMillis()
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.05f)).padding(12.dp),
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(Z.tint(0.05f)).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -750,7 +750,7 @@ private fun PicksAdmin() {
             }
             items(rest.take(60), key = { "a_" + it.id }) { st ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.04f)).clickable { picks = picks + st.id }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    .background(Z.tint(0.04f)).clickable { picks = picks + st.id }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.width(74.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF101015)).padding(4.dp)) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1f) }
                     Spacer(Modifier.width(10.dp))
                     Text(st.name(Prefs.isArabicUi), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

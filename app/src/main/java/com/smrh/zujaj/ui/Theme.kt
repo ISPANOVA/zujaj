@@ -4,6 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -28,13 +30,27 @@ object Z {
         Accent("Sky", "سماوي", Color(0xFF4DB5FF)),
         Accent("Ember", "برتقالي", Color(0xFFFF8A4C)),
     )
-    val bg = Color(0xFF07070C)
-    val surface = Color(0xFF15151B)
-    val surface2 = Color(0xFF1D1D25)
-    val line = Color(0x1AFFFFFF)
-    val text = Color(0xFFF4F3F0)
-    val sub = Color(0xFF9C9BA6)
-    val pro = Color(0xFFE7B75F)
+    /** Light look (set from Settings: system / dark / light). Every colour below follows it. */
+    var light by androidx.compose.runtime.mutableStateOf(false)
+    val bg get() = if (light) Color(0xFFF3F2F7) else Color(0xFF07070C)
+    val surface get() = if (light) Color(0xFFFFFFFF) else Color(0xFF15151B)
+    val surface2 get() = if (light) Color(0xFFEDECF3) else Color(0xFF1D1D25)
+    val line get() = if (light) Color(0x14000000) else Color(0x1AFFFFFF)
+    val text get() = if (light) Color(0xFF16151C) else Color(0xFFF4F3F0)
+    val sub get() = if (light) Color(0xFF6B6977) else Color(0xFF9C9BA6)
+    val pro get() = if (light) Color(0xFFB8852A) else Color(0xFFE7B75F)
+    /** A soft wash for cards and chips: white on dark, black on light. */
+    fun tint(a: Float) = (if (light) Color.Black else Color.White).copy(alpha = if (light) a * 0.75f else a)
+
+    /** 0 = follow the phone, 1 = dark, 2 = light. */
+    fun mode() = Prefs.getString("theme_mode", "1").toIntOrNull() ?: 1
+    fun refresh(ctx: android.content.Context) {
+        light = when (mode()) {
+            2 -> true
+            0 -> (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) != android.content.res.Configuration.UI_MODE_NIGHT_YES
+            else -> false
+        }
+    }
 
     val manrope = FontFamily(
         Font(R.font.manrope_regular, FontWeight.Normal),
@@ -69,7 +85,12 @@ fun ZujajTheme(content: @Composable () -> Unit) {
         titleSmall = base.titleSmall.f(), bodyLarge = base.bodyLarge.f(), bodyMedium = base.bodyMedium.f(), bodySmall = base.bodySmall.f(),
         labelLarge = base.labelLarge.f().copy(fontWeight = FontWeight.SemiBold), labelMedium = base.labelMedium.f(), labelSmall = base.labelSmall.f().copy(fontSize = 11.sp),
     )
-    val scheme = darkColorScheme(
+    val scheme = if (Z.light) androidx.compose.material3.lightColorScheme(
+        primary = accent, onPrimary = Color(0xFF14110A), secondary = accent,
+        background = Z.bg, surface = Z.surface, surfaceVariant = Z.surface2, onBackground = Z.text, onSurface = Z.text,
+        onSurfaceVariant = Z.sub, outline = Z.line, surfaceContainer = Z.surface, surfaceContainerHigh = Z.surface2,
+        surfaceContainerLow = Z.surface, surfaceContainerLowest = Z.surface, surfaceContainerHighest = Z.surface2,
+    ) else darkColorScheme(
         primary = accent, onPrimary = Color(0xFF14110A), secondary = accent,
         background = Z.bg, surface = Z.surface, surfaceVariant = Z.surface2, onBackground = Z.text, onSurface = Z.text,
         onSurfaceVariant = Z.sub, outline = Z.line, surfaceContainer = Z.surface, surfaceContainerHigh = Z.surface2,
@@ -81,5 +102,22 @@ fun ZujajTheme(content: @Composable () -> Unit) {
         MaterialTheme(colorScheme = scheme, typography = typo) {
             CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides Z.text, content = content)
         }
+    }
+}
+
+/** Small, tasteful vibrations so taps feel physical. */
+object Haptics {
+    private fun v(ctx: android.content.Context) = (ctx as? android.app.Activity)?.window?.decorView
+    fun on() = Prefs.getString("haptics", "1") == "1"
+    /** light tick: chips, tabs, toggles */
+    fun tick(ctx: android.content.Context) { if (on()) v(ctx)?.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK) }
+    /** firm click: main buttons */
+    fun click(ctx: android.content.Context) { if (on()) v(ctx)?.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY) }
+    /** success: added, saved, unlocked */
+    fun success(ctx: android.content.Context) {
+        if (!on()) return
+        val view = v(ctx) ?: return
+        if (android.os.Build.VERSION.SDK_INT >= 30) view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+        else view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
 }

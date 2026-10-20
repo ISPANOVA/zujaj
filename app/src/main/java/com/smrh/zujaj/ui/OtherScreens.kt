@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -166,6 +168,19 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     var showGate by remember { mutableStateOf(false) }
     var showRedeem by remember { mutableStateOf(false) }
     var showThemes by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
+    if (showImport) {
+        var t by remember { mutableStateOf((ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager)?.primaryClip?.getItemAt(0)?.text?.toString()?.takeIf { ShareDesign.codeFrom(it) != null } ?: "") }
+        androidx.compose.material3.AlertDialog(onDismissRequest = { showImport = false }, containerColor = Z.surface,
+            title = { Text(tr("Open a shared design", "افتح تصميم اتبعتلك")) },
+            text = { androidx.compose.material3.OutlinedTextField(t, { t = it }, placeholder = { Text("zujaj.pages.dev/w#…") }, singleLine = true) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = {
+                val code = ShareDesign.codeFrom(t); val cfg = code?.let { ShareDesign.decode(it) }
+                if (cfg == null) android.widget.Toast.makeText(ctx, tr("That link isn't a Zujaj design", "اللينك ده مش تصميم من زجاج"), android.widget.Toast.LENGTH_SHORT).show()
+                else { showImport = false; Haptics.success(ctx); nav.go(Screen.Editor(cfg.styleId, shared = code)) }
+            }) { Text(tr("Open", "افتح"), color = LocalAccent.current) } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { showImport = false }) { Text(tr("Cancel", "إلغاء")) } })
+    }
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
@@ -184,7 +199,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             val isPro = Prefs.isPro
             Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(26.dp))
                 .background(Brush.linearGradient(if (isPro) listOf(Color(0xFF3A2C12), Color(0xFF17130B)) else listOf(Color(0xFFF6D98B), Color(0xFFD6A445), Color(0xFFB07A2A))))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(26.dp))
+                .border(1.dp, Z.tint(0.16f), RoundedCornerShape(26.dp))
                 .clickable { nav.go(Screen.Paywall) }.padding(18.dp)) {
                 val fg = if (isPro) Z.pro else Color(0xFF2A1C05)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -203,6 +218,14 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             Section(tr("Appearance", "المظهر")) {
                 ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام"), "en" to "English", "ar" to "العربية"), Icons.Rounded.Language, blue) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
+                }
+                Divider()
+                ChoiceRow(tr("Look", "الوضع"), Z.mode(), listOf(1 to tr("Dark", "غامق"), 2 to tr("Light", "فاتح"), 0 to tr("Like the phone", "زي التليفون")), Icons.Rounded.DarkMode, purple) {
+                    Prefs.setString("theme_mode", it.toString()); Z.refresh(ctx)
+                }
+                Divider()
+                SwitchRow(tr("Vibrate on touch", "اهتزاز خفيف مع اللمس"), Prefs.getString("haptics", "1") == "1", icon = Icons.Rounded.Vibration, iconColor = orange) {
+                    Prefs.setString("haptics", if (it) "1" else "0")
                 }
                 Divider()
                 RowBase(tr("App colour", "لون التطبيق"), icon = Icons.Rounded.Palette, iconColor = rose) {
@@ -244,6 +267,8 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 StepperRow(tr("Hijri adjustment", "تعديل الهجري"), Prefs.hijriOffset, -2..2, 1, icon = Icons.Rounded.DarkMode, iconColor = purple) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
             }
             Section(tr("Widgets", "الويدجت")) {
+                RowBase(tr("Open a shared design", "افتح تصميم اتبعتلك"), sub = tr("Paste the link someone sent you", "الصق اللينك اللي اتبعتلك"), onClick = { showImport = true }, icon = Icons.Rounded.Link, iconColor = blue) { Chevron() }
+                Divider()
                 SwitchRow(tr("Fahrenheit", "فهرنهايت"), Prefs.fahrenheit, icon = Icons.Rounded.Thermostat, iconColor = orange) { Prefs.fahrenheit = it; WidgetUpdater.updateAll(ctx) }
                 Divider()
                 RowBase(tr("Music access", "الوصول للميديا"), sub = if (MediaRepo.hasAccess(ctx)) tr("Enabled ✓", "مفعّل ✓") else tr("Needed for media widgets", "مطلوب لويدجت الميديا"),
@@ -359,7 +384,7 @@ fun PaywallScreen(nav: Nav) {
                     val selected = sel == plan
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) LocalAccent.current.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f))
+                            .background(if (selected) LocalAccent.current.copy(alpha = 0.14f) else Z.tint(0.05f))
                             .border(1.5.dp, if (selected) LocalAccent.current else Z.line, RoundedCornerShape(20.dp))
                             .clickable { sel = plan }.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
