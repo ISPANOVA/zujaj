@@ -102,12 +102,12 @@ class DeviceTest {
         // tablet-sized screen
         Prefs.appLanguage = "ar"
         ui.executeShellCommand("wm size 1600x2560").close(); ui.executeShellCommand("wm density 320").close()
-        Thread.sleep(1500)
+        Thread.sleep(5000)
         ctx.startActivity(Intent(ctx, com.smrh.zujaj.ui.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        Thread.sleep(4500)
+        Thread.sleep(10000)
         ui.takeScreenshot()?.let { save(it, "app_tablet_home") }
         ctx.startActivity(Intent(ctx, com.smrh.zujaj.ui.MainActivity::class.java).putExtra(com.smrh.zujaj.ui.MainActivity.EXTRA_OPEN, "settings").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        Thread.sleep(3000)
+        Thread.sleep(9000)
         ui.takeScreenshot()?.let { save(it, "app_tablet_settings") }
         ui.executeShellCommand("wm size reset").close(); ui.executeShellCommand("wm density reset").close()
         Thread.sleep(1500)
