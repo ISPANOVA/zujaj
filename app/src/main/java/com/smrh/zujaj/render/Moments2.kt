@@ -199,5 +199,78 @@ object Moments2R {
         }
     }
 
+    // =============================================================================  4 · sport card
+    /** Italic two-tone time, the day in big 3D calligraphy, battery bar, date pills and the next prayer. */
+    fun sport(r: RenderCtx) {
+        val ar = r.ar
+        val acc = r.accent; val ink = r.c1; val pillB = r.c2
+        val p0 = r.pad
+        val colW = r.w * 0.36f
+        // side column (left in Arabic, right in English)
+        val cx0 = if (ar) p0 else r.w - p0 - colW
+        val mainL = if (ar) cx0 + colW + 10 * r.u else p0
+        val mainR = if (ar) r.w - p0 else cx0 - 10 * r.u
+        val mainW = mainR - mainL
+        // time: HH in the main colour, mm in the accent, slanted
+        val hh = Kit.bakedTime(r, r.hh()); val mm = Kit.bakedTime(r, "mm")
+        val tp = r.paint(ink, r.h * 0.3f * r.s1, F.CLK_BEBAS).apply { textSkewX = -0.22f; isFakeBoldText = true }
+        val wTot = tp.measureText(hh + mm)
+        if (wTot > mainW) tp.textSize *= mainW / wTot
+        val tb = android.graphics.Rect(); tp.getTextBounds("00", 0, 2, tb)
+        val ty = p0 + tb.height() + 2 * r.u
+        val tx = if (ar) mainR - tp.measureText(hh + mm) else mainL
+        r.canvas.drawText(hh, tx, ty, tp)
+        r.canvas.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })
+        // day: 3D — accent extrusion under a white face
+        val day = Calendars.dayName(r.today, ar)
+        val dayTop = ty + 6 * r.u
+        val dayH = r.h - p0 - dayTop
+        val dcx = (mainL + mainR) / 2 - (if (ar) 0f else 0f)
+        val dcy = dayTop + dayH / 2
+        val font = if (ar) r.calliFont else F.PLAYFAIR
+        for (k in 6 downTo 1) {
+            val o = k * 0.7f * r.u
+            r.textTight(day, dcx + o, dcy + o, dayH * 0.95f * r.s1, RenderCtx.mix(acc, Color.BLACK, k / 14f), font, maxW = mainW - 22 * r.u, maxH = dayH * 0.9f)
+        }
+        r.textTight(day, dcx, dcy, dayH * 0.95f * r.s1, ink, font, maxW = mainW - 22 * r.u, maxH = dayH * 0.9f)
+        // battery: thin vertical bar with %
+        val bat = Kit.battery(r)
+        val bx = if (ar) mainL + 4 * r.u else mainR - 4 * r.u
+        val bTop = dayTop + dayH * 0.12f; val bBot = r.h - p0 - 18 * r.u
+        r.canvas.drawLine(bx, bTop, bx, bBot, r.strokePaint(withAlpha(ink, 60), 3 * r.u))
+        r.canvas.drawLine(bx, bBot, bx, bBot - (bBot - bTop) * bat / 100f, r.strokePaint(acc, 3 * r.u))
+        r.text(r.n("$bat%"), bx, bBot + 10 * r.u, 9 * r.u * r.s2, ink, r.sansBold, Paint.Align.CENTER)
+        // pills
+        val gap = 7 * r.u
+        val ph = (r.h - 2 * p0 - 3 * gap) * 0.2f
+        fun pill(top: Float, h: Float, c1: Int, c2: Int, txt: Int): RectF {
+            val rc = RectF(cx0, top, cx0 + colW, top + h)
+            val rad = h * 0.32f
+            r.canvas.drawRoundRect(RectF(rc.left + 2 * r.u, rc.top + 3 * r.u, rc.right + 2 * r.u, rc.bottom + 3 * r.u), rad, rad, r.fillPaint(withAlpha(Color.BLACK, 120)))
+            r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, rc.top, 0f, rc.bottom, c1, c2, Shader.TileMode.CLAMP) })
+            r.canvas.drawRoundRect(RectF(rc.left + r.u, rc.top + r.u, rc.right - r.u, rc.centerY()), rad, rad, r.fillPaint(withAlpha(Color.WHITE, 40)))
+            return rc
+        }
+        val hRc = pill(p0, ph, RenderCtx.mix(acc, Color.WHITE, 0.15f), RenderCtx.mix(acc, Color.BLACK, 0.35f), ink)
+        r.text(hijriLine(r), hRc.centerX(), hRc.centerY(), ph * 0.42f * r.s2, ink, r.sansBold, Paint.Align.CENTER, maxW = colW - 14 * r.u)
+        val gRc = pill(hRc.bottom + gap, ph, RenderCtx.mix(pillB, Color.WHITE, 0.4f), RenderCtx.mix(pillB, Color.BLACK, 0.25f), Color.BLACK)
+        val gTxt = if (ar) "${r.n(r.today.dayOfMonth.toString().padStart(2, '0'))} ${Calendars.monthName(r.today.monthValue, true)}" else "${r.today.dayOfMonth.toString().padStart(2, '0')} ${Calendars.monthName(r.today.monthValue, false)}"
+        r.text(gTxt, gRc.centerX(), gRc.centerY(), ph * 0.42f * r.s2, 0xFF1A1A1A.toInt(), r.sansBold, Paint.Align.CENTER, maxW = colW - 14 * r.u)
+        // next prayer card
+        val d = Kit.day(r)
+        val barH = 5 * r.u
+        val cTop = gRc.bottom + gap; val cBot = r.h - p0 - barH - gap
+        val cRc = pill(cTop, cBot - cTop, RenderCtx.mix(acc, Color.WHITE, 0.12f), RenderCtx.mix(acc, Color.BLACK, 0.4f), ink)
+        r.textTight(Kit.pName(r, d.next), cRc.centerX(), cRc.top + cRc.height() * 0.32f, cRc.height() * 0.32f, ink, if (ar) r.calliFont else r.sansBold, maxW = colW - 16 * r.u, maxH = cRc.height() * 0.34f)
+        r.textTight(Kit.pTime(r, d.next.time), cRc.centerX(), cRc.top + cRc.height() * 0.74f, cRc.height() * 0.3f, ink, F.CLK_BEBAS, maxW = colW - 16 * r.u, maxH = cRc.height() * 0.3f)
+        // progress to it
+        val by = r.h - p0 - barH / 2
+        r.canvas.drawLine(cx0 + barH, by, cx0 + colW - barH, by, r.strokePaint(withAlpha(ink, 70), barH))
+        val f = d.progress.coerceIn(0f, 1f)
+        val len = (colW - 2 * barH) * f
+        if (ar) r.canvas.drawLine(cx0 + colW - barH, by, cx0 + colW - barH - len, by, r.strokePaint(ink, barH))
+        else r.canvas.drawLine(cx0 + barH, by, cx0 + barH + len, by, r.strokePaint(ink, barH))
+    }
+
     @Suppress("unused") private fun keep() = min(1, 2)
 }

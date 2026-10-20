@@ -1,6 +1,11 @@
 package com.smrh.zujaj.ui
 
 import android.app.Activity
+import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.fillMaxHeight
 import android.app.DatePickerDialog
 import android.app.PendingIntent
 import android.app.TimePickerDialog
@@ -402,12 +407,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         }
 
         // ---------------------------------------------------------------- apply
-        val locked = Flags.locked(style)
-        Box(
+        val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
+        val locked = remember(unlockVer, style.id) { Flags.locked(style) }
+        Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.96f), Z.bg)))
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 14.dp)
         ) {
+            AdUnlockCard(style.id, locked, unlockVer)
             PrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
                 text = if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
@@ -487,3 +494,61 @@ fun pin(ctx: Context, cfg: WidgetConfig, shape: Shape) {
 
 @Suppress("unused")
 private val w = Modifier.width(1.dp)
+
+
+/** Free users: watch N ads to open this Pro widget for a few days; shows the progress or the time left. */
+@Composable
+private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
+    val ctx = LocalContext.current
+    val U = com.smrh.zujaj.ads.AdUnlock
+    val styleIsPro = remember(id) { com.smrh.zujaj.catalog.Catalog.byId(id)?.let { Flags.isPro(it) } ?: false }
+    if (!styleIsPro || com.smrh.zujaj.data.Prefs.isPro || !U.enabled()) return
+    val ready by com.smrh.zujaj.ads.Ads.ready.collectAsState()
+    val ar = com.smrh.zujaj.data.Prefs.isArabicUi
+    val shape = RoundedCornerShape(20.dp)
+    if (!locked) {
+        // already opened with ads: how long is left
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(shape).background(Color(0xFF3DDC97).copy(alpha = 0.14f))
+            .border(1.dp, Color(0xFF3DDC97).copy(alpha = 0.4f), shape).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.LockOpen, null, tint = Color(0xFF3DDC97), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(tr("Unlocked · ${U.leftText(id, false)} left", "مفتوحة · فاضل ${U.leftText(id, true)}"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        }
+        return
+    }
+    val need = U.needed(); val done = remember(ver) { U.watched(id) }
+    val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "u").animateFloat(0.55f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "p")
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(shape)
+        .background(Brush.linearGradient(listOf(Color(0xFF7B5CD6).copy(alpha = 0.35f), Color(0xFFE7B75F).copy(alpha = 0.22f))))
+        .border(1.dp, Color.White.copy(alpha = 0.12f), shape)
+        .clickable {
+            val a = ctx as? Activity ?: return@clickable
+            val shown = com.smrh.zujaj.ads.Ads.showReward(a, quota = false) {
+                val opened = U.add(ctx, id)
+                Toast.makeText(ctx, if (opened) tr("Unlocked for ${U.days()} days 🎉", "اتفتحت لمدة ${U.days()} أيام 🎉")
+                    else tr("${U.watched(id)} of $need — keep going!", "${U.watched(id)} من $need — كمّل!"), Toast.LENGTH_SHORT).show()
+            }
+            if (!shown) Toast.makeText(ctx, tr("The ad is still loading — try again in a few seconds", "الإعلان لسه بيحمّل، جرب كمان ثواني"), Toast.LENGTH_SHORT).show()
+        }.padding(horizontal = 14.dp, vertical = 11.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.PlayCircle, null, tint = Color.White.copy(alpha = if (ready) pulse else 0.5f), modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr("Watch $need ads · free for ${U.days()} days", "شوف $need إعلانات وافتحها ${U.days()} أيام ببلاش"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("Opens this widget only", "بتفتح الويدجت دي بس"), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+            }
+            if (!ready) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White.copy(alpha = 0.7f))
+        }
+        Spacer(Modifier.height(9.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(need) { i ->
+                val on = i < done
+                val f by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, label = "d$i")
+                Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.18f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Color.White))
+                }
+            }
+        }
+    }
+}

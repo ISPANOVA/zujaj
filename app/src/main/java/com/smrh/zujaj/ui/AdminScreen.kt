@@ -627,6 +627,8 @@ private fun GeneralAdmin(email: String, page: Int) {
     var adReward by remember(flags) { mutableStateOf(flags.adReward) }
     var adPer by remember(flags) { mutableStateOf(flags.adWallPerDay.toString()) }
     var adLock by remember(flags) { mutableStateOf(flags.adblockLock) }
+    var unAds by remember(flags) { mutableStateOf(flags.adUnlockAds.toString()) }
+    var unDays by remember(flags) { mutableStateOf(flags.adUnlockDays.toString()) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (page == 0) Section(tr("Promotion", "العروض")) {
@@ -664,6 +666,19 @@ private fun GeneralAdmin(email: String, page: Int) {
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
+        if (page == 1) Section(tr("Unlock a widget with ads", "فتح ويدجت بالإعلانات")) {
+            Text(tr("Free users watch this many ads to open ONE Pro widget (the one they watched for) for the days below. 0 ads = off.",
+                "المستخدم المجاني يشوف العدد ده من الإعلانات ويفتح ويدجت برو واحدة بس (اللي شاف لها الإعلانات) للمدة اللي تحت. ٠ إعلانات = مقفول."),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(unAds, { unAds = it.filter { c -> c.isDigit() }.take(2) }, singleLine = true, label = { Text(tr("Ads needed", "عدد الإعلانات")) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
+                OutlinedTextField(unDays, { unDays = it.filter { c -> c.isDigit() }.take(2) }, singleLine = true, label = { Text(tr("Days open", "مدة الفتح (أيام)")) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
+            }
+        }
         if (page == 2) Section(tr("Anti-piracy", "الحماية من التهكير")) {
             Text(tr("After uploading to Google Play, paste the SHA-256 of the \"App signing key certificate\" (Play Console → Test and release → App integrity). Copies signed with any other key never get Pro.",
                 "بعد ما ترفع على جوجل بلاي، الصق SHA-256 بتاع \"App signing key certificate\" (Play Console ← Test and release ← App integrity). أي نسخة متوقعة بمفتاح تاني مش هتاخد برو أبداً."),
@@ -685,7 +700,7 @@ private fun GeneralAdmin(email: String, page: Int) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock)) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1))) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else (r.exceptionOrNull()?.message ?: "Error"), Toast.LENGTH_LONG).show()
             }
         }

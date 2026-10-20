@@ -48,6 +48,10 @@ data class CatalogFlags(
     val adReward: String = "",
     /** How many wallpaper Apply/Save a free user gets per 24 h by watching ads. */
     val adWallPerDay: Int = 3,
+    /** Watch this many rewarded ads to open one Pro widget (0 = off)… */
+    val adUnlockAds: Int = 3,
+    /** …for this many days. */
+    val adUnlockDays: Int = 3,
     /** "Editor's choice" on the home page, in order (empty = the app's own picks). */
     val featured: List<String> = emptyList(),
     /** Lock the app for free users who block ads (AdGuard, private DNS, …). */
@@ -113,6 +117,8 @@ object Flags {
                 adBanner = snap.getString("adBanner") ?: "",
                 adReward = snap.getString("adReward") ?: "",
                 adWallPerDay = snap.getLong("adWallPerDay")?.toInt() ?: 3,
+                adUnlockAds = snap.getLong("adUnlockAds")?.toInt() ?: 3,
+                adUnlockDays = snap.getLong("adUnlockDays")?.toInt() ?: 3,
                 featured = (snap.get("featured") as? List<String>) ?: emptyList(),
                 adblockLock = snap.getBoolean("adblockLock") ?: true,
             )
@@ -133,7 +139,7 @@ object Flags {
 
     fun visible(): List<WidgetStyle> = Catalog.all.filterNot { isHidden(it) }
 
-    fun locked(s: WidgetStyle): Boolean = isPro(s) && !Prefs.isPro
+    fun locked(s: WidgetStyle): Boolean = isPro(s) && !Prefs.isPro && !com.smrh.zujaj.ads.AdUnlock.open(s.id)
 
     // ---------------- admin ----------------
     fun auth(): FirebaseAuth? = if (enabled) FirebaseAuth.getInstance() else null
@@ -155,6 +161,8 @@ object Flags {
             "adBanner" to f.adBanner,
             "adReward" to f.adReward,
             "adWallPerDay" to f.adWallPerDay,
+            "adUnlockAds" to f.adUnlockAds,
+            "adUnlockDays" to f.adUnlockDays,
             "featured" to f.featured,
             "adblockLock" to f.adblockLock,
             "updatedAt" to System.currentTimeMillis(),

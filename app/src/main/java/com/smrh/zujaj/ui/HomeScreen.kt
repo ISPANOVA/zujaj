@@ -40,6 +40,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -359,6 +362,16 @@ fun DiscoverTab(nav: Nav) {
         delay(500)
         showNew = Prefs.getString("wall_intro") != "1"
     }
+    // one-time: "watch ads to open a Pro widget" — after the wallpapers intro
+    var showUnlock by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (Prefs.getString("unlock_intro") == "1") return@LaunchedEffect
+        delay(1500)
+        while (Prefs.getString("wall_intro") != "1" || Prefs.getString("bat_intro") != "1") delay(500)
+        delay(700)
+        if (com.smrh.zujaj.ads.AdUnlock.enabled() && !Prefs.isPro) showUnlock = true
+    }
+    if (showUnlock) AdUnlockIntro { Prefs.setString("unlock_intro", "1"); showUnlock = false }
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
 
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
@@ -701,4 +714,49 @@ private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, onClick: () -
         Modifier.size(44.dp).clip(CircleShape).background(bg).border(1.dp, Z.line, CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
+}
+
+
+/** Shown once: Pro widgets can now be opened for a few days by watching a few ads. */
+@Composable
+private fun AdUnlockIntro(onDismiss: () -> Unit) {
+    val need = com.smrh.zujaj.ads.AdUnlock.needed(); val days = com.smrh.zujaj.ads.AdUnlock.days()
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "ui")
+    val step by t.animateFloat(0f, need + 1.5f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2600 + need * 500, easing = androidx.compose.animation.core.LinearEasing)), label = "s")
+    val bob by t.animateFloat(-5f, 5f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1200), androidx.compose.animation.core.RepeatMode.Reverse), label = "b")
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val sc by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0.85f, androidx.compose.animation.core.spring(0.55f, 300f), label = "sc")
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.graphicsLayer { scaleX = sc; scaleY = sc }.clip(RoundedCornerShape(30.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF2B2140), Z.surface))).padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(tr("NEW", "جديد"), color = Z.pro, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+            Spacer(Modifier.height(14.dp))
+            // lock that opens as the ads fill up
+            val opened = step >= need
+            Box(Modifier.size(84.dp).graphicsLayer { translationY = bob }.clip(CircleShape)
+                .background(Brush.linearGradient(if (opened) listOf(Color(0xFF3DDC97), Color(0xFF1E9E6B)) else listOf(Color(0xFFF6D98B), Color(0xFFB07A2A)))),
+                contentAlignment = Alignment.Center) {
+                Icon(if (opened) Icons.Rounded.LockOpen else Icons.Rounded.Lock, null, tint = Color.White, modifier = Modifier.size(40.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(need) { i ->
+                    val on = step > i + 0.5f
+                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (on) Color.White else Color.White.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.PlayArrow, null, tint = if (on) Color(0xFF2B2140) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(tr("Pro widgets — free with ads", "ويدجت البرو ببلاش بالإعلانات"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            Text(tr("Open any Pro widget, watch $need short ads and it's yours for $days days. Each widget opens on its own.",
+                "افتح أي ويدجت برو، شوف $need إعلانات قصيرة، وهتبقى بتاعتك لمدة $days أيام بس. كل ويدجت بتتفتح لوحدها."),
+                color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Spacer(Modifier.height(18.dp))
+            PrimaryButton(tr("Got it", "تمام"), Modifier.fillMaxWidth(), onClick = onDismiss)
+        }
+    }
 }

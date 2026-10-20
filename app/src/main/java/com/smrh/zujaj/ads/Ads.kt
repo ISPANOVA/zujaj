@@ -107,19 +107,65 @@ object Ads {
     }
 
     /** Shows a rewarded ad; [onEarned] runs only if the user watched it to the end. Returns false if no ad is ready. */
-    fun showReward(a: Activity, onEarned: () -> Unit): Boolean {
+    fun showReward(a: Activity, quota: Boolean = true, onEarned: () -> Unit): Boolean {
         val ad = reward ?: run { preload(a); return false }
-        if (left() <= 0) return false
+        if (quota && left() <= 0) return false
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 reward = null; _ready.value = false; preload(a)
-                if (earned) { consume(); onEarned() }
+                if (earned) { if (quota) consume(); onEarned() }
             }
             override fun onAdFailedToShowFullScreenContent(e: com.google.android.gms.ads.AdError) { reward = null; _ready.value = false; preload(a) }
         }
         ad.show(a) { earned = true }
         return true
+    }
+}
+
+/**
+ * Watch a few rewarded ads to open ONE Pro widget for a few days (both numbers set from the admin panel).
+ * Progress and the open-until time are kept per widget, so the ads only open the widget they were watched for.
+ */
+object AdUnlock {
+    private const val DAY = 24 * 60 * 60 * 1000L
+    private lateinit var sp: android.content.SharedPreferences
+    private val _ver = MutableStateFlow(0)
+    val changes: StateFlow<Int> = _ver
+
+    fun init(ctx: Context) { sp = ctx.getSharedPreferences("unlock", Context.MODE_PRIVATE) }
+    private fun ok() = ::sp.isInitialized
+
+    fun needed() = Flags.flags.value.adUnlockAds.coerceIn(0, 20)
+    fun days() = Flags.flags.value.adUnlockDays.coerceIn(1, 60)
+    /** Offered at all (ads on and a number of ads set). */
+    fun enabled() = Flags.flags.value.adsOn && needed() > 0
+
+    fun until(id: String): Long = if (ok()) sp.getLong("u_$id", 0L) else 0L
+    fun open(id: String): Boolean = until(id) > System.currentTimeMillis()
+    fun leftMs(id: String): Long = (until(id) - System.currentTimeMillis()).coerceAtLeast(0)
+    fun watched(id: String): Int = if (ok()) sp.getInt("p_$id", 0) else 0
+
+    /** One more ad watched for [id]; returns true when that finished the unlock. */
+    fun add(ctx: Context, id: String): Boolean {
+        val n = watched(id) + 1
+        val done = n >= needed()
+        if (done) sp.edit().putInt("p_$id", 0).putLong("u_$id", System.currentTimeMillis() + days() * DAY).apply()
+        else sp.edit().putInt("p_$id", n).apply()
+        _ver.value++
+        if (done) runCatching { com.smrh.zujaj.widget.WidgetUpdater.updateAll(ctx) }
+        return done
+    }
+
+    /** "2 days 5 h" / "3 h 20 min" left. */
+    fun leftText(id: String, ar: Boolean): String {
+        val m = leftMs(id) / 60_000L
+        val d = m / 1440; val h = (m % 1440) / 60; val mm = m % 60
+        return when {
+            d > 0 -> if (ar) "$d يوم و$h ساعة" else "${d}d ${h}h"
+            h > 0 -> if (ar) "$h ساعة و$mm دقيقة" else "${h}h ${mm}m"
+            else -> if (ar) "$mm دقيقة" else "${mm}m"
+        }
     }
 }
 
