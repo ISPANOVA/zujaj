@@ -33,6 +33,12 @@ data class WallLayer(
     val glass: Boolean = false,
     /** the widget/text itself is made of frosted glass (no plate) */
     val glassFill: Boolean = false,
+    /** clock grows down to the top of the subject (iPhone depth style); needs the subject to be found */
+    val fit: Boolean = false,
+    /** how much of a fitted clock hides behind the subject (0–0.7 of its height) */
+    val hide: Float = 0.3f,
+    /** date line: stays just above the clock */
+    val stick: Boolean = true,
 )
 
 @Serializable

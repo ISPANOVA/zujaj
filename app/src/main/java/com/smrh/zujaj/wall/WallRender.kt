@@ -35,7 +35,7 @@ object WallRender {
     val kinds = listOf(
         "clock_tall" to 1.15f, "clock_thin" to 1.0f, "clock_stack" to 0.62f,
         "day_calli" to 2.2f, "month_greg" to 2.2f, "month_hijri" to 2.2f, "date_pair" to 4.2f,
-        "date_greg" to 6f, "date_hijri" to 6f, "hijri_full" to 6f, "dual_full" to 4f,
+        "date_line" to 7f, "date_greg" to 6f, "date_hijri" to 6f, "hijri_full" to 6f, "dual_full" to 4f,
         "prayer_next" to 4f, "prayer_in" to 4f, "prayer_row" to 3.6f, "location" to 4f, "text" to 3.4f,
     )
 
@@ -331,8 +331,19 @@ object WallRender {
         return RenderCtx(ctx, b, st, cfg, true, 1f, RenderData(now))
     }
 
-    private fun fitText(c: Canvas, s: String, box: RectF, p: Paint) {
+    private fun fitText(c: Canvas, s: String, box: RectF, p: Paint, stretch: Boolean = false) {
         p.textAlign = Paint.Align.LEFT
+        if (stretch) {
+            // tall iPhone-style digits: fill the height, then squeeze/stretch the width to the box
+            val b = Rect(); p.textSize = 100f; p.getTextBounds(s, 0, s.length, b)
+            p.textSize = 100f * box.height() / b.height().coerceAtLeast(1)
+            p.textScaleX = (box.width() / p.measureText(s).coerceAtLeast(1f)).coerceIn(0.2f, 4f)
+            p.getTextBounds(s, 0, s.length, b)
+            val w = p.measureText(s)
+            c.drawText(s, box.centerX() - w / 2, box.centerY() - b.exactCenterY(), p)
+            p.textScaleX = 1f
+            return
+        }
         val b = Rect(); p.textSize = 100f; p.getTextBounds(s, 0, s.length, b)
         val k = minOf(box.width() / p.measureText(s), box.height() / b.height().coerceAtLeast(1))
         p.textSize = 100f * k
@@ -362,13 +373,14 @@ object WallRender {
         fun t(pat: String) = r.n(SimpleDateFormat(pat, Locale.US).format(date))
         val hm = if (Prefs.isArabicUi && false) "" else if (android.text.format.DateFormat.is24HourFormat(ctx)) "HH:mm" else "hh:mm"
         when (l.kind) {
-            "clock_tall" -> { p.typeface = r.tf(F.CLK_BEBAS); fitText(c, t(hm), box, p) }
-            "clock_thin" -> { p.typeface = r.tf(F.CLK_SIXCAPS); fitText(c, t(hm), box, p) }
+            "clock_tall" -> { p.typeface = r.tf(F.CLK_BEBAS); fitText(c, t(hm), box, p, l.fit) }
+            "clock_thin" -> { p.typeface = r.tf(F.CLK_SIXCAPS); fitText(c, t(hm), box, p, l.fit) }
             "clock_stack" -> {
                 p.typeface = r.tf(F.CLK_SIXCAPS)
-                fitText(c, t(hm.take(2)), RectF(0f, 0f, w.toFloat(), h * 0.49f), p)
-                fitText(c, t("mm"), RectF(0f, h * 0.51f, w.toFloat(), h.toFloat()), p)
+                fitText(c, t(hm.take(2)), RectF(0f, 0f, w.toFloat(), h * 0.49f), p, l.fit)
+                fitText(c, t("mm"), RectF(0f, h * 0.51f, w.toFloat(), h.toFloat()), p, l.fit)
             }
+            "date_line" -> dateLine(r, c, l, w.toFloat(), h.toFloat(), date)
             "day_calli" -> r.textTight(Kit.dayName(r, true), w / 2f, h / 2f, h * 0.9f, l.color, r.calliFont, maxW = w * 0.98f, maxH = h * 0.92f)
             "month_greg", "month_hijri" -> {
                 val (n, m) = if (l.kind == "month_greg") now.dayOfMonth to com.smrh.zujaj.data.Calendars.monthName(now.monthValue, true)
@@ -413,6 +425,37 @@ object WallRender {
             else -> { p.typeface = r.tf(if (r.ar) F.CAIRO_BOLD else F.SANS_BOLD); fitText(c, l.text.ifBlank { r.t("Type your text", "اكتب كلامك") }, box, p) }
         }
         return b
+    }
+
+    /** Small line above the clock: day and date, then the weather or the next prayer with its icon. */
+    private fun dateLine(r: com.smrh.zujaj.render.RenderCtx, c: Canvas, l: WallLayer, w: Float, h: Float, date: Date) {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = l.color; typeface = r.tf(F.SANS_MED); letterSpacing = 0.06f; textSize = h * 0.62f }
+        val ds = if (r.ar) Kit.dayName(r, true) + "، " + Kit.gregShort(r) else SimpleDateFormat("EEE d MMM", Locale.ENGLISH).format(date)
+        val nx = runCatching { Kit.day(r).next }.getOrNull()
+        val wx = if (l.text == "prayer" || l.text == "none") null else runCatching { Kit.weather(r) }.getOrNull()
+        val extra = when {
+            l.text == "none" -> ""
+            l.text == "prayer" -> nx?.let { Kit.pName(r, it) + " " + Kit.pTime(r, it.time) } ?: ""
+            else -> wx?.let { Kit.temp(r, it.temp) } ?: ""
+        }
+        val icon = if (extra.isEmpty()) 0f else h * 0.78f
+        val gap = h * 0.45f
+        fun total() = p.measureText(ds) + (if (extra.isEmpty()) 0f else gap + icon + h * 0.15f + p.measureText(extra))
+        if (total() > w * 0.98f) { val k = w * 0.98f / total(); p.textSize *= k }
+        val k = p.textSize / (h * 0.62f)
+        val ic = icon * k; val gp = gap * k; val sp = h * 0.15f * k
+        val fm = p.fontMetrics; val base = h / 2 - (fm.ascent + fm.descent) / 2
+        var x = (w - total()) / 2
+        fun drawDate() { c.drawText(ds, x, base, p); x += p.measureText(ds) }
+        fun drawExtra() {
+            if (extra.isEmpty()) return
+            val cx = x + ic / 2
+            if (l.text == "prayer" && nx != null) Kit.prayerIcon(r, nx.key, cx, h / 2, ic * 0.5f, l.color)
+            else if (wx != null) com.smrh.zujaj.render.Glyphs.weather(c, wx.cond, wx.night, cx, h / 2, ic, color = false)
+            x += ic + sp
+            c.drawText(extra, x, base, p); x += p.measureText(extra)
+        }
+        if (r.ar) { drawExtra(); if (extra.isNotEmpty()) x += gp; drawDate() } else { drawDate(); if (extra.isNotEmpty()) x += gp; drawExtra() }
     }
 
     /** Layer bitmap with its solid/gradient colour applied. */
@@ -618,7 +661,8 @@ object WallRender {
      * Full wallpaper at W×H. [photo] is the picked image, [mask] the subject mask (same size as the photo,
      * alpha = subject). Layers marked "behind" are drawn under the subject.
      */
-    fun compose(ctx: Context, d: WallDesign, photo: Bitmap?, mask: Bitmap?, W: Int, H: Int, now: ZonedDateTime = ZonedDateTime.now(), reveal: Float = 1f): Bitmap {
+    fun compose(ctx: Context, d0: WallDesign, photo: Bitmap?, mask: Bitmap?, W: Int, H: Int, now: ZonedDateTime = ZonedDateTime.now(), reveal: Float = 1f): Bitmap {
+        val d = WallFit.apply(d0, photo, mask, W, H)
         val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
         c.drawColor(Color.rgb(16, 20, 30))

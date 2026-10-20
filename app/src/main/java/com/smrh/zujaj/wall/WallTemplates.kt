@@ -17,6 +17,8 @@ object WallTemplates {
         val autoColor: Boolean = true,
         /** always light text (tinted from the photo) */
         val light: Boolean = false,
+        /** one soft tint taken from the photo (iPhone style) instead of a gradient */
+        val tint: Boolean = false,
         val layers: () -> List<WallLayer>,
     )
 
@@ -24,10 +26,10 @@ object WallTemplates {
     private fun id() = System.nanoTime() + (n++)
 
     val all = listOf(
-        Template("depth", "Depth", "عمق", depth = true) {
+        Template("depth", "Depth", "عمق", depth = true, tint = true) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.26f, w = 0.86f, behind = true),
-                WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.085f, w = 0.5f),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.26f, w = 0.84f, behind = true, fit = true, hide = 0.3f),
+                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.1f, w = 0.6f, stick = true),
             )
         },
         Template("liquid", "Liquid glass", "زجاج سائل", topShade = 0) {
@@ -62,16 +64,16 @@ object WallTemplates {
                 WallLayer(id = id(), kind = "prayer_row", cx = 0.5f, cy = 0.84f, w = 0.86f, glass = true),
             )
         },
-        Template("cinema", "Cinema", "سينما", filter = 4, topShade = 25) {
+        Template("cinema", "Cinema", "سينما", filter = 4, topShade = 25, tint = true) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.84f, behind = true),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.84f, behind = true, fit = true, hide = 0.4f),
                 WallLayer(id = id(), kind = "dual_full", cx = 0.5f, cy = 0.085f, w = 0.62f),
             )
         },
         Template("noir", "Noir", "نوار", depth = true, filter = 7, autoColor = false) {
             listOf(
-                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.88f, behind = true, color = 0xFFFFFFFF.toInt()),
-                WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.085f, w = 0.48f, color = 0xFFFFFFFF.toInt()),
+                WallLayer(id = id(), kind = "clock_tall", cx = 0.5f, cy = 0.27f, w = 0.88f, behind = true, fit = true, hide = 0.25f, color = 0xFFFFFFFF.toInt()),
+                WallLayer(id = id(), kind = "date_line", cx = 0.5f, cy = 0.1f, w = 0.6f, stick = true, color = 0xFFFFFFFF.toInt()),
             )
         },
     )
@@ -90,7 +92,7 @@ object WallTemplates {
             if (t.autoColor && photo != null) {
                 val (a, b) = runCatching { WallRender.autoColors(photo, x, W, H, if (t.light) maxOf(base.dim, 65) else base.dim, base) }.getOrNull() ?: (x.color to 0)
                 // glass shapes take their look from the photo itself: keep them white
-                x = if (x.glassFill) x else x.copy(color = a, color2 = b, gDir = 0)
+                x = if (x.glassFill) x else x.copy(color = a, color2 = if (t.tint) 0 else b, gDir = 0)
             }
             x
         }

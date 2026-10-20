@@ -83,6 +83,9 @@ import com.smrh.zujaj.catalog.Catalog
 import com.smrh.zujaj.data.Prefs
 import com.smrh.zujaj.remote.Flags
 import com.smrh.zujaj.wall.Segment
+import com.smrh.zujaj.wall.WallFit
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.smrh.zujaj.wall.WallDesign
 import com.smrh.zujaj.wall.WallLayer
 import com.smrh.zujaj.wall.WallRender
@@ -162,9 +165,10 @@ fun WallpaperScreen(nav: Nav) {
     }
     // save a moment after the last change (not on every finger move)
     LaunchedEffect(design) { kotlinx.coroutines.delay(500); withContext(Dispatchers.IO) { WallDesign.save(ctx, design) } }
-    fun update(d: WallDesign) { design = d }
     var selected by remember { mutableStateOf<Long?>(null) }
     var size by remember { mutableStateOf(IntSize.Zero) }
+    // fitted clocks follow the subject and the date line follows the clock on every change
+    fun update(d: WallDesign) { design = WallFit.apply(d, photo, mask, size.width, size.height) }
     var scanning by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
     var showText by remember { mutableStateOf(false) }
@@ -398,7 +402,7 @@ fun WallpaperScreen(nav: Nav) {
                                 val near = abs(cx - 0.5f) < 0.012f
                                 if (near && !snapX) cx = 0.5f
                                 snapX = near
-                                l.copy(cx = cx.coerceIn(0.02f, 0.98f), cy = (l.cy + d.y / size.height).coerceIn(0.02f, 0.98f))
+                                l.copy(cx = cx.coerceIn(0.02f, 0.98f), cy = (l.cy + d.y / size.height).coerceIn(0.02f, 0.98f), stick = if (l.kind == "date_line") false else l.stick)
                             }
                         }
                     })
@@ -448,7 +452,11 @@ fun WallpaperScreen(nav: Nav) {
                         }
                     }
                     edge(rc.centerX(), rc.bottom, false) { dy ->
-                        change(l.id) { o ->
+                        if (l.fit && l.behind) change(l.id) { o ->
+                            // fitted clock: the bottom edge sets how much hides behind the subject
+                            val hPx = (o.w * size.width / WallRender.aspect(o)).coerceAtLeast(16f)
+                            o.copy(hide = (o.hide + dy / hPx).coerceIn(0f, 0.7f))
+                        } else change(l.id) { o ->
                             val hPx = (o.w * size.width / WallRender.aspect(o) + dy).coerceAtLeast(16f)
                             o.copy(ar = (o.w * size.width / hPx).coerceIn(0.25f, 10f))
                         }
@@ -568,6 +576,13 @@ fun WallpaperScreen(nav: Nav) {
             val p = photo ?: return@LayerColorSheet
             val (a, b) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1), design.dim, design)
             change(id) { it.copy(color = a, color2 = b, gDir = 0) }
+        }, onTint = {
+            val p = photo ?: return@LayerColorSheet
+            val (a, _) = WallRender.autoColors(p, l, maxOf(size.width, 1), maxOf(size.height, 1), design.dim, design)
+            change(id) { it.copy(color = a, color2 = 0) }
+        }, onFit = { on ->
+            change(id) { it.copy(fit = on) }
+            if (on) depth(listOf(id))
         }, onChange = { nl -> change(id) { nl } }, onDismiss = { colorFor = null })
     }
     if (showBuy) WallBuySheet(onReward = { if (pending == "apply") showApply = true else if (pending == "save") doSaveRef.value() }) { showBuy = false }
@@ -749,11 +764,43 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
 /** Solid or gradient colour for a layer, plus "match the wallpaper". */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLayer) -> Unit, onDismiss: () -> Unit) {
+private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onTint: () -> Unit, onFit: (Boolean) -> Unit, onChange: (WallLayer) -> Unit, onDismiss: () -> Unit) {
     val swatches = listOf(0xFFFFFFFF, 0xFF111111, 0xFFE7B75F, 0xFFF2865E, 0xFFE5484D, 0xFFFF6B9A, 0xFFB07BF0, 0xFF5B8DEF, 0xFF38C6D9, 0xFF3DDC97, 0xFFB7E34A, 0xFFF3E3C2).map { it.toInt() }
     var custom by remember { mutableIntStateOf(0) } // 1 = first colour, 2 = second
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D2231)) {
-        Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 28.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 28.dp).verticalScroll(rememberScrollState())) {
+            if (WallFit.isClock(l)) {
+                val on = l.fit && l.behind
+                Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF5B8DEF).copy(alpha = 0.30f), Color(0xFFB07BF0).copy(alpha = 0.25f))))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable { onFit(!on) }, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Grow down to the subject", "تطول لحد الشخص"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(tr("Tall clock that hides behind the person, like iPhone", "ساعة طويلة تستخبى ورا الشخص زي الآيفون"), color = Z.sub, fontSize = 12.sp)
+                        }
+                        Switch(on, { onFit(it) })
+                    }
+                    androidx.compose.animation.AnimatedVisibility(on) {
+                        Column(Modifier.padding(top = 6.dp)) {
+                            Text(tr("Behind the subject: ${(l.hide * 100).roundToInt()}%", "المستخبي ورا الشخص: ${(l.hide * 100).roundToInt()}٪"), color = Z.sub, fontSize = 13.sp)
+                            Slider(l.hide, { onChange(l.copy(hide = it)) }, valueRange = 0f..0.7f)
+                        }
+                    }
+                }
+            }
+            if (l.kind == "date_line") {
+                Text(tr("Next to the date", "جنب التاريخ"), color = Z.sub, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("" to tr("Weather", "الطقس"), "prayer" to tr("Next prayer", "الصلاة الجاية"), "none" to tr("Nothing", "ولا حاجة")).forEach { (k, s) -> ZChip(s, l.text == k) { onChange(l.copy(text = k)) } }
+                }
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                    .clickable { onChange(l.copy(stick = !l.stick)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Stay above the clock", "يفضل فوق الساعة"), fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    Switch(l.stick, { onChange(l.copy(stick = it)) })
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
                 .clickable { onChange(l.copy(glass = !l.glass)) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -792,6 +839,17 @@ private fun LayerColorSheet(l: WallLayer, onAuto: () -> Unit, onChange: (WallLay
                 Column {
                     Text(tr("Match the wallpaper", "على حسب الخلفية"), fontWeight = FontWeight.Bold)
                     Text(tr("Picks a gradient from your photo", "يختار تدرج متناسق من صورتك"), color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            // one soft colour from the photo, like iPhone
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
+                .clickable(onClick = onTint).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Palette, null, tint = Color.White)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(tr("Tint from the photo", "لون من الصورة"), fontWeight = FontWeight.Bold)
+                    Text(tr("One soft colour taken from your wallpaper", "لون هادي واحد مأخوذ من صورتك"), color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.height(16.dp))
