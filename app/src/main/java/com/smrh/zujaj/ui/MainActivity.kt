@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
@@ -135,7 +139,8 @@ fun Root(nav: Nav) {
                 .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(340, easing = ease)) { w -> -w / 8 * dir } +
                     fadeOut(androidx.compose.animation.core.tween(180)) + scaleOut(androidx.compose.animation.core.tween(340), targetScale = 0.97f))
         }, label = "nav") { s ->
-            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+            // tablets & big screens: keep the layout at phone-like width, centred, so nothing stretches
+            Box(Modifier.fillMaxSize().statusBarsPadding().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp)) {
                 when (s) {
                     Screen.Home -> HomeScreen(nav)
                     is Screen.Editor -> EditorScreen(nav, s)
