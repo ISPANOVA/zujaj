@@ -44,6 +44,7 @@ jobs:
             adb push dog.jpg /sdcard/Android/data/com.smrh.zujaj.debug/files/dog.jpg || true
             adb shell am instrument -w -r -e class com.smrh.zujaj.WallTest com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner > instrument.log 2>&1 || true
             adb shell am instrument -w -r -e class com.smrh.zujaj.DeviceTest#widgetButtons com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner >> instrument.log 2>&1 || true
+            adb shell am instrument -w -r -e class com.smrh.zujaj.PromoTest com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner >> instrument.log 2>&1 || true
             adb shell am instrument -w -r -e class com.smrh.zujaj.DeviceTest#appScreens com.smrh.zujaj.debug.test/androidx.test.runner.AndroidJUnitRunner >> instrument.log 2>&1 || true
             mkdir -p device_out
             adb pull /sdcard/Android/data/com.smrh.zujaj.debug/files/device device_out/ || true
