@@ -578,3 +578,11 @@ fun PickScreen(nav: Nav, s: Screen.Pick) {
         }
     }
 }
+
+@Composable
+private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.size(44.dp).clip(CircleShape).background(bg).border(1.dp, Z.line, CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
+}
