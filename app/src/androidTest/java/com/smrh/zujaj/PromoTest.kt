@@ -24,8 +24,12 @@ class PromoTest {
     fun promo() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         Prefs.init(ctx)
-        Prefs.appLanguage = "ar"
-        val out = File(ctx.getExternalFilesDir(null), "device/promo").apply { mkdirs() }
+        for (lang in listOf("ar", "en")) render(ctx, lang)
+    }
+
+    private fun render(ctx: android.content.Context, lang: String) {
+        Prefs.appLanguage = lang
+        val out = File(ctx.getExternalFilesDir(null), if (lang == "ar") "device/promo" else "device/promo_en").apply { mkdirs() }
         fun save(b: Bitmap, n: String) = FileOutputStream(File(out, "$n.png")).use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
         val testCtx = InstrumentationRegistry.getInstrumentation().context
         val dome = testCtx.assets.open("dome.jpg").use { BitmapFactory.decodeStream(it) }
