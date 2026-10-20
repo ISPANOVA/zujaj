@@ -320,9 +320,9 @@ private fun GroupLabel(text: String) {
 
 // =============================================================================== discover
 /**
- * Simple, modern home: a title bar, one Wallpapers card, a row of collection tabs that stays on top
- * while scrolling, and the chosen collection below — big widgets first, small ones in pairs,
- * free before Pro. Switching collection is one tap; nothing opens a new page.
+ * Home: a living aurora header, an auto-sliding showcase, an animated Wallpapers card, collection
+ * tabs that stay on top, and the chosen collection below — big widgets first, small ones in pairs,
+ * free before Pro. Everything moves softly: tabs, cards and rows animate in.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -336,6 +336,12 @@ fun DiscoverTab(nav: Nav) {
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
     var chip by rememberSaveable { mutableStateOf("popular") }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val featured = remember(flags) {
+        listOf("prayer_hub", "calli_lawn", "photo_verse", "event_card", "prayer_journey", "clock_neon", "w_today_tomorrow", "event_ring")
+            .mapNotNull { id -> all.firstOrNull { it.id == id } }
+    }
+    val hour = LocalTime.now().hour
+    val greet = when (hour) { in 5..11 -> tr("Good morning", "صباح الخير"); in 12..16 -> tr("Good afternoon", "طاب يومك"); else -> tr("Good evening", "مساء الخير") }
     // Wallpapers intro: right after the battery guide is done (or straight away if it isn't needed)
     var showNew by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -348,70 +354,156 @@ fun DiscoverTab(nav: Nav) {
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
 
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
-    Column(Modifier.fillMaxSize()) {
-        // ---- title bar
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(tr("Zujaj", "زجاج"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f), maxLines = 1)
-            RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.07f), Z.text) { nav.go(Screen.Search) }
-            Spacer(Modifier.width(8.dp))
-            RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Color.White.copy(alpha = 0.07f) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
-        }
-        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 130.dp)) {
-            if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
-                Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f)).padding(14.dp))
+    val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "home")
+    val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
+
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 130.dp)) {
+        // ---- header over a slowly drifting aurora
+        item(key = "head") {
+            Box(Modifier.fillMaxWidth().drawBehind {
+                val w = size.width; val h = size.height
+                val c1 = androidx.compose.ui.geometry.Offset(w * (0.12f + 0.55f * t), h * 0.25f)
+                val c2 = androidx.compose.ui.geometry.Offset(w * (0.95f - 0.45f * t), h * 0.75f)
+                drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.26f), Color.Transparent), center = c1, radius = w * 0.6f), radius = w * 0.6f, center = c1)
+                drawCircle(Brush.radialGradient(listOf(Color(0xFF7C6CF2).copy(alpha = 0.22f), Color.Transparent), center = c2, radius = w * 0.55f), radius = w * 0.55f, center = c2)
+            }) {
+                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 18.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(greet, color = Z.sub, fontSize = 13.sp)
+                        Text(tr("Zujaj", "زجاج"), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1,
+                            style = androidx.compose.ui.text.TextStyle(brush = Brush.linearGradient(listOf(Color.White, accent.copy(alpha = 0.9f)))))
+                    }
+                    RoundAction(Icons.Rounded.Search, Color.White.copy(alpha = 0.08f), Z.text) { nav.go(Screen.Search) }
+                    Spacer(Modifier.width(8.dp))
+                    val pulse by drift.animateFloat(1f, 1.08f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
+                    Box(Modifier.graphicsLayer { if (!pro) { scaleX = pulse; scaleY = pulse } }) {
+                        RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Color.White.copy(alpha = 0.08f) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
+                    }
+                }
             }
-            // ---- wallpapers card
-            item(key = "wall") {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(22.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFFEE9B62), Color(0xFF9B59B6), Color(0xFF3B3A8F))))
-                    .clickable { nav.go(Screen.Wallpapers) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color.White.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Wallpaper, null, tint = Color.White, modifier = Modifier.size(24.dp))
+        }
+        if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
+            Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f)).padding(14.dp))
+        }
+        // ---- showcase: auto-sliding, the side cards shrink and fade (parallax)
+        if (featured.isNotEmpty()) item(key = "show") {
+            val pager = rememberPagerState { featured.size }
+            LaunchedEffect(pager) { while (true) { delay(4500); pager.animateScrollToPage((pager.currentPage + 1) % featured.size) } }
+            Column {
+                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 12.dp) { page ->
+                    val st = featured[page]
+                    val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                    Box(Modifier.fillMaxWidth().height(230.dp)
+                        .graphicsLayer { val k = 1f - 0.08f * kotlin.math.abs(off); scaleX = k; scaleY = k; alpha = 1f - 0.4f * kotlin.math.abs(off) }
+                        .clip(RoundedCornerShape(30.dp)).background(Backdrops.brush(page + 1))
+                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(30.dp))
+                        .clickable { nav.go(Screen.Editor(st.id)) }) {
+                        Box(Modifier.fillMaxWidth().padding(start = if (st.shape == Shape.SMALL) 80.dp else 22.dp, end = if (st.shape == Shape.SMALL) 80.dp else 22.dp, top = 20.dp)
+                            .graphicsLayer { translationX = off * 60.dp.toPx() }, contentAlignment = Alignment.TopCenter) {
+                            WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.3f)
+                        }
+                        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC0000000))))
+                            .padding(start = 20.dp, end = 14.dp, top = 20.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tr("FEATURED", "مختارات"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                                Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
+                    repeat(featured.size) { i ->
+                        val sel = i == pager.currentPage
+                        val w by androidx.compose.animation.core.animateDpAsState(if (sel) 20.dp else 6.dp, label = "dot")
+                        Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(RoundedCornerShape(50)).background(if (sel) accent else Color.White.copy(alpha = 0.2f)))
+                    }
+                }
+            }
+        }
+        // ---- wallpapers card with a moving sheen
+        item(key = "wall") {
+            val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val pressed by src.collectIsPressedAsState()
+            val sc by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "wp")
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(RoundedCornerShape(24.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFFEE9B62), Color(0xFF9B59B6), Color(0xFF3B3A8F))))
+                .drawBehind {
+                    val x = size.width * (t * 1.6f - 0.3f)
+                    drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.22f), Color.Transparent),
+                        start = androidx.compose.ui.geometry.Offset(x - 120f, 0f), end = androidx.compose.ui.geometry.Offset(x + 120f, size.height)))
+                }
+                .clickable(interactionSource = src, indication = androidx.compose.material3.ripple()) { nav.go(Screen.Wallpapers) }.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val bob by drift.animateFloat(-3f, 3f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600), androidx.compose.animation.core.RepeatMode.Reverse), label = "bob")
+                    Box(Modifier.size(48.dp).graphicsLayer { translationY = bob * density }.clip(RoundedCornerShape(15.dp)).background(Color.White.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Wallpaper, null, tint = Color.White, modifier = Modifier.size(25.dp))
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(tr("Wallpapers", "الخلفيات"), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        Text(tr("Put the clock behind your photo", "حط الساعة ورا صورتك"), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1)
+                        Text(tr("Wallpapers", "الخلفيات"), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Text(tr("Put the clock behind your photo", "حط الساعة ورا صورتك"), color = Color.White.copy(alpha = 0.88f), fontSize = 13.sp, maxLines = 1)
                     }
                     Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White)
                 }
             }
-            // ---- collection tabs (stay on top while scrolling)
-            stickyHeader(key = "tabs") {
-                LazyRow(Modifier.fillMaxWidth().background(Z.bg), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val keys = listOf("popular", "new", "free") + cats.map { it.name }
-                    items(keys, key = { it }) { k ->
-                        FilterPill(collectionTitle(k), chip == k, null, accent) {
-                            chip = k
-                        }
-                    }
-                }
+        }
+        // ---- collection tabs (stay on top while scrolling)
+        stickyHeader(key = "tabs") {
+            LazyRow(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Z.bg, Z.bg, Z.bg.copy(alpha = 0.92f)))),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val keys = listOf("popular", "new", "free") + cats.map { it.name }
+                items(keys, key = { it }) { k -> TabPill(collectionTitle(k), chip == k, accent) { chip = k } }
             }
-            if (list.isEmpty()) item(key = "empty_$chip") { EmptyNote() }
-            // ---- the chosen collection, grouped by size
-            var rowsSinceAd = 0
-            var slot = 0
-            listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).forEach { shape ->
-                val group = list.filter { it.shape == shape }
-                if (group.isEmpty()) return@forEach
-                item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
-                val rows = if (shape == Shape.SMALL) group.chunked(2) else group.map { listOf(it) }
-                rows.forEach { row ->
-                    item(key = "r_${chip}_${row.joinToString { it.id }}") {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
-                            if (row.size == 1 && shape == Shape.SMALL) Spacer(Modifier.weight(1f))
-                        }
+        }
+        if (list.isEmpty()) item(key = "empty_$chip") { EmptyNote() }
+        // ---- the chosen collection, grouped by size; rows slide in one after another
+        var rowsSinceAd = 0
+        var slot = 0
+        var idx = 0
+        listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).forEach { shape ->
+            val group = list.filter { it.shape == shape }
+            if (group.isEmpty()) return@forEach
+            item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
+            val rows = if (shape == Shape.SMALL) group.chunked(2) else group.map { listOf(it) }
+            rows.forEach { row ->
+                val order = idx++
+                item(key = "r_${chip}_${row.joinToString { it.id }}") {
+                    val shown = remember { androidx.compose.animation.core.Animatable(0f) }
+                    LaunchedEffect(Unit) { delay((order.coerceAtMost(6) * 55L)); shown.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 220f)) }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp)
+                        .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 46.dp.toPx(); val k = 0.94f + 0.06f * shown.value; scaleX = k; scaleY = k },
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
+                        if (row.size == 1 && shape == Shape.SMALL) Spacer(Modifier.weight(1f))
                     }
-                    rowsSinceAd++
-                    if (rowsSinceAd >= 4) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
                 }
+                rowsSinceAd++
+                if (rowsSinceAd >= 4) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
             }
         }
     }
-    // a new tab starts from its top
-    LaunchedEffect(chip) { if (listState.firstVisibleItemIndex > 1) listState.scrollToItem(1) }
+    // a new tab starts from its top (tabs stay pinned)
+    LaunchedEffect(chip) {
+        val tabs = (if (featured.isNotEmpty()) 3 else 2) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
+        if (listState.firstVisibleItemIndex > tabs) listState.animateScrollToItem(tabs)
+    }
+}
+
+/** Collection tab: the selected one fills with colour and grows a little (springy). */
+@Composable
+private fun TabPill(text: String, sel: Boolean, accent: Color, onClick: () -> Unit) {
+    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color.White.copy(alpha = 0.06f), androidx.compose.animation.core.tween(260), label = "tbg")
+    val fg by androidx.compose.animation.animateColorAsState(if (sel) Color(0xFF14110A) else Z.text, androidx.compose.animation.core.tween(260), label = "tfg")
+    val k by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.06f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f), label = "tk")
+    Box(Modifier.graphicsLayer { scaleX = k; scaleY = k }.clip(RoundedCornerShape(50)).background(bg)
+        .border(1.dp, if (sel) Color.Transparent else Z.line, RoundedCornerShape(50))
+        .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp)) {
+        Text(text, color = fg, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+    }
 }
 
 @Composable
