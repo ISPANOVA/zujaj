@@ -1,0 +1,12 @@
+coverage=0.5883789 dome.jpg 1068x1770: Ok  in 3751 ms
+  auto clock_tall: #FFDDE6EE → #FF95BDE4
+  auto date_greg: #FF342314 → #FF7D4A1C
+  auto day_calli: #FFE0E5EB → #FF95BBE4
+coverage=0.60791016 person.jpg 512x600: Ok  in 773 ms
+  auto clock_tall: #FFF1E2DA → #FFE8B091
+  auto date_greg: #FFFAF9F5 → #FFFCFAF3
+  auto day_calli: #FFEDE2DE → #FFE4AD95
+coverage=0.09814453 dog.jpg 700x577: Ok  in 795 ms
+  auto clock_tall: #FF302918 → #FF7A601F
+  auto date_greg: #FF282A1D → #FF57661A
+  auto day_calli: #FF272B1C → #FF51661A

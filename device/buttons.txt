@@ -1,0 +1,9 @@
+tasbih counter after 3 taps = 3 (expect 3), days=[20746]
+focus started, minutes left = 24 (expect 24-25)
+focus stopped, target = 0 (expect 0)
+habit done today = true (expect true)
+ringer: before=2 after vibrate=1 (expect 1)
+ringer after normal=2 (expect 2)
+volume: 5 -> 6 after vol_up
+clock intent resolves: true (Intent { act=android.intent.action.SHOW_ALARMS })
+calculator resolves: false
