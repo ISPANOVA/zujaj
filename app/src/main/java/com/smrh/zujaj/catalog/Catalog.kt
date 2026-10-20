@@ -3,6 +3,7 @@ package com.smrh.zujaj.catalog
 import com.smrh.zujaj.model.Fill
 import com.smrh.zujaj.model.Texture
 import com.smrh.zujaj.model.WidgetConfig
+import com.smrh.zujaj.render.Moments2R
 import com.smrh.zujaj.render.AppsR
 import com.smrh.zujaj.render.CalliR
 import com.smrh.zujaj.render.Prayer2R
