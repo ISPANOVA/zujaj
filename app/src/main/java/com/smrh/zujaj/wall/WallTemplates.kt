@@ -15,6 +15,8 @@ object WallTemplates {
         val topShade: Int = -1,
         /** colours are picked from the photo when true */
         val autoColor: Boolean = true,
+        /** always light text (tinted from the photo) */
+        val light: Boolean = false,
         val layers: () -> List<WallLayer>,
     )
 
@@ -34,17 +36,17 @@ object WallTemplates {
                 WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.085f, w = 0.46f, glass = true),
             )
         },
-        Template("minimal", "Minimal", "بسيط", topShade = 35) {
+        Template("minimal", "Minimal", "بسيط", topShade = 40, light = true) {
             listOf(
                 WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.215f, w = 0.42f),
                 WallLayer(id = id(), kind = "date_greg", cx = 0.5f, cy = 0.065f, w = 0.4f),
             )
         },
-        Template("arabic", "Arabic", "عربي", topShade = 30) {
+        Template("arabic", "Arabic", "عربي", topShade = 40, light = true) {
             listOf(
-                WallLayer(id = id(), kind = "hijri_full", cx = 0.5f, cy = 0.06f, w = 0.6f),
-                WallLayer(id = id(), kind = "day_calli", cx = 0.5f, cy = 0.145f, w = 0.6f),
-                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.29f, w = 0.3f),
+                WallLayer(id = id(), kind = "hijri_full", cx = 0.5f, cy = 0.055f, w = 0.58f),
+                WallLayer(id = id(), kind = "day_calli", cx = 0.5f, cy = 0.135f, w = 0.56f),
+                WallLayer(id = id(), kind = "clock_thin", cx = 0.5f, cy = 0.25f, w = 0.24f),
             )
         },
         Template("bottom", "Glass card", "كارت زجاج") {
@@ -53,9 +55,9 @@ object WallTemplates {
                 WallLayer(id = id(), kind = "date_pair", cx = 0.5f, cy = 0.86f, w = 0.62f, glass = true),
             )
         },
-        Template("prayer", "Prayer", "الصلاة", topShade = 40) {
+        Template("prayer", "Prayer", "الصلاة", topShade = 40, light = true) {
             listOf(
-                WallLayer(id = id(), kind = "clock_stack", cx = 0.5f, cy = 0.235f, w = 0.25f),
+                WallLayer(id = id(), kind = "clock_stack", cx = 0.5f, cy = 0.2f, w = 0.26f),
                 WallLayer(id = id(), kind = "prayer_next", cx = 0.5f, cy = 0.075f, w = 0.6f),
                 WallLayer(id = id(), kind = "prayer_row", cx = 0.5f, cy = 0.84f, w = 0.86f, glass = true),
             )
@@ -86,7 +88,7 @@ object WallTemplates {
         val layers = t.layers().map { l ->
             var x = l
             if (t.autoColor && photo != null) {
-                val (a, b) = runCatching { WallRender.autoColors(photo, x, W, H, base.dim, base) }.getOrNull() ?: (x.color to 0)
+                val (a, b) = runCatching { WallRender.autoColors(photo, x, W, H, if (t.light) maxOf(base.dim, 65) else base.dim, base) }.getOrNull() ?: (x.color to 0)
                 // glass shapes take their look from the photo itself: keep them white
                 x = if (x.glassFill) x else x.copy(color = a, color2 = b, gDir = 0)
             }
