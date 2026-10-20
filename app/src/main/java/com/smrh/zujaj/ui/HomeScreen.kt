@@ -5,6 +5,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -260,8 +261,8 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
         .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(24.dp))
-                .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.16f), Color(0xFF111117), Color(0xFF0C0C11))))
-                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.02f))), RoundedCornerShape(24.dp))
+                .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.10f), Color(0xFF131318), Color(0xFF0C0C11))))
+                .border(1.dp, Brush.linearGradient(listOf(Color(0xFFE2B85C).copy(alpha = 0.30f), Color.White.copy(alpha = 0.04f), Color(0xFFE2B85C).copy(alpha = 0.12f))), RoundedCornerShape(24.dp))
                 .padding(if (small) 16.dp else 14.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -319,140 +320,237 @@ private fun GroupLabel(text: String) {
 }
 
 // =============================================================================== discover
+private val Gold = Color(0xFFE2B85C)
+private val GoldSoft = Color(0xFFF3DDA6)
+private val GoldDeep = Color(0xFF9C7230)
+
+/** Faint eight-pointed-star lattice (khatam), drawn once and cached — the app's Arabic signature. */
+@Composable
+fun Ornament(modifier: Modifier, alpha: Float = 0.10f) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val cell = 64.dp.toPx()
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+        val cols = (size.width / cell).toInt() + 2
+        val rows = (size.height / cell).toInt() + 2
+        val r = cell * 0.36f
+        for (j in 0 until rows) for (i in 0 until cols) {
+            val cx = i * cell + (if (j % 2 == 0) 0f else cell / 2); val cy = j * cell
+            // fade towards the bottom
+            val k = (1f - cy / size.height).coerceIn(0f, 1f)
+            if (k <= 0f) continue
+            val c = Gold.copy(alpha = alpha * k)
+            val sq = androidx.compose.ui.geometry.Size(r * 1.4f, r * 1.4f)
+            val tl = androidx.compose.ui.geometry.Offset(cx - r * 0.7f, cy - r * 0.7f)
+            drawRect(c, tl, sq, style = stroke)
+            rotate(45f, androidx.compose.ui.geometry.Offset(cx, cy)) { drawRect(c, tl, sq, style = stroke) }
+            drawCircle(c, r * 0.18f, androidx.compose.ui.geometry.Offset(cx, cy), style = stroke)
+        }
+    }
+}
+
+/** Title of a home section: thin gold rule, name, and "See all". */
+@Composable
+private fun LuxHeader(title: String, sub: String?, onAll: (() -> Unit)?) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 30.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(3.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(Brush.verticalGradient(listOf(GoldSoft, GoldDeep))))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            if (sub != null) Text(sub, color = Z.sub, fontSize = 12.sp, maxLines = 1)
+        }
+        if (onAll != null) {
+            Row(Modifier.clip(RoundedCornerShape(50)).border(1.dp, Gold.copy(alpha = 0.35f), RoundedCornerShape(50)).clickable(onClick = onAll)
+                .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("See all", "عرض الكل"), color = GoldSoft, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Gold, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
 @Composable
 fun DiscoverTab(nav: Nav) {
     val pro by Billing.pro.collectAsState()
     val flags by Flags.flags.collectAsState()
     val ver by Prefs.version.collectAsState()
     touch(ver)
-    val accent = LocalAccent.current
+    val ar = Prefs.isArabicUi
     val all = Flags.visible()
-    var chip by rememberSaveable { mutableStateOf("all") }       // category / collection
-    var tier by rememberSaveable { mutableIntStateOf(0) }        // 0 all · 1 free · 2 pro
-    var size by rememberSaveable { mutableStateOf("") }          // "" or Shape name
-    val hour = LocalTime.now().hour
-    val greet = when (hour) {
-        in 5..11 -> tr("Good morning", "صباح الخير")
-        in 12..16 -> tr("Good afternoon", "طاب يومك")
-        else -> tr("Good evening", "مساء الخير")
-    }
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
-    fun pass(st: WidgetStyle) = (tier == 0 || (tier == 1) == !Flags.isPro(st)) && (size.isEmpty() || st.shape.name == size)
-    // "What's new": introduce Wallpapers once (after the first-run battery guide)
+    val featured = remember(flags) {
+        listOf("prayer_hub", "calli_lawn", "photo_verse", "event_card", "prayer_journey", "w_today_tomorrow")
+            .mapNotNull { id -> all.firstOrNull { it.id == id } }
+    }
+    val today = remember { java.time.LocalDate.now() }
+    val hijri = remember(today) { com.smrh.zujaj.data.Calendars.hijri(today) }
     var showNew by remember { mutableStateOf(false) }
     var showThemes by remember { mutableStateOf(false) }
     if (showThemes) ThemesDialog { showThemes = false }
     LaunchedEffect(Unit) { delay(2200); showNew = Prefs.getString("wall_intro") != "1" && Prefs.getString("bat_intro") == "1" }
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
-    var adSlot = 0
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 130.dp)) {
-        // ---- header
-        item(key = "head") {
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 14.dp, top = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(greet, color = Z.sub, fontSize = 13.sp)
-                    Text(tr("Zujaj", "زجاج"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
+        // ---------------------------------------------------------------- crest
+        item(key = "crest") {
+            Box(Modifier.fillMaxWidth()) {
+                Ornament(Modifier.matchParentSize())
+                Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.0f), Z.bg))))
+                Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 20.dp, bottom = 18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (ar) "${com.smrh.zujaj.data.Calendars.dayName(today, true)} · ${hijri.day} ${com.smrh.zujaj.data.Calendars.hijriMonth(hijri.month, true)}"
+                                else "${com.smrh.zujaj.data.Calendars.dayName(today, false)} · ${hijri.day} ${com.smrh.zujaj.data.Calendars.hijriMonth(hijri.month, false)}",
+                                color = Gold.copy(alpha = 0.9f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                            )
+                            Text(
+                                if (ar) "زجاج" else "ZUJAJ",
+                                style = androidx.compose.ui.text.TextStyle(
+                                    brush = Brush.linearGradient(listOf(GoldSoft, Gold, GoldDeep)),
+                                    fontFamily = if (ar) Z.kufi else Z.bodoni, fontSize = if (ar) 46.sp else 38.sp,
+                                    letterSpacing = if (ar) 0.sp else 6.sp,
+                                ),
+                                maxLines = 1,
+                            )
+                            Text(tr("Widgets & wallpapers, made beautifully", "ويدجت وخلفيات بلمسة فنّية"), color = Z.sub, fontSize = 13.sp, maxLines = 1)
+                        }
+                        // Pro crest
+                        Box(Modifier.size(50.dp).clip(CircleShape)
+                            .background(if (pro) Brush.linearGradient(listOf(Color(0xFF2A2210), Color(0xFF15120A))) else Brush.linearGradient(listOf(GoldSoft, Gold, GoldDeep)))
+                            .border(1.dp, Gold.copy(alpha = 0.6f), CircleShape).clickable { nav.go(Screen.Paywall) }, contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.WorkspacePremium, null, tint = if (pro) Gold else Color(0xFF2A1C05), modifier = Modifier.size(26.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    // search
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF14141A))
+                        .border(1.dp, Brush.horizontalGradient(listOf(Gold.copy(alpha = 0.35f), Color.White.copy(alpha = 0.06f))), RoundedCornerShape(18.dp))
+                        .clickable { nav.go(Screen.Search) }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Search, null, tint = Gold, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(tr("Search ${all.size} widgets", "ابحث في ${all.size} ويدجت"), color = Z.sub, fontSize = 14.sp)
+                    }
                 }
-                RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Color(0xFF2A2210) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
-            }
-        }
-        // ---- search pill
-        item(key = "search") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).clip(RoundedCornerShape(18.dp))
-                .background(Color.White.copy(alpha = 0.06f)).border(1.dp, Z.line, RoundedCornerShape(18.dp))
-                .clickable { nav.go(Screen.Search) }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Search, null, tint = Z.sub, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(tr("Search ${all.size} widgets", "ابحث في ${all.size} ويدجت"), color = Z.sub, fontSize = 14.sp)
             }
         }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
-            Glass(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), radius = 18.dp, alpha = 0.08f) {
-                Text(flags.notice, modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clip(RoundedCornerShape(18.dp)).background(Gold.copy(alpha = 0.08f))
+                .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(18.dp)).padding(14.dp)) {
+                Text(flags.notice, style = MaterialTheme.typography.bodyMedium)
             }
         }
-        // ---- bento: wallpapers + themes + pro
-        item(key = "bento") {
-            Row(Modifier.fillMaxWidth().height(164.dp).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BentoCard(Modifier.weight(1.15f).fillMaxHeight(), listOf(Color(0xFFF2A26B), Color(0xFF8E5BD6), Color(0xFF2B2F6B)),
-                    Icons.Rounded.Wallpaper, tr("Wallpapers", "الخلفيات"), tr("Clock behind the photo", "الساعة ورا الصورة"), tr("NEW", "جديد")) { nav.go(Screen.Wallpapers) }
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BentoCard(Modifier.fillMaxWidth().weight(1f), listOf(Color(0xFF13B5A8), Color(0xFF0E3B44)),
-                        Icons.Rounded.Palette, tr("Themes", "ثيمات"), null, null, compact = true) { showThemes = true }
-                    BentoCard(Modifier.fillMaxWidth().weight(1f), if (pro) listOf(Color(0xFF3A2C12), Color(0xFF17130B)) else listOf(Color(0xFFF6D98B), Color(0xFFC9963A)),
-                        Icons.Rounded.WorkspacePremium, if (pro) tr("You're Pro", "أنت برو") else tr("Go Pro", "اشترك برو"), null, null, compact = true, dark = !pro) { nav.go(Screen.Paywall) }
-                }
+        // ---------------------------------------------------------------- two doors
+        item(key = "doors") {
+            Row(Modifier.fillMaxWidth().height(132.dp).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Door(Modifier.weight(1f).fillMaxHeight(), listOf(Color(0xFFE9A15B), Color(0xFF8E4FA8), Color(0xFF231B44)),
+                    Icons.Rounded.Wallpaper, tr("Wallpapers", "الخلفيات"), tr("Clock behind your photo", "الساعة ورا صورتك"), tr("NEW", "جديد")) { nav.go(Screen.Wallpapers) }
+                Door(Modifier.weight(1f).fillMaxHeight(), listOf(Color(0xFF1C6B66), Color(0xFF123B45), Color(0xFF0D1B24)),
+                    Icons.Rounded.Palette, tr("Themes", "الثيمات"), tr("One look for all", "شكل واحد للكل"), null) { showThemes = true }
             }
         }
-        val topSlot = adSlot++
-        item(key = "ad_top") { com.smrh.zujaj.ads.AdBanner(topSlot) }
-        // ---- filters: free / pro, size, category
-        item(key = "filters") {
+        // ---------------------------------------------------------------- categories as medallions
+        item(key = "cats") {
             Column {
-                Segmented(listOf(tr("All", "الكل"), tr("Free", "مجاني"), "Pro"), tier, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { tier = it }
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val opts = listOf("" to tr("All sizes", "كل المقاسات")) + listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).map { it.name to shapeGroupTitle(it) }
-                    items(opts) { (k, l) -> FilterPill(l, size == k, null, accent) { size = k } }
-                }
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val keys = listOf("all", "popular", "new") + cats.map { it.name }
-                    items(keys) { key ->
-                        val cat = Cat.values().firstOrNull { it.name == key }
-                        val icon = cat?.let { catIcon(it) } ?: when (key) { "popular" -> Icons.Rounded.Whatshot; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.GridView }
-                        FilterPill(if (key == "all") tr("All", "الكل") else collectionTitle(key), chip == key, icon, cat?.let { catColor(it) } ?: accent) { chip = key }
+                LuxHeader(tr("Collections", "الأقسام"), null, null)
+                LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val keys = listOf("popular", "new", "free") + cats.map { it.name }
+                    items(keys, key = { it }) { k ->
+                        val cat = Cat.values().firstOrNull { it.name == k }
+                        val icon = cat?.let { catIcon(it) } ?: when (k) { "popular" -> Icons.Rounded.Whatshot; "new" -> Icons.Rounded.AutoAwesome; else -> Icons.Rounded.GridView }
+                        Medallion(icon, collectionTitle(k)) { nav.go(Screen.Category(k)) }
                     }
                 }
             }
         }
-        if (chip == "all") {
-            // ---- one section per category: big ones together, small ones together, free before Pro
-            var shown = 0
-            cats.forEach { cat ->
-                val list = tidy(all.filter { it.cat == cat && pass(it) })
-                if (list.isEmpty()) return@forEach
-                val big = list.filter { it.shape != Shape.SMALL }
-                val small = list.filter { it.shape == Shape.SMALL }
-                item(key = "sec_${cat.name}") {
-                    Column(Modifier.animateItem()) {
-                        SectionHeader(if (Prefs.isArabicUi) cat.ar else cat.en, list.size, { chip = cat.name }, catIcon(cat), catColor(cat))
-                        if (big.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(big.take(10), key = { it.id }) { st -> PreviewTile(st, Modifier.width(292.dp), stage = 150.dp) { nav.go(Screen.Editor(st.id)) } }
-                        }
-                        if (big.isNotEmpty() && small.isNotEmpty()) Spacer(Modifier.height(12.dp))
-                        if (small.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(small.take(12), key = { it.id }) { st -> PreviewTile(st, Modifier.width(150.dp), stage = 150.dp) { nav.go(Screen.Editor(st.id)) } }
+        // ---------------------------------------------------------------- featured
+        if (featured.isNotEmpty()) item(key = "featured") {
+            Column {
+                LuxHeader(tr("Editor's picks", "مختارات زجاج"), tr("Our most loved designs", "أجمل التصميمات عندنا"), null)
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(featured, key = { it.id }) { st -> FeatureCard(st, Modifier.width(300.dp)) { nav.go(Screen.Editor(st.id)) } }
+                }
+            }
+        }
+        item(key = "ad0") { com.smrh.zujaj.ads.AdBanner(0, Modifier.padding(top = 18.dp)) }
+        // ---------------------------------------------------------------- one calm row per category
+        var n = 0
+        cats.forEach { cat ->
+            val list = tidy(all.filter { it.cat == cat })
+            val big = list.filter { it.shape != Shape.SMALL }
+            val small = list.filter { it.shape == Shape.SMALL }
+            // a row is always one size: the big ones if there are any, else the small ones
+            val row = if (big.size >= 2 || small.isEmpty()) big else small
+            if (row.isEmpty()) return@forEach
+            val isBig = row.first().shape != Shape.SMALL
+            item(key = "cat_${cat.name}") {
+                Column {
+                    LuxHeader(if (ar) cat.ar else cat.en, tr("${list.size} widgets", "${list.size} ويدجت")) { nav.go(Screen.Category(cat.name)) }
+                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(row.take(8), key = { it.id }) { st ->
+                            PreviewTile(st, Modifier.width(if (isBig) 280.dp else 156.dp), stage = if (isBig) 140.dp else 156.dp) { nav.go(Screen.Editor(st.id)) }
                         }
                     }
                 }
-                shown++
-                if (shown % 2 == 0) { val slot = adSlot++; item(key = "ad_c$shown") { com.smrh.zujaj.ads.AdBanner(slot) } }
             }
-            if (shown == 0) item(key = "empty") { EmptyNote() }
-        } else {
-            // ---- one category / collection: grouped by size, free before Pro
-            val list = tidy(collection(chip).filter { pass(it) })
-            item(key = "title_$chip") {
-                Text("${collectionTitle(chip)} · ${list.size}", fontSize = 20.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.animateItem().padding(start = 20.dp, end = 20.dp, top = 12.dp))
+            n++
+            if (n % 3 == 0) { val slot = n / 3; item(key = "ad_$n") { com.smrh.zujaj.ads.AdBanner(slot, Modifier.padding(top = 18.dp)) } }
+        }
+    }
+}
+
+/** Round gold-ringed icon with a label under it. */
+@Composable
+private fun Medallion(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(Modifier.width(78.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(58.dp).clip(CircleShape)
+            .background(Brush.radialGradient(listOf(Color(0xFF2A2418), Color(0xFF121216))))
+            .border(1.2.dp, Brush.linearGradient(listOf(GoldSoft, GoldDeep, Gold.copy(alpha = 0.3f))), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Gold, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(label, fontSize = 11.5.sp, color = Z.text.copy(alpha = 0.88f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+    }
+}
+
+/** Big gradient entry card ("door") with a soft star pattern. */
+@Composable
+private fun Door(modifier: Modifier, colors: List<Color>, icon: ImageVector, title: String, sub: String, badge: String?, onClick: () -> Unit) {
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 500f), label = "door")
+    Box(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(26.dp))
+        .background(Brush.linearGradient(colors))
+        .border(1.dp, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.05f))), RoundedCornerShape(26.dp))
+        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)) {
+        Ornament(Modifier.matchParentSize(), alpha = 0.16f)
+        Box(Modifier.fillMaxSize().padding(14.dp)) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
             }
-            if (list.isEmpty()) item(key = "empty") { EmptyNote() }
-            var rowsSinceAd = 0
-            listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).forEach { shape ->
-                val group = list.filter { it.shape == shape }
-                if (group.isEmpty()) return@forEach
-                item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
-                val rows = if (shape == Shape.SMALL) group.chunked(2) else group.map { listOf(it) }
-                rows.forEachIndexed { i, row ->
-                    item(key = "r_${chip}_${row.joinToString { it.id }}") {
-                        Row(Modifier.animateItem().fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            row.forEach { st -> PreviewTile(st, Modifier.weight(1f)) { nav.go(Screen.Editor(st.id)) } }
-                            if (row.size == 1 && shape == Shape.SMALL) Spacer(Modifier.weight(1f))
-                        }
-                    }
-                    rowsSinceAd++
-                    if (rowsSinceAd >= 4) { rowsSinceAd = 0; val slot = adSlot++; item(key = "ad_${chip}_${shape}_$i") { com.smrh.zujaj.ads.AdBanner(slot) } }
-                }
+            if (badge != null) Text(badge, color = Color(0xFF2A1C05), fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(50)).background(GoldSoft).padding(horizontal = 8.dp, vertical = 2.dp))
+            Column(Modifier.align(Alignment.BottomStart)) {
+                Text(title, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
+                Text(sub, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1)
             }
+        }
+    }
+}
+
+/** Featured widget on a rich backdrop with a gold frame. */
+@Composable
+private fun FeatureCard(st: WidgetStyle, modifier: Modifier, onClick: () -> Unit) {
+    val i = st.id.hashCode()
+    Column(modifier.clip(RoundedCornerShape(28.dp)).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(28.dp)).background(Backdrops.brush(i))
+            .border(1.dp, Brush.linearGradient(listOf(GoldSoft.copy(alpha = 0.8f), Gold.copy(alpha = 0.1f), GoldDeep.copy(alpha = 0.6f))), RoundedCornerShape(28.dp))
+            .padding(horizontal = if (st.shape == Shape.SMALL) 70.dp else 18.dp, vertical = 18.dp), contentAlignment = Alignment.Center) {
+            WidgetPreview(st.defaultConfig(), Modifier.fillMaxSize(), density = 2.2f)
+        }
+        Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(st.name(Prefs.isArabicUi), fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Spacer(Modifier.width(6.dp))
+            if (Flags.isPro(st)) ProBadge() else if (Flags.isNew(st)) NewBadge()
         }
     }
 }
@@ -480,46 +578,6 @@ private fun FilterPill(text: String, sel: Boolean, icon: ImageVector?, color: Co
     }
 }
 
-@Composable
-private fun BentoCard(modifier: Modifier, colors: List<Color>, icon: ImageVector, title: String, sub: String?, badge: String?, compact: Boolean = false, dark: Boolean = false, onClick: () -> Unit) {
-    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "bento")
-    val fg = if (dark) Color(0xFF2A1C05) else Color.White
-    Box(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
-        .background(Brush.linearGradient(colors))
-        .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(24.dp))
-        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)
-        .padding(14.dp)) {
-        if (compact) {
-            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(fg.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                    Icon(icon, null, tint = fg, modifier = Modifier.size(19.dp))
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(title, color = fg, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2, lineHeight = 17.sp)
-            }
-        } else {
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(fg.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = fg, modifier = Modifier.size(22.dp))
-            }
-            if (badge != null) Text(badge, color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 8.dp, vertical = 2.dp))
-            Column(Modifier.align(Alignment.BottomStart)) {
-                Text(title, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 1)
-                if (sub != null) Text(sub, color = fg.copy(alpha = 0.85f), fontSize = 12.sp, maxLines = 2, lineHeight = 15.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, onClick: () -> Unit) {
-    Box(
-        Modifier.size(44.dp).clip(CircleShape).background(bg).border(1.dp, Z.line, CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
-}
 
 // =============================================================================== grids
 /** Pair small (1-column) widgets so the 2-column grid never leaves an empty half row. */
@@ -569,16 +627,23 @@ private fun SizeFilter(sel: Shape?, onSel: (Shape?) -> Unit) {
 
 @Composable
 fun CategoryScreen(nav: Nav, s: Screen.Category) {
-    var size by remember { mutableStateOf<Shape?>(null) }
+    var size by rememberSaveable { mutableStateOf("") }
+    var tier by rememberSaveable { mutableIntStateOf(0) }
     val ver by Prefs.version.collectAsState()
     touch(ver)
-    val list = collection(s.key).filter { size == null || it.shape == size }
+    val base = collection(s.key)
+    val list = base.filter { (size.isEmpty() || it.shape.name == size) && (tier == 0 || (tier == 1) == !Flags.isPro(it)) }
     Column(Modifier.fillMaxSize()) {
         TopBar(collectionTitle(s.key), { nav.back() })
-        SizeFilter(size) { size = it }
+        if (s.key != "free") Segmented(listOf(tr("All", "الكل"), tr("Free", "مجاني"), "Pro"), tier, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { tier = it }
+        val shapes = listOf(Shape.LARGE, Shape.WIDE, Shape.BANNER, Shape.SMALL).filter { sh -> base.any { it.shape == sh } }
+        if (shapes.size > 1) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val opts = listOf("" to tr("All sizes", "كل المقاسات")) + shapes.map { it.name to shapeGroupTitle(it) }
+            items(opts) { (k, l) -> FilterPill(l, size == k, null, LocalAccent.current) { size = k } }
+        }
         if (list.isEmpty()) {
             Text(
-                if (s.key == "saved") tr("Tap ♥ in the editor to save widgets here", "اضغط ♥ داخل المحرر لحفظ الويدجت هنا") else tr("Nothing here yet", "لا يوجد شيء هنا بعد"),
+                if (s.key == "saved") tr("Tap ♥ in the editor to save widgets here", "اضغط ♥ داخل المحرر لحفظ الويدجت هنا") else tr("Nothing matches these filters", "مفيش ويدجت بالفلاتر دي"),
                 color = Z.sub, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(40.dp),
             )
         }

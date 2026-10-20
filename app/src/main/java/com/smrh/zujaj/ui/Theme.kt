@@ -48,6 +48,7 @@ object Z {
     )
     val ruqaa = FontFamily(Font(R.font.aref_ruqaa_bold))
     val bodoni = FontFamily(Font(R.font.bodoni_bold))
+    val kufi = FontFamily(Font(R.font.reem_kufi_bold))
 }
 
 val LocalAccent = staticCompositionLocalOf { Z.accents[0].color }
