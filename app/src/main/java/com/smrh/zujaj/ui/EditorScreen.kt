@@ -291,6 +291,19 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
                         RowBase(tr("Target date", "التاريخ المستهدف"), sub = label, onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
                     }
+                    if (Feat.ROTATE in f) {
+                        Divider()
+                        ChoiceRow(tr("Words", "الكلام"), cfg.variant, listOf(
+                            0 to tr("Duas", "أدعية"), 1 to tr("Verses", "آيات"),
+                            2 to tr("Dhikr", "أذكار"), 3 to tr("My own words", "كلامي أنا"),
+                        )) { cfg = cfg.copy(variant = it) }
+                        if (cfg.variant == 3) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
+                        Divider()
+                        ChoiceRow(tr("Change every", "يتغير كل"), if (cfg.counter > 0) cfg.counter else 360, listOf(
+                            30 to tr("30 min", "نص ساعة"), 60 to tr("1 hour", "ساعة"), 180 to tr("3 hours", "3 ساعات"),
+                            360 to tr("6 hours", "6 ساعات"), 720 to tr("12 hours", "12 ساعة"), 1440 to tr("Daily", "يوميًا"),
+                        )) { cfg = cfg.copy(counter = it) }
+                    }
                     if (Feat.VERSE in f) {
                         Divider()
                         ChoiceRow(tr("Words on the photo", "الكلام على الصورة"), cfg.variant, listOf(

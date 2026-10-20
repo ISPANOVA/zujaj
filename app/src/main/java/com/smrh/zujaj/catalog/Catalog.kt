@@ -61,7 +61,7 @@ enum class Cat(val en: String, val ar: String, val tags: String = "") {
 }
 
 /** Extra editor controls a style needs (beyond the common ones). */
-enum class Feat { VERSE, EVENT, HUB, COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
+enum class Feat { ROTATE, VERSE, EVENT, HUB, COLOR2, ACCENT, SIZE2, CALENDAR, HOUR24, SECONDS, TITLE, TEXT, AUTHOR, TARGET_DATE, GOAL, APPS, CONTACTS, PHOTOS, CITIES, GAP }
 
 /** What makes a widget need refreshing. */
 enum class Upd { DAILY, PRAYER, WEATHER, MEDIA, SYSTEM, PHOTO, NONE }
@@ -263,6 +263,9 @@ object Catalog {
         WidgetStyle("photo_verse", Cat.PHOTO, "Photo & Verse", "صورة وآية", W, isNew = true, popular = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 0, variant = 1) }) { VerseR.wide(it) },
         WidgetStyle("photo_verse_sq", Cat.PHOTO, "Photo & Dhikr", "صورة وذكر", S, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 0) }) { VerseR.square(it) },
         WidgetStyle("photo_verse_lg", Cat.PHOTO, "Photo Journal", "صورة ويومية", L, pro = true, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 12, variant = 1, bgColor = 0xFF15131A.toInt()) }) { VerseR.large(it) },
+        WidgetStyle("bubble_clock", Cat.CLOCK, "Bubble Clock", "ساعة الفقاعات", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, accent = 0xFFB9A6F2.toInt(), calli = 2) }) { Moments2R.bubble(it) },
+        WidgetStyle("words_day_card", Cat.CALLI, "Words of the Day", "كارت اليوم", L, isNew = true, popular = true, feats = setOf(Feat.ROTATE, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), bakeTime = { true }, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF8FB8E6.toInt(), bgColor2 = 0xFF6E9BD3.toInt(), color1 = 0xFFFFFFFF.toInt(), counter = 360, calli = 2) }) { Moments2R.dayCard(it) },
+        WidgetStyle("prayer_board", Cat.PRAYER, "Prayer Board", "لوحة الصلاة", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), accent = 0xFFF2E6B8.toInt()) }) { Moments2R.board(it) },
         WidgetStyle("event_ring", Cat.COUNTERS, "Event Ring", "حلقة المناسبة", S, isNew = true, popular = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "ramadan", fill = Fill.GRADIENT, bgColor = 0xFF14102A.toInt(), bgColor2 = 0xFF2A1B4D.toInt(), accent = 0xFFE7B75F.toInt(), accent2 = 0xFFB07BF0.toInt()) }) { EventR.ring(it) },
         WidgetStyle("event_card", Cat.COUNTERS, "Event Card", "كارت المناسبة", W, isNew = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "fitr", fill = Fill.GRADIENT, bgColor = 0xFF0E2420.toInt(), bgColor2 = 0xFF1C4A3F.toInt(), accent = 0xFF3DDCB5.toInt(), accent2 = 0xFFB7E34A.toInt()) }) { EventR.card(it) },
         WidgetStyle("event_flip", Cat.COUNTERS, "Event Flip", "عدّاد قلّاب", W, pro = true, isNew = true, feats = setOf(Feat.EVENT), defaults = { it.copy(event = "exams", fill = Fill.GRADIENT, bgColor = 0xFF1A1A1F.toInt(), bgColor2 = 0xFF2E2E38.toInt()) }) { EventR.flip(it) },
