@@ -1,81 +1,86 @@
 package com.smrh.zujaj.render
 
+import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
+import android.graphics.Path
 import android.graphics.Rect
-import com.smrh.zujaj.data.Calendars
+import android.graphics.Shader
+import com.smrh.zujaj.render.RenderCtx.Companion.withAlpha
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
- * Decorative Arabic headings (day names, prayer names).
- *
- * 1) If real calligraphy artwork is bundled for the word — res/drawable/calli_<key> (vector XML or PNG/WebP),
- *    keys: day_mon … day_sun, fajr, sunrise, dhuhr, asr, maghrib, isha — that artwork is drawn, tinted
- *    in the widget colour. This is how authentic compound thuluth pieces are used.
- * 2) Otherwise the word is set in Amiri Bold with a kashida and full tashkeel. No generated ornaments.
+ * The default Arabic display style: the word in bold Reem Kufi, framed by a calm geometric
+ * ornament — a small eight-pointed star on each side and, underneath, a fine rule that fades
+ * out at both ends with a star at its centre and two small diamonds. Nothing touches the letters.
  */
 object Thuluth {
-    private const val TATWEEL = 'ـ'
-    private const val NO_JOIN = "اأإآدذرزوؤةىءئ "
-
-    private val keys: Map<String, String> = run {
-        val days = listOf("day_mon", "day_tue", "day_wed", "day_thu", "day_fri", "day_sat", "day_sun")
-        Calendars.daysAr.mapIndexed { i, d -> d to days[i] }.toMap() + mapOf(
-            "الفجر" to "fajr", "الشروق" to "sunrise", "الظهر" to "dhuhr", "العصر" to "asr", "المغرب" to "maghrib", "العشاء" to "isha",
-        )
-    }
-    private val resCache = HashMap<String, Int>()
-
-    /** Bundled artwork for this word, or 0. */
-    fun artFor(r: RenderCtx, word: String): Int {
-        val k = keys[word.trim()] ?: return 0
-        return resCache.getOrPut(k) { r.context.resources.getIdentifier("calli_$k", "drawable", r.context.packageName) }
-    }
-
-    /** Inserts a kashida near the end of the word ("الجمعة" → "الجمـــعة"); tashkeel marks stay on their letters. */
-    fun stretch(s: String): String {
-        if (' ' in s || TATWEEL in s) return s
-        fun isLetter(c: Char) = c in '\u0621'..'\u064A'
-        val letters = s.indices.filter { isLetter(s[it]) }
-        if (letters.size < 4) return s
-        for (li in (letters.size - 3) downTo 1) {
-            val i = letters[li]
-            if (s[i] in NO_JOIN) continue
-            // put the stretch after this letter's own marks
-            var j = i + 1
-            while (j < s.length && !isLetter(s[j])) j++
-            return s.substring(0, j) + "ـــ" + s.substring(j)
-        }
-        return s
-    }
-
     fun draw(r: RenderCtx, s0: String, cx: Float, cy: Float, size0: Float, color: Int, maxW: Float, maxH: Float) {
-        val word = s0.trim()
-        val art = artFor(r, word)
-        if (art != 0 && drawArt(r, art, cx, cy, size0, color, maxW, maxH)) return
-        // fallback: clean calligraphic type, kashida + tashkeel, nothing generated
-        val s = stretch(Calendars.tashkeel(word))
-        val p = r.paint(color, size0, F.AMIRI, Paint.Align.LEFT)
+        val s = s0.trim()
+        val p = r.paint(color, size0, F.KUFI_BOLD, Paint.Align.LEFT)
         val b = Rect()
-        p.getTextBounds(s, 0, s.length, b)
+        val orn = r.cfg.ornament
+        // room for the side stars (≈ 0.55 em each side) and the rule underneath (≈ 0.42 em)
+        fun measure() { p.getTextBounds(s, 0, s.length, b) }
+        measure()
+        val fullW = { b.width() + if (orn) p.textSize * 1.1f else 0f }
+        val fullH = { b.height() + if (orn) p.textSize * 0.42f else 0f }
         var k = 1f
-        if (maxW > 0 && b.width() > maxW) k = min(k, maxW / b.width())
-        if (maxH > 0 && b.height() > maxH) k = min(k, maxH / b.height())
-        if (k < 1f) { p.textSize *= k; p.getTextBounds(s, 0, s.length, b) }
-        r.canvas.drawText(s, cx - b.exactCenterX(), cy - b.exactCenterY(), p)
+        if (maxW > 0 && fullW() > maxW) k = min(k, maxW / fullW())
+        if (maxH > 0 && fullH() > maxH) k = min(k, maxH / fullH())
+        if (k < 1f) { p.textSize *= k; measure() }
+        val size = p.textSize
+        val rule = if (orn) size * 0.42f else 0f
+        // centre the whole composition (word + rule) on cy
+        val wordCy = cy - rule / 2f
+        val x = cx - b.exactCenterX()
+        val y = wordCy - b.exactCenterY()
+        r.canvas.drawText(s, x, y, p)
+        if (!orn) return
+
+        val left = x + b.left
+        val right = x + b.right
+        val bottom = y + b.bottom
+        val gold = withAlpha(r.cfg.ornColor, 235)
+        val soft = withAlpha(r.cfg.ornColor, 170)
+
+        // side stars, level with the middle of the word
+        val sr = size * 0.085f
+        star(r, left - size * 0.3f, wordCy, sr, soft)
+        star(r, right + size * 0.3f, wordCy, sr, soft)
+
+        // the rule: fades in from both ends, broken in the middle by a star
+        val ry = bottom + rule * 0.55f
+        val half = (right - left) / 2f + size * 0.15f
+        val mid = (left + right) / 2f
+        val gap = size * 0.16f
+        val lp = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = (size * 0.018f).coerceAtLeast(1f); strokeCap = Paint.Cap.ROUND }
+        lp.shader = LinearGradient(mid - half, ry, mid - gap, ry, Color.TRANSPARENT, gold, Shader.TileMode.CLAMP)
+        r.canvas.drawLine(mid - half, ry, mid - gap, ry, lp)
+        lp.shader = LinearGradient(mid + gap, ry, mid + half, ry, gold, Color.TRANSPARENT, Shader.TileMode.CLAMP)
+        r.canvas.drawLine(mid + gap, ry, mid + half, ry, lp)
+        val st = size * 0.13f
+        star(r, mid, ry, st, gold)
+        val dd = size * 0.042f
+        for (sx in floatArrayOf(-1f, 1f)) diamond(r, mid + sx * half * 0.55f, ry, dd, gold)
     }
 
-    private fun drawArt(r: RenderCtx, res: Int, cx: Float, cy: Float, size: Float, color: Int, maxW: Float, maxH: Float): Boolean {
-        val d = runCatching { androidx.core.content.ContextCompat.getDrawable(r.context, res) }.getOrNull()?.mutate() ?: return false
-        val iw = d.intrinsicWidth.coerceAtLeast(1).toFloat(); val ih = d.intrinsicHeight.coerceAtLeast(1).toFloat()
-        val boxW = if (maxW > 0) maxW else size * 3f
-        val boxH = if (maxH > 0) maxH else size
-        val k = min(boxW / iw, boxH / ih)
-        val w = iw * k; val h = ih * k
-        d.setBounds((cx - w / 2).toInt(), (cy - h / 2).toInt(), (cx + w / 2).toInt(), (cy + h / 2).toInt())
-        d.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
-        d.draw(r.canvas)
-        return true
+    private fun star(r: RenderCtx, cx: Float, cy: Float, rad: Float, color: Int) {
+        val path = Path()
+        for (i in 0 until 16) {
+            val a = Math.PI / 8 * i - Math.PI / 2
+            val rr = if (i % 2 == 0) rad else rad * 0.42f
+            val px = (cx + rr * cos(a)).toFloat(); val py = (cy + rr * sin(a)).toFloat()
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        path.close()
+        r.canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+    }
+
+    private fun diamond(r: RenderCtx, cx: Float, cy: Float, d: Float, color: Int) {
+        val path = Path().apply { moveTo(cx, cy - d); lineTo(cx + d, cy); lineTo(cx, cy + d); lineTo(cx - d, cy); close() }
+        r.canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
     }
 }

@@ -168,11 +168,9 @@ class RenderCtx(
     val s2 get() = cfg.size2 / 100f
 
     /** Main UI font for normal labels depending on language. */
-    // Typography: two roles. "sans*" = the simple, readable face for data (times, temperatures, dates, labels);
-    // "calliFont" = the decorative calligraphy for big Arabic headings (day, month, prayer name).
-    val sans: F get() = if (ar || arDigits) F.AR_UI else F.SANS
-    val sansBold: F get() = if (ar || arDigits) F.AR_UI_BOLD else F.SANS_BOLD
-    val sansMed: F get() = if (ar || arDigits) F.AR_UI_MED else F.SANS_MED
+    val sans: F get() = if (ar || arDigits) F.CAIRO else F.SANS
+    val sansBold: F get() = if (ar || arDigits) F.CAIRO_BOLD else F.SANS_BOLD
+    val sansMed: F get() = if (ar || arDigits) F.CAIRO_BOLD else F.SANS_MED
 
     fun t(en: String, arS: String) = if (ar) arS else en
     fun n(s: String) = if (arDigits) Calendars.toArabicDigits(s) else s
@@ -194,8 +192,6 @@ class RenderCtx(
             this.color = color
             textSize = size
             typeface = tf(font)
-            // numbers line up in columns (prayer times, countdowns)
-            if (Fonts.isSimple(font)) fontFeatureSettings = "'tnum'"
             textAlign = align
             letterSpacing = spacing + cfg.spacing / 100f
         }

@@ -254,10 +254,10 @@ object Moments2R {
         slab(hTop, hBot, px0, pw, RenderCtx.mix(acc, Color.WHITE, 0.18f), RenderCtx.mix(acc, Color.BLACK, 0.3f))
         val hs = Calendars.hijri(r.today)
         val hTxt = if (ar) "${r.n(hs.day)} ${Calendars.hijriMonth(hs.month, true)}" else "${hs.day} ${Calendars.hijriMonth(hs.month, false)}"
-        slText(hTxt, px0 + pw / 2, (hTop + hBot) / 2, pillH * 0.62f * r.s2, ink, r.sansBold, pw * 0.86f, pillH * 0.66f)
+        slText(hTxt, px0 + pw / 2, (hTop + hBot) / 2, pillH * 0.62f * r.s2, ink, if (ar) r.calliFont else r.sansBold, pw * 0.86f, pillH * 0.66f)
         slab(gTop, gBot, px0 - (if (ar) W * 0.03f else -W * 0.03f), pw, RenderCtx.mix(grey, Color.WHITE, 0.55f), RenderCtx.mix(grey, Color.BLACK, 0.3f))
         val gTxt = (if (ar) r.n(r.today.dayOfMonth.toString().padStart(2, '0')) else r.today.dayOfMonth.toString().padStart(2, '0')) + " " + Calendars.monthName(r.today.monthValue, ar)
-        slText(gTxt, px0 + pw / 2 - (if (ar) W * 0.03f else -W * 0.03f), (gTop + gBot) / 2, pillH * 0.62f * r.s2, 0xFF141414.toInt(), r.sansBold, pw * 0.86f, pillH * 0.66f)
+        slText(gTxt, px0 + pw / 2 - (if (ar) W * 0.03f else -W * 0.03f), (gTop + gBot) / 2, pillH * 0.62f * r.s2, 0xFF141414.toInt(), if (ar) r.calliFont else r.sansBold, pw * 0.86f, pillH * 0.66f)
         val d = Kit.day(r)
         val prW = W * 0.8f
         val prX = if (ar) px0 - W * 0.06f else px0 + W * 0.06f + pw - prW

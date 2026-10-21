@@ -320,7 +320,7 @@ object PhotoR {
         val rect = RectF(p, p, r.w - p, r.h * 0.78f)
         val b = pick(r)
         if (b == null) empty(r, rect, 6 * r.u) else Renderer.drawImage(r.canvas, b, rect, 6 * r.u)
-        r.text(r.cfg.text.ifBlank { r.t("Memories", "ذكريات") }, r.w / 2, r.h * 0.89f, 13 * r.u, 0xFF333333.toInt(), (if (r.ar) r.sansMed else F.PLAYFAIR), Paint.Align.CENTER, maxW = r.w - 2 * p)
+        r.text(r.cfg.text.ifBlank { r.t("Memories", "ذكريات") }, r.w / 2, r.h * 0.89f, 13 * r.u, 0xFF333333.toInt(), (if (r.ar) r.calliFont else F.PLAYFAIR), Paint.Align.CENTER, maxW = r.w - 2 * p)
     }
 
     fun caption(r: RenderCtx) {
@@ -463,7 +463,7 @@ object IslamicR {
         val cx = r.w / 2; val cy = r.h * 0.54f
         val rad = min(r.w, r.h) * 0.33f
         val rect = RectF(cx - rad, cy - rad, cx + rad, cy + rad)
-        r.text(r.cfg.text.ifBlank { "سبحان الله" }, cx, r.pad + 8 * r.u, 12 * r.u * r.s2, r.c2, r.sansMed, Paint.Align.CENTER, maxW = r.w - 2 * r.pad - 30 * r.u)
+        r.text(r.cfg.text.ifBlank { "سبحان الله" }, cx, r.pad + 8 * r.u, 12 * r.u * r.s2, r.c2, F.AMIRI, Paint.Align.CENTER, maxW = r.w - 2 * r.pad - 30 * r.u)
         r.canvas.drawArc(rect, 0f, 360f, false, r.strokePaint(withAlpha(r.c1, 36), 6 * r.u))
         r.canvas.drawArc(rect, -90f, 360f * inRound / goal, false, r.strokePaint(r.accentOr(r.c1), 6 * r.u))
         r.text(r.n(inRound.toString()), cx, cy - 3 * r.u, 30 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.CENTER)
