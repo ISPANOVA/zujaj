@@ -1,0 +1,20 @@
+name: fetch-fonts
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fonts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          base=https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsansarabic
+          for w in Regular Medium SemiBold Bold; do
+            n=$(echo $w | tr 'A-Z' 'a-z')
+            curl -sSfL "$base/IBMPlexSansArabic-$w.ttf" -o app/src/main/res/font/plex_ar_$n.ttf
+          done
+          ls -la app/src/main/res/font/plex_ar_*
+          git config user.name "zujaj-bot"; git config user.email "bot@users.noreply.github.com"
+          git add app/src/main/res/font/plex_ar_*.ttf
+          git commit -m "Add IBM Plex Sans Arabic (OFL)" && git push
