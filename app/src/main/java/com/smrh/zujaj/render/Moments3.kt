@@ -178,7 +178,7 @@ object Moments3R {
         val pl = bot.left + pad; val pr = bot.right - pad
         r.canvas.drawLine(pl, py, pr, py, r.strokePaint(withAlpha(ink, 60), 3 * u))
         val pf = (pr - pl) * m.progress
-        if (ar) r.canvas.drawLine(pr, py, pr - pf, py, r.strokePaint(ink, 3 * u)) else r.canvas.drawLine(pl, py, pl + pf, py, r.strokePaint(ink, 3 * u))
+        r.canvas.drawLine(pl, py, pl + pf, py, r.strokePaint(ink, 3 * u)) // media always runs left → right
         // controls: skip · white play pill · skip
         val cy = bot.top + bh * 0.82f
         val pillW = 44 * u; val pillH = 28 * u
@@ -186,8 +186,8 @@ object Moments3R {
         r.canvas.drawRoundRect(pill, 11 * u, 11 * u, r.fillPaint(Color.WHITE))
         Glyphs.playPause(r.canvas, m.playing, W / 2 + if (m.playing) 0f else 1.5f * u, cy, 13 * u, RenderCtx.mix(c1, Color.BLACK, 0.55f))
         r.hit(RectF(pill.left - 6 * u, pill.top - 6 * u, pill.right + 6 * u, pill.bottom + 6 * u), MediaR.cmd("play_pause"))
-        MediaR.btn(r, if (ar) "next" else "prev", W / 2 - 46 * u, cy, 12 * u, m, filled = false, glyphColor = ink)
-        MediaR.btn(r, if (ar) "prev" else "next", W / 2 + 46 * u, cy, 12 * u, m, filled = false, glyphColor = ink)
+        MediaR.btn(r, "prev", W / 2 - 50 * u, cy, 15 * u, m, filled = false, glyphColor = ink)
+        MediaR.btn(r, "next", W / 2 + 50 * u, cy, 15 * u, m, filled = false, glyphColor = ink)
     }
 
     // =================================================================== 2 · dark calligraphy board

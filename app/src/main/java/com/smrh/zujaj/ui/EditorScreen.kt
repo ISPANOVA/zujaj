@@ -405,7 +405,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     ChoiceRow(tr("Numerals", "الأرقام"), if (cfg.numerals == Numerals.ARABIC) Numerals.ARABIC else Numerals.LATIN, listOf(Numerals.LATIN to "123", Numerals.ARABIC to "١٢٣")) { cfg = cfg.copy(numerals = it) }
                     Divider()
                     ChoiceRow(tr("Arabic calligraphy", "الخط العربي"), cfg.calli, listOf(
-                        0 to tr("Kufi", "كوفي مزخرف"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Naskh", "نسخ"),
+                        0 to tr("Decorative", "مزخرف"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Naskh", "نسخ"),
                     )) { cfg = cfg.copy(calli = it) }
                     if (cfg.calli == 0) {
                         Divider(); SwitchRow(tr("Ornament", "زخرفة"), cfg.ornament) { cfg = cfg.copy(ornament = it) }
