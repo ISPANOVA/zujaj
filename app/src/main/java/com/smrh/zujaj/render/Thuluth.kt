@@ -1,116 +1,81 @@
 package com.smrh.zujaj.render
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
-import kotlin.math.cos
+import com.smrh.zujaj.data.Calendars
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
- * The decorative Arabic heading style (default "calligraphy"): a flowing naskh/thuluth word with a
- * stretched kashida, framed by small calligraphic ornament marks (little hooked "v" strokes and rings)
- * sprinkled in the empty space around the letters — never touching them.
+ * Decorative Arabic headings (day names, prayer names).
+ *
+ * 1) If real calligraphy artwork is bundled for the word — res/drawable/calli_<key> (vector XML or PNG/WebP),
+ *    keys: day_mon … day_sun, fajr, sunrise, dhuhr, asr, maghrib, isha — that artwork is drawn, tinted
+ *    in the widget colour. This is how authentic compound thuluth pieces are used.
+ * 2) Otherwise the word is set in Amiri Bold with a kashida and full tashkeel. No generated ornaments.
  */
 object Thuluth {
     private const val TATWEEL = 'ـ'
-    /** Letters that do NOT join to the following letter. */
     private const val NO_JOIN = "اأإآدذرزوؤةىءئ "
 
-    /** Inserts a kashida near the end of the word ("الجمعة" → "الجمـــعة"), the classic calligraphic stretch. */
+    private val keys: Map<String, String> = run {
+        val days = listOf("day_mon", "day_tue", "day_wed", "day_thu", "day_fri", "day_sat", "day_sun")
+        Calendars.daysAr.mapIndexed { i, d -> d to days[i] }.toMap() + mapOf(
+            "الفجر" to "fajr", "الشروق" to "sunrise", "الظهر" to "dhuhr", "العصر" to "asr", "المغرب" to "maghrib", "العشاء" to "isha",
+        )
+    }
+    private val resCache = HashMap<String, Int>()
+
+    /** Bundled artwork for this word, or 0. */
+    fun artFor(r: RenderCtx, word: String): Int {
+        val k = keys[word.trim()] ?: return 0
+        return resCache.getOrPut(k) { r.context.resources.getIdentifier("calli_$k", "drawable", r.context.packageName) }
+    }
+
+    /** Inserts a kashida near the end of the word ("الجمعة" → "الجمـــعة"); tashkeel marks stay on their letters. */
     fun stretch(s: String): String {
-        if (s.length < 4 || ' ' in s || TATWEEL in s) return s
-        for (i in (s.length - 3) downTo 1) {
-            val c = s[i]
-            if (c in 'ء'..'ي' && c !in NO_JOIN && s[i + 1] in 'ء'..'ي') return s.substring(0, i + 1) + "ـــ" + s.substring(i + 1)
+        if (' ' in s || TATWEEL in s) return s
+        fun isLetter(c: Char) = c in '\u0621'..'\u064A'
+        val letters = s.indices.filter { isLetter(s[it]) }
+        if (letters.size < 4) return s
+        for (li in (letters.size - 3) downTo 1) {
+            val i = letters[li]
+            if (s[i] in NO_JOIN) continue
+            // put the stretch after this letter's own marks
+            var j = i + 1
+            while (j < s.length && !isLetter(s[j])) j++
+            return s.substring(0, j) + "ـــ" + s.substring(j)
         }
         return s
     }
 
     fun draw(r: RenderCtx, s0: String, cx: Float, cy: Float, size0: Float, color: Int, maxW: Float, maxH: Float) {
-        val s = stretch(s0.trim())
+        val word = s0.trim()
+        val art = artFor(r, word)
+        if (art != 0 && drawArt(r, art, cx, cy, size0, color, maxW, maxH)) return
+        // fallback: clean calligraphic type, kashida + tashkeel, nothing generated
+        val s = stretch(Calendars.tashkeel(word))
         val p = r.paint(color, size0, F.AMIRI, Paint.Align.LEFT)
         val b = Rect()
         p.getTextBounds(s, 0, s.length, b)
-        // room for the marks around the word
-        val padK = 0.24f
         var k = 1f
-        val needW = b.width() + p.textSize * padK * 2; val needH = b.height() + p.textSize * padK * 2
-        if (maxW > 0 && needW > maxW) k = min(k, maxW / needW)
-        if (maxH > 0 && needH > maxH) k = min(k, maxH / needH)
+        if (maxW > 0 && b.width() > maxW) k = min(k, maxW / b.width())
+        if (maxH > 0 && b.height() > maxH) k = min(k, maxH / b.height())
         if (k < 1f) { p.textSize *= k; p.getTextBounds(s, 0, s.length, b) }
-        val x = cx - b.exactCenterX()
-        val y = cy - b.exactCenterY()
-        // a touch heavier than the plain font, like a broad calligraphy pen
-        r.canvas.drawText(s, x, y, Paint(p).apply { style = Paint.Style.FILL_AND_STROKE; strokeWidth = textSize * 0.028f; strokeJoin = Paint.Join.ROUND })
-        if (s.none { it in 'ء'..'ي' }) return
-        marks(r, s, p, x, y, b, color)
+        r.canvas.drawText(s, cx - b.exactCenterX(), cy - b.exactCenterY(), p)
     }
 
-    /** Sprinkles ornament marks in a band around the ink (stable for the same word). */
-    private fun marks(r: RenderCtx, s: String, p: Paint, x: Float, y: Float, b: Rect, color: Int) {
-        val em = p.textSize
-        val ms = em * 0.135f                      // mark size
-        val margin = em * 0.3f
-        val left = x + b.left - margin; val top = y + b.top - margin
-        val wPx = b.width() + 2 * margin; val hPx = b.height() + 2 * margin
-        // a small grid of the word's ink
-        val cell = (maxOf(wPx, hPx) / 140f).coerceAtLeast(1f)
-        val gw = (wPx / cell).toInt().coerceAtLeast(4); val gh = (hPx / cell).toInt().coerceAtLeast(4)
-        val bmp = Bitmap.createBitmap(gw, gh, Bitmap.Config.ALPHA_8)
-        Canvas(bmp).apply { scale(1f / cell, 1f / cell); translate(-left, -top); drawText(s, x, y, Paint(p).apply { this.color = android.graphics.Color.BLACK }) }
-        val a = ByteArray(gw * gh); bmp.copyPixelsToBuffer(java.nio.ByteBuffer.wrap(a)); bmp.recycle()
-        // distance (in cells) from every cell to the nearest ink — breadth-first from all ink cells
-        val dist = IntArray(gw * gh) { Int.MAX_VALUE }
-        val q = IntArray(gw * gh); var qh = 0; var qt = 0
-        for (i in a.indices) if ((a[i].toInt() and 0xFF) > 60) { dist[i] = 0; q[qt++] = i }
-        while (qh < qt) {
-            val i = q[qh++]; val cx = i % gw; val cy = i / gw; val nd = dist[i] + 1
-            if (cx > 0 && dist[i - 1] > nd) { dist[i - 1] = nd; q[qt++] = i - 1 }
-            if (cx < gw - 1 && dist[i + 1] > nd) { dist[i + 1] = nd; q[qt++] = i + 1 }
-            if (cy > 0 && dist[i - gw] > nd) { dist[i - gw] = nd; q[qt++] = i - gw }
-            if (cy < gh - 1 && dist[i + gw] > nd) { dist[i + gw] = nd; q[qt++] = i + gw }
-        }
-        val near = (ms * 1.6f / cell).toInt(); val far = (ms * 3.6f / cell).toInt()
-        val cand = ArrayList<Int>()
-        for (i in dist.indices) if (dist[i] in near..far) cand.add(i)
-        val rnd = java.util.Random(s.hashCode().toLong())
-        java.util.Collections.shuffle(cand, rnd)
-        val placed = ArrayList<Pair<Float, Float>>()
-        val minGap = ms * 2.8f
-        val maxMarks = (wPx / (ms * 3.6f)).toInt().coerceIn(5, 16)
-        val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.color = color; style = Paint.Style.STROKE; strokeWidth = ms * 0.2f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-        }
-        val thin = Paint(pen).apply { strokeWidth = ms * 0.15f }
-        for (i in cand) {
-            if (placed.size >= maxMarks) break
-            val px = left + (i % gw + 0.5f) * cell; val py = top + (i / gw + 0.5f) * cell
-            // mostly above the word, a few below
-            if (py > y + b.exactCenterY() && rnd.nextFloat() < 0.55f) continue
-            if (placed.any { (ax, ay) -> (ax - px) * (ax - px) + (ay - py) * (ay - py) < minGap * minGap }) continue
-            placed.add(px to py)
-            val ang = (rnd.nextFloat() - 0.5f) * 0.7f
-            fun rx(dx: Float, dy: Float) = px + dx * cos(ang) - dy * sin(ang)
-            fun ry(dx: Float, dy: Float) = py + dx * sin(ang) + dy * cos(ang)
-            if (rnd.nextFloat() < 0.8f) {
-                // little "v" whose left arm ends in a hook
-                val v = Path().apply {
-                    moveTo(rx(-ms * 0.42f, -ms * 0.55f), ry(-ms * 0.42f, -ms * 0.55f))
-                    lineTo(rx(0f, ms * 0.55f), ry(0f, ms * 0.55f))
-                    lineTo(rx(ms * 0.42f, -ms * 0.65f), ry(ms * 0.42f, -ms * 0.65f))
-                }
-                r.canvas.drawPath(v, pen)
-                val hook = Path().apply {
-                    moveTo(rx(-ms * 0.42f, -ms * 0.55f), ry(-ms * 0.42f, -ms * 0.55f))
-                    quadTo(rx(-ms * 0.3f, -ms * 0.95f), ry(-ms * 0.3f, -ms * 0.95f), rx(0f, -ms * 0.62f), ry(0f, -ms * 0.62f))
-                }
-                r.canvas.drawPath(hook, thin)
-            } else {
-                r.canvas.drawCircle(px, py, ms * 0.28f, thin)
-            }
-        }
+    private fun drawArt(r: RenderCtx, res: Int, cx: Float, cy: Float, size: Float, color: Int, maxW: Float, maxH: Float): Boolean {
+        val d = runCatching { androidx.core.content.ContextCompat.getDrawable(r.context, res) }.getOrNull()?.mutate() ?: return false
+        val iw = d.intrinsicWidth.coerceAtLeast(1).toFloat(); val ih = d.intrinsicHeight.coerceAtLeast(1).toFloat()
+        val boxW = if (maxW > 0) maxW else size * 3f
+        val boxH = if (maxH > 0) maxH else size
+        val k = min(boxW / iw, boxH / ih)
+        val w = iw * k; val h = ih * k
+        d.setBounds((cx - w / 2).toInt(), (cy - h / 2).toInt(), (cx + w / 2).toInt(), (cy + h / 2).toInt())
+        d.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+        d.draw(r.canvas)
+        return true
     }
 }
