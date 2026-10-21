@@ -129,7 +129,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             "اسمح بـ «المنبهات والتذكيرات» عشان الويدجت دي تتغير مع ساعة التليفون بالظبط من غير تأخير."),
         onDismiss = { askExact = false; Prefs.setString("exact_asked", "1") }) {
         PrimaryButton(tr("Allow", "اسمح"), Modifier.fillMaxWidth()) { askExact = false; Prefs.setString("exact_asked", "1"); com.smrh.zujaj.widget.Scheduler.askExact(ctx) }
-        TextButton(onClick = { askExact = false; Prefs.setString("exact_asked", "1") }) { Text(tr("Later", "بعدين"), color = Z.sub) }
+        androidx.compose.material3.TextButton(onClick = { askExact = false; Prefs.setString("exact_asked", "1") }) { Text(tr("Later", "بعدين"), color = Z.sub) }
     }
     val ar = Prefs.isArabicUi
     val f = style.feats
