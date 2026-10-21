@@ -38,10 +38,13 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.rounded.Block
 
 /** Logo + "Loading" shown for a moment when the app opens. */
+object SplashOnce { var shown = false }
+
 @Composable
 fun Splash(show: Boolean) {
-    var visible by remember { mutableStateOf(show) }
-    LaunchedEffect(Unit) { delay(1200); visible = false }
+    // only once per app start — never again when the screen is rebuilt (language, colour…)
+    var visible by remember { mutableStateOf(show && !SplashOnce.shown) }
+    LaunchedEffect(Unit) { SplashOnce.shown = true; delay(1200); visible = false }
     AnimatedVisibility(visible, exit = fadeOut(androidx.compose.animation.core.tween(350)) + scaleOut(targetScale = 1.04f)) {
         Box(
             Modifier.fillMaxSize().background(Color(0xFF0B0B12))

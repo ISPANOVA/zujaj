@@ -302,7 +302,7 @@ object PhotoR {
     }
 
     private fun empty(r: RenderCtx, rect: RectF, rad: Float) {
-        Renderer.drawArtPlaceholder(r.canvas, rect, rad)
+        Renderer.photoLayer(r, null, rect, rad)
         r.text(r.t("Tap to add photos", "اضغط لإضافة صور"), rect.centerX(), rect.centerY(), 12 * r.u, Color.WHITE, r.sansMed, Paint.Align.CENTER, maxW = rect.width() * 0.9f)
         r.hit(rect, HitAction.Cmd("edit"))
     }
@@ -311,12 +311,12 @@ object PhotoR {
         val rect = RectF(r.pad, r.pad, r.w - r.pad, r.h - r.pad)
         val rad = max(0f, Renderer.cornerPx(r) - r.pad * 0.6f)
         val b = pick(r)
-        if (b == null) empty(r, rect, rad) else Renderer.drawImage(r.canvas, b, rect, rad)
+        if (b == null) empty(r, rect, rad) else Renderer.photoLayer(r, b, rect, rad)
     }
 
     fun polaroid(r: RenderCtx) {
         val p = 8 * r.u
-        r.canvas.drawRoundRect(RectF(0f, 0f, r.w, r.h), Renderer.cornerPx(r), Renderer.cornerPx(r), r.fillPaint(0xFFF7F5F0.toInt()))
+        if (r.cfg.bg) r.canvas.drawRoundRect(RectF(0f, 0f, r.w, r.h), Renderer.cornerPx(r), Renderer.cornerPx(r), r.fillPaint(withAlpha(0xFFF7F5F0.toInt(), r.cfg.bgAlpha * 255 / 100)))
         val rect = RectF(p, p, r.w - p, r.h * 0.78f)
         val b = pick(r)
         if (b == null) empty(r, rect, 6 * r.u) else Renderer.drawImage(r.canvas, b, rect, 6 * r.u)
@@ -327,7 +327,7 @@ object PhotoR {
         val rect = RectF(0f, 0f, r.w, r.h)
         val b = pick(r)
         if (b == null) { empty(r, rect, 0f); return }
-        Renderer.drawImage(r.canvas, b, rect, 0f)
+        Renderer.photoLayer(r, b, rect, 0f)
         val g = Paint(); g.shader = LinearGradient(0f, r.h * 0.45f, 0f, r.h, Color.TRANSPARENT, withAlpha(Color.BLACK, 200), Shader.TileMode.CLAMP)
         r.canvas.drawRect(rect, g)
         r.text(r.cfg.text.ifBlank { r.t("Add a caption", "أضف تعليقاً") }, 16 * r.u, r.h - 22 * r.u, 15 * r.u * r.s1, Color.WHITE, r.sansBold, maxW = r.w - 32 * r.u)

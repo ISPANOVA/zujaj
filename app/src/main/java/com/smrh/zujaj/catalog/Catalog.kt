@@ -88,7 +88,10 @@ class WidgetStyle(
     val draw: (RenderCtx) -> Unit,
 ) {
     fun name(ar: Boolean) = if (ar) this.ar else en
-    fun defaultConfig(): WidgetConfig = defaults(WidgetConfig(styleId = id))
+    fun defaultConfig(): WidgetConfig = defaults(WidgetConfig(styleId = id)).let {
+        // photo widgets: the colourful placeholder is the "aurora" fill; the user can switch it like any background
+        if (id in com.smrh.zujaj.render.Renderer.PHOTO_BG && it.fill == com.smrh.zujaj.model.Fill.SOLID) it.copy(fill = com.smrh.zujaj.model.Fill.AURORA) else it
+    }
 }
 
 /** Loose search: English/Arabic names, category and keywords (e.g. "music" → media widgets). */
@@ -277,7 +280,7 @@ object Catalog {
         WidgetStyle("dark_prayer_date", Cat.CALLI, "Night · Prayer & Date", "الليل · الصلاة والتاريخ", L, isNew = true, popular = true, feats = setOf(Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), defaults = { it.copy(fill = Fill.SOLID, bgAlpha = 96, bgColor = 0xFF141416.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xB3FFFFFF.toInt(), padding = 0) }) { Moments3R.darkPrayerDate(it) },
         WidgetStyle("dark_grid", Cat.PRAYER, "Night · Prayer Grid", "الليل · شبكة الصلاة", L, isNew = true, popular = true, feats = setOf(Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), defaults = { it.copy(fill = Fill.SOLID, bgAlpha = 96, bgColor = 0xFF141416.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xB3FFFFFF.toInt(), padding = 0) }) { Moments3R.darkGrid(it) },
         WidgetStyle("sport_card", Cat.PRAYER, "Sport Card", "الكارت الرياضي", Shape.TALL, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.COLOR2, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.SYSTEM), bakeTime = { true }, defaults = { it.copy(fill = Fill.SOLID, bgColor = 0xFF0E0E10.toInt(), texture = Texture.GRAIN, color1 = 0xFFFFFFFF.toInt(), color2 = 0xFFD9D9D9.toInt(), accent = 0xFFE5322D.toInt(), calli = 0) }) { Moments2R.sport(it) },
-        WidgetStyle("prayer_board", Cat.PRAYER, "Prayer Board", "لوحة الصلاة", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), accent = 0xFFF2E6B8.toInt()) }) { Moments2R.board(it) },
+        WidgetStyle("prayer_board", Cat.PRAYER, "Prayer Board", "لوحة الصلاة", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.GLASS, bgColor = 0xFF8E8EA0.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), accent = 0xFFF2E6B8.toInt()) }) { Moments2R.board(it) },
         WidgetStyle("event_ring", Cat.COUNTERS, "Event Ring", "حلقة المناسبة", S, isNew = true, popular = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "ramadan", fill = Fill.GRADIENT, bgColor = 0xFF14102A.toInt(), bgColor2 = 0xFF2A1B4D.toInt(), accent = 0xFFE7B75F.toInt(), accent2 = 0xFFB07BF0.toInt()) }) { EventR.ring(it) },
         WidgetStyle("event_card", Cat.COUNTERS, "Event Card", "كارت المناسبة", W, isNew = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "fitr", fill = Fill.GRADIENT, bgColor = 0xFF0E2420.toInt(), bgColor2 = 0xFF1C4A3F.toInt(), accent = 0xFF3DDCB5.toInt(), accent2 = 0xFFB7E34A.toInt()) }) { EventR.card(it) },
         WidgetStyle("event_flip", Cat.COUNTERS, "Event Flip", "عدّاد قلّاب", W, pro = true, isNew = true, feats = setOf(Feat.EVENT), defaults = { it.copy(event = "exams", fill = Fill.GRADIENT, bgColor = 0xFF1A1A1F.toInt(), bgColor2 = 0xFF2E2E38.toInt()) }) { EventR.flip(it) },

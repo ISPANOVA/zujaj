@@ -151,14 +151,14 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
     // floating glass capsule; the selected tab grows into a lit pill with its label
     Box(
         modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC07070C), Color(0xF207070C))))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.8f), Z.bg.copy(alpha = 0.95f))))
             .navigationBarsPadding().padding(top = 26.dp, bottom = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier.shadow(24.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
+            Modifier.shadow(if (Z.light) 12.dp else 24.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(50))
-                .background(Brush.verticalGradient(listOf(Color(0xF2202028), Color(0xF2121218))))
+                .background(Brush.verticalGradient(listOf(Z.surface.copy(alpha = 0.96f), Z.surface2.copy(alpha = 0.96f))))
                 .border(1.dp, Brush.verticalGradient(listOf(Z.tint(0.16f), Z.tint(0.04f))), RoundedCornerShape(50))
                 .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

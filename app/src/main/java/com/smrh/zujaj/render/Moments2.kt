@@ -145,8 +145,8 @@ object Moments2R {
         val card = RectF(0f, 0f, r.w, topH)
         val row = RectF(0f, topH + gap, r.w, r.h)
         val rad = Renderer.cornerPx(r)
-        Renderer.liquidGlass(r.canvas, card, rad, r.u, r.cfg.bgColor, 255)
-        Renderer.liquidGlass(r.canvas, row, rad * 0.8f, r.u, r.cfg.bgColor, 255)
+        Renderer.cardBody(r, card, rad)
+        Renderer.cardBody(r, row, rad * 0.8f)
         val ar = r.ar
         val p = 16 * r.u
         val sx = if (ar) card.right - p else card.left + p

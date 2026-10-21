@@ -19,17 +19,23 @@ import androidx.compose.ui.unit.sp
 import com.smrh.zujaj.R
 import com.smrh.zujaj.data.Prefs
 
-data class Accent(val en: String, val ar: String, val color: Color)
+data class Accent(val en: String, val ar: String, val dark: Color, val lightC: Color) {
+    /** deeper, richer version on light backgrounds so it never looks washed out */
+    val color: Color get() = if (Z.light) lightC else dark
+}
 
 object Z {
     val accents = listOf(
-        Accent("Gold", "ذهبي", Color(0xFFE7B75F)),
-        Accent("Violet", "بنفسجي", Color(0xFF8B7CFF)),
-        Accent("Rose", "وردي", Color(0xFFFF6B9A)),
-        Accent("Mint", "نعناعي", Color(0xFF3DD9B4)),
-        Accent("Sky", "سماوي", Color(0xFF4DB5FF)),
-        Accent("Ember", "برتقالي", Color(0xFFFF8A4C)),
+        Accent("Gold", "ذهبي", Color(0xFFE7B75F), Color(0xFFC08A1E)),
+        Accent("Violet", "بنفسجي", Color(0xFF8B7CFF), Color(0xFF5B4BE0)),
+        Accent("Rose", "وردي", Color(0xFFFF6B9A), Color(0xFFE03C72)),
+        Accent("Mint", "نعناعي", Color(0xFF3DD9B4), Color(0xFF0E9E80)),
+        Accent("Sky", "سماوي", Color(0xFF4DB5FF), Color(0xFF1C7FD8)),
+        Accent("Ember", "برتقالي", Color(0xFFFF8A4C), Color(0xFFE5621E)),
     )
+    /** the chosen colour, observed by the UI so a change animates instead of rebuilding the app */
+    var accentIdx by androidx.compose.runtime.mutableIntStateOf(-1)
+    fun pickAccent(i: Int) { Prefs.accentIndex = i; accentIdx = i }
     /** Light look (set from Settings: system / dark / light). Every colour below follows it. */
     var light by androidx.compose.runtime.mutableStateOf(false)
     val bg get() = if (light) Color(0xFFF3F2F7) else Color(0xFF07070C)
@@ -67,14 +73,15 @@ object Z {
     val kufi = FontFamily(Font(R.font.reem_kufi_bold))
 }
 
-val LocalAccent = staticCompositionLocalOf { Z.accents[0].color }
+val LocalAccent = androidx.compose.runtime.compositionLocalOf { Z.accents[0].color }
 
 fun tr(en: String, ar: String) = if (Prefs.isArabicUi) ar else en
 
 @Composable
 fun ZujajTheme(content: @Composable () -> Unit) {
     val ar = Prefs.isArabicUi
-    val accent = Z.accents.getOrElse(Prefs.accentIndex) { Z.accents[0] }.color
+    val idx = if (Z.accentIdx >= 0) Z.accentIdx else Prefs.accentIndex
+    val accent by androidx.compose.animation.animateColorAsState(Z.accents.getOrElse(idx) { Z.accents[0] }.color, androidx.compose.animation.core.tween(500), label = "accent")
     val family = if (ar) Z.cairo else Z.manrope
     val base = Typography()
     fun TextStyle.f() = copy(fontFamily = family)

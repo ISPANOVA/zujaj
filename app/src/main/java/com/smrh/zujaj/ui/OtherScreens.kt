@@ -240,8 +240,8 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Z.accents.forEachIndexed { i, a ->
                             Box(Modifier.size(22.dp).clip(CircleShape).background(a.color)
-                                .border(2.dp, if (i == Prefs.accentIndex) Color.White else Color.Transparent, CircleShape)
-                                .clickable { Prefs.accentIndex = i })
+                                .border(2.dp, if (i == (if (Z.accentIdx >= 0) Z.accentIdx else Prefs.accentIndex)) Color.White else Color.Transparent, CircleShape)
+                                .clickable { Z.pickAccent(i) })
                         }
                     }
                 }

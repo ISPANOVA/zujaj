@@ -201,12 +201,12 @@ private fun LookPage() {
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Z.accents.forEachIndexed { i, a ->
-                val on = i == Prefs.accentIndex
+                val on = i == (if (Z.accentIdx >= 0) Z.accentIdx else Prefs.accentIndex)
                 val s by animateFloatAsState(if (on) 1.15f else 1f, spring(0.5f, 500f), label = "s")
                 Box(Modifier.graphicsLayer { scaleX = s; scaleY = s }.size(38.dp).clip(CircleShape)
                     .background(Brush.linearGradient(listOf(a.color, a.color.copy(alpha = 0.75f))))
                     .border(if (on) 3.dp else 0.dp, Color.White, CircleShape)
-                    .clickable { Haptics.tick(ctx); Prefs.accentIndex = i }, contentAlignment = Alignment.Center) {
+                    .clickable { Haptics.tick(ctx); Z.pickAccent(i) }, contentAlignment = Alignment.Center) {
                     if (on) Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }

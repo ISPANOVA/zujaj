@@ -128,7 +128,7 @@ object Renderer {
         val cfg = rc.cfg
         if (!cfg.bg || cfg.fill == Fill.NONE) return
         // these designs draw their own shaped cards (notches, grids) using the same settings
-        if (rc.style.id.startsWith("rose_") || rc.style.id.startsWith("dark_")) return
+        if (rc.style.id in OWN_BG || rc.style.id in PHOTO_BG || rc.style.id.startsWith("rose_") || rc.style.id.startsWith("dark_")) return
         val c = rc.canvas
         val r = RectF(0f, 0f, rc.w, rc.h)
         val rad = cornerPx(rc)
@@ -225,6 +225,58 @@ object Renderer {
      * pooling at the top, a thick soft rim (the "lens" edge) and a crisp specular outline that is
      * bright at the top-left and bottom-right corners.
      */
+    /** Designs made of several cards draw each card themselves with this, following the editor settings. */
+    val OWN_BG = setOf("prayer_board")
+    /** Widgets whose background is a photo / album art: the editor's background settings apply to that picture. */
+    val PHOTO_BG = setOf("media_cover", "media_ring", "media_deck", "media_poster", "photo_small", "photo_wide", "photo_large",
+        "photo_polaroid", "photo_caption", "photo_verse", "photo_verse_sq", "photo_verse_lg")
+
+    /**
+     * A photo (or its placeholder). When it fills the widget it IS the background, so it follows the editor:
+     * background off → hidden, opacity → its transparency, and with no photo the fill/colours shape the placeholder.
+     */
+    fun photoLayer(rc: RenderCtx, b: Bitmap?, dst: RectF, radius: Float) {
+        val full = dst.width() >= rc.w * 0.85f && dst.height() >= rc.h * 0.6f
+        if (!full || rc.style.id !in PHOTO_BG) { if (b != null) drawImage(rc.canvas, b, dst, radius) else drawArtPlaceholder(rc.canvas, dst, radius); return }
+        val cfg = rc.cfg
+        if (!cfg.bg) return
+        val a = cfg.bgAlpha.coerceIn(0, 100) * 255 / 100
+        when {
+            b != null -> drawImage(rc.canvas, b, dst, radius, a)
+            cfg.fill == Fill.AURORA || cfg.fill == Fill.NONE -> drawArtPlaceholder(rc.canvas, dst, radius, a)
+            else -> cardBody(rc, dst, radius)
+        }
+    }
+
+    fun cardBody(rc: RenderCtx, r: RectF, rad: Float) {
+        val cfg = rc.cfg
+        if (!cfg.bg || cfg.fill == Fill.NONE) return
+        val a = cfg.bgAlpha.coerceIn(0, 100) * 255 / 100
+        val c = rc.canvas; val u = rc.u
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        when (cfg.fill) {
+            Fill.GLASS -> {
+                // clean frosted glass: a soft light body, brighter at the top-left, a crisp thin rim
+                p.shader = LinearGradient(r.left, r.top, r.right, r.bottom,
+                    withAlpha(RenderCtx.mix(cfg.bgColor, Color.WHITE, 0.7f), a * 26 / 100), withAlpha(cfg.bgColor, a * 14 / 100), Shader.TileMode.CLAMP)
+                c.drawRoundRect(r, rad, rad, p)
+                p.shader = LinearGradient(0f, r.top, 0f, r.top + r.height() * 0.5f, withAlpha(Color.WHITE, a * 10 / 100), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                c.drawRoundRect(r, rad, rad, p)
+                val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE; strokeWidth = max(1f, u)
+                    shader = LinearGradient(r.left, r.top, r.right, r.bottom, withAlpha(Color.WHITE, a * 55 / 100), withAlpha(Color.WHITE, a * 12 / 100), Shader.TileMode.CLAMP)
+                }
+                val i = rim.strokeWidth / 2
+                c.drawRoundRect(RectF(r.left + i, r.top + i, r.right - i, r.bottom - i), rad, rad, rim)
+            }
+            Fill.SOLID -> { p.color = withAlpha(cfg.bgColor, a); c.drawRoundRect(r, rad, rad, p) }
+            else -> {
+                p.shader = LinearGradient(r.left, r.top, r.right, r.bottom, withAlpha(cfg.bgColor, a), withAlpha(cfg.bgColor2, a), Shader.TileMode.CLAMP)
+                c.drawRoundRect(r, rad, rad, p)
+            }
+        }
+    }
+
     fun liquidGlass(c: Canvas, r: RectF, rad: Float, u: Float, tint: Int, a: Int) {
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         // body: faint tint + a little white so it reads as glass on any wallpaper
@@ -278,15 +330,15 @@ object Renderer {
     }
 
     /** A colourful placeholder "album art" gradient (no copyrighted art). */
-    fun drawArtPlaceholder(c: Canvas, dst: RectF, radius: Float) {
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    fun drawArtPlaceholder(c: Canvas, dst: RectF, radius: Float, alpha: Int = 255) {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.alpha = alpha }
         p.shader = LinearGradient(dst.left, dst.top, dst.right, dst.bottom,
             intArrayOf(0xFF6A5CFF.toInt(), 0xFFE8478B.toInt(), 0xFFFFA25C.toInt(), 0xFF38C6D9.toInt()),
             floatArrayOf(0f, 0.4f, 0.7f, 1f), Shader.TileMode.CLAMP)
         c.drawRoundRect(dst, radius, radius, p)
         val g = Paint(Paint.ANTI_ALIAS_FLAG)
         g.shader = RadialGradient(dst.left + dst.width() * 0.3f, dst.top + dst.height() * 0.25f, dst.width() * 0.7f,
-            withAlpha(Color.WHITE, 90), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+            withAlpha(Color.WHITE, 90 * alpha / 255), Color.TRANSPARENT, Shader.TileMode.CLAMP)
         c.drawRoundRect(dst, radius, radius, g)
     }
 }

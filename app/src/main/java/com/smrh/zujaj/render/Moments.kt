@@ -54,12 +54,8 @@ object VerseR {
 
     private fun base(r: RenderCtx, rect: RectF, rad: Float): Boolean {
         val b = photo(r)
-        if (b == null) {
-            Renderer.drawArtPlaceholder(r.canvas, rect, rad)
-            r.hit(rect, HitAction.Cmd("edit"))
-            return false
-        }
-        Renderer.drawImage(r.canvas, b, rect, rad)
+        Renderer.photoLayer(r, b, rect, rad)
+        if (b == null) { r.hit(rect, HitAction.Cmd("edit")); return false }
         return true
     }
 

@@ -18,7 +18,7 @@ object MediaR {
 
     fun art(r: RenderCtx, m: MediaState, dst: RectF, radius: Float) {
         val b = m.art ?: (if (m.real) MediaRepo.cachedArt(r.context) else null)
-        if (b != null) Renderer.drawImage(r.canvas, b, dst, radius) else Renderer.drawArtPlaceholder(r.canvas, dst, radius)
+        Renderer.photoLayer(r, b, dst, radius)
     }
 
     fun title(r: RenderCtx, m: MediaState) = if (m.real) m.title else r.t("Midnight Drive", "رحلة منتصف الليل")

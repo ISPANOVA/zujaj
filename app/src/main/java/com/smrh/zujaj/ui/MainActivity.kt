@@ -84,7 +84,7 @@ open class MainActivity : ComponentActivity() {
         }
         setContent {
             val ver by Prefs.version.collectAsState()
-            key(ver.coerceAtMost(0), Prefs.isArabicUi, Prefs.accentIndex) {
+            key(ver.coerceAtMost(0), Prefs.isArabicUi) {
                 ZujajTheme {
                     val light = Z.light
                     LaunchedEffect(light) { bars() }
