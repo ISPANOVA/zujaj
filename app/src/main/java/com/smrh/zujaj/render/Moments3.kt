@@ -49,17 +49,31 @@ object Moments3R {
 
     // =================================================================== 1 · rose glass board
     /** A card with a round bite taken out of its top edge, filled with the card gradient. */
+    /** The card body follows the editor: background on/off, fill (solid · gradient · glass · aurora), colours and opacity. */
+    private fun bodyPaint(r: RenderCtx, rc: RectF): Paint? {
+        val c = r.cfg
+        if (!c.bg || c.fill == com.smrh.zujaj.model.Fill.NONE) return null
+        val a = c.bgAlpha.coerceIn(0, 100) * 255 / 100
+        return Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            when (c.fill) {
+                com.smrh.zujaj.model.Fill.SOLID -> color = withAlpha(c.bgColor, a)
+                com.smrh.zujaj.model.Fill.GLASS -> shader = LinearGradient(rc.left, rc.top, rc.right, rc.bottom,
+                    withAlpha(RenderCtx.mix(c.bgColor, Color.WHITE, 0.55f), a * 45 / 100), withAlpha(c.bgColor, a * 30 / 100), Shader.TileMode.CLAMP)
+                else -> shader = LinearGradient(rc.left, rc.top, rc.right, rc.bottom, withAlpha(c.bgColor, a), withAlpha(c.bgColor2, a), Shader.TileMode.CLAMP)
+            }
+        }
+    }
+
     private fun notchedCard(r: RenderCtx, rc: RectF, rad: Float, notchX: Float, notchY: Float, notchR: Float, c1: Int, c2: Int) {
         val card = Path().apply { addRoundRect(rc, rad, rad, Path.Direction.CW) }
         val bite = Path().apply { addCircle(notchX, notchY, notchR, Path.Direction.CW) }
         card.op(bite, Path.Op.DIFFERENCE)
-        // soft shadow, then the gradient body, then a faint light edge on top
+        val body = bodyPaint(r, rc) ?: return   // background turned off: only the content shows
+        // soft shadow, then the body, then a faint light edge on top
         r.canvas.drawPath(card, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = withAlpha(Color.BLACK, 70); maskFilter = android.graphics.BlurMaskFilter(6 * r.u, android.graphics.BlurMaskFilter.Blur.NORMAL)
         })
-        r.canvas.drawPath(card, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(rc.left, rc.top, rc.right, rc.bottom, c1, c2, Shader.TileMode.CLAMP)
-        })
+        r.canvas.drawPath(card, body)
         r.canvas.drawPath(card, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE; strokeWidth = 1f * r.u
             shader = LinearGradient(0f, rc.top, 0f, rc.bottom, withAlpha(Color.WHITE, 60), withAlpha(Color.WHITE, 8), Shader.TileMode.CLAMP)
@@ -405,10 +419,10 @@ object Moments3R {
 
     // =================================================================== dark calligraphy set
     private fun plate(r: RenderCtx, rc: RectF, rad: Float = 20 * r.u) {
-        r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, rc.top, 0f, rc.bottom, RenderCtx.mix(r.cfg.bgColor, Color.WHITE, 0.04f), r.cfg.bgColor, Shader.TileMode.CLAMP)
-        })
-        r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 0.8f * r.u; color = withAlpha(Color.WHITE, 18) })
+        val body = bodyPaint(r, rc) ?: return
+        val rr = if (r.cfg.corner > 0) minOf(r.cfg.corner * r.u, rad * 1.6f) else rad
+        r.canvas.drawRoundRect(rc, rr, rr, body)
+        r.canvas.drawRoundRect(rc, rr, rr, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 0.8f * r.u; color = withAlpha(Color.WHITE, 18) })
     }
 
     // ---------------------------------------------------- 1 · day + months (wide)

@@ -127,6 +127,8 @@ object Renderer {
     fun drawBackground(rc: RenderCtx) {
         val cfg = rc.cfg
         if (!cfg.bg || cfg.fill == Fill.NONE) return
+        // these designs draw their own shaped cards (notches, grids) using the same settings
+        if (rc.style.id.startsWith("rose_") || rc.style.id.startsWith("dark_")) return
         val c = rc.canvas
         val r = RectF(0f, 0f, rc.w, rc.h)
         val rad = cornerPx(rc)
