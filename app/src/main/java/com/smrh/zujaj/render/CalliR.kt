@@ -195,7 +195,7 @@ object CalliR {
         Kit.calli(r, text, r.w * 0.28f, r.h * 0.38f, r.h * 0.3f * r.s1, r.c1, maxW = r.w * 0.42f, maxH = r.h * 0.34f)
         Kit.calli(r, dayAr(r), r.w * 0.74f, r.h * 0.38f, r.h * 0.3f * r.s1, r.c1, maxW = r.w * 0.4f, maxH = r.h * 0.34f)
         val nx = Kit.day(r).next
-        r.text(Kit.pName(r, nx), r.w - r.pad - 4 * r.u, r.h * 0.8f, 15 * r.u * r.s2, r.c1, if (r.ar) F.AMIRI else r.sansMed, Paint.Align.RIGHT)
+        r.text(Kit.pName(r, nx), r.w - r.pad - 4 * r.u, r.h * 0.8f, 15 * r.u * r.s2, r.c1, r.sansMed, Paint.Align.RIGHT)
         Kit.countdown(r, r.pad + 4 * r.u, r.h * 0.8f, 13 * r.u * r.s2, r.c2)
     }
 

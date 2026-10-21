@@ -6,6 +6,11 @@ import androidx.core.content.res.ResourcesCompat
 import com.smrh.zujaj.R
 
 enum class F(val res: Int) {
+    /** Simple Arabic: the phone's own clean system font (One UI on Samsung, Noto on Pixel) for data,
+     *  times, temperatures, countdowns and labels. res = 0 means "system font", weight in [AR_W]. */
+    AR_UI(0),
+    AR_UI_MED(0),
+    AR_UI_BOLD(0),
     SANS(R.font.manrope_regular),
     SANS_MED(R.font.manrope_semibold),
     SANS_BOLD(R.font.manrope_bold),
@@ -56,6 +61,20 @@ object Fonts {
 
     @Synchronized
     fun get(ctx: Context, f: F): Typeface = cache.getOrPut(f) {
-        runCatching { ResourcesCompat.getFont(ctx, f.res) }.getOrNull() ?: Typeface.DEFAULT
+        when (f) {
+            // the old simple Arabic face now follows the same clean system font, so every widget matches
+            F.AR_UI, F.CAIRO -> system(400)
+            F.AR_UI_MED -> system(500)
+            F.AR_UI_BOLD, F.CAIRO_BOLD -> system(700)
+            else -> runCatching { ResourcesCompat.getFont(ctx, f.res) }.getOrNull() ?: Typeface.DEFAULT
+        }
     }
+
+    private fun system(weight: Int): Typeface =
+        if (android.os.Build.VERSION.SDK_INT >= 28) Typeface.create(Typeface.create("sans-serif", Typeface.NORMAL), weight, false)
+        else Typeface.create(if (weight >= 600) "sans-serif" else if (weight >= 500) "sans-serif-medium" else "sans-serif", if (weight >= 600) Typeface.BOLD else Typeface.NORMAL)
+
+    /** Decorative faces (headings): calligraphy. Everything else is the simple face. */
+    fun isSimple(f: F) = f == F.AR_UI || f == F.AR_UI_MED || f == F.AR_UI_BOLD || f == F.CAIRO || f == F.CAIRO_BOLD ||
+        f == F.SANS || f == F.SANS_MED || f == F.SANS_BOLD
 }

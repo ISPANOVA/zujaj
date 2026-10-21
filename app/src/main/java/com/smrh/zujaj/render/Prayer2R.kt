@@ -411,7 +411,7 @@ object Prayer2R {
             val col = if (r.ar) 1 - i / 3 else i / 3; val row = i % 3
             val x0 = inner.left + colW * col; val y = inner.top + rowH * (row + 0.5f)
             val on = p.key == d.next.key
-            r.text(Kit.pName(r, p), x0 + colW - 12 * r.u, y, 15 * r.u * r.s2, if (on) r.accent else r.c1, if (r.ar) F.AMIRI else r.sansMed, Paint.Align.RIGHT, maxW = colW * 0.48f)
+            r.text(Kit.pName(r, p), x0 + colW - 12 * r.u, y, 15 * r.u * r.s2, if (on) r.accent else r.c1, r.sansMed, Paint.Align.RIGHT, maxW = colW * 0.48f)
             r.text(Kit.pTime(r, p.time, false), x0 + 12 * r.u, y, 15 * r.u * r.s1, if (on) r.accent else r.c1, r.sansBold, maxW = colW * 0.4f)
         }
     }
@@ -419,7 +419,7 @@ object Prayer2R {
     // Temple — hijri date, countdown slider and a 3 × 2 grid with check boxes (W)
     fun temple(r: RenderCtx) {
         val d = Kit.day(r)
-        r.text(Kit.hijri(r), r.w - r.pad - 4 * r.u, r.h * 0.16f, 15 * r.u * r.s1, r.c1, if (r.ar) F.AMIRI else r.sansMed, Paint.Align.RIGHT, maxW = r.w * 0.5f)
+        r.text(Kit.hijri(r), r.w - r.pad - 4 * r.u, r.h * 0.16f, 15 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.RIGHT, maxW = r.w * 0.5f)
         Kit.countdown(r, r.pad + 4 * r.u, r.h * 0.1f, 8 * r.u, r.accent)
         Kit.slider(r, r.pad + 4 * r.u, r.h * 0.22f, r.w * 0.4f, 1 - d.progress, r.c1, withAlpha(r.c1, 30), 2 * r.u, 5 * r.u)
         val colW = (r.w - 2 * r.pad) / 3; val rowH = r.h * 0.6f / 2
@@ -439,7 +439,7 @@ object Prayer2R {
     // Next small — time, prayer name and remaining (S)
     fun nextSmall(r: RenderCtx) {
         val nx = Kit.day(r).next
-        r.text(Kit.pName(r, nx), r.w - r.pad, r.h * 0.38f, 22 * r.u * r.s1, r.c1, if (r.ar) F.AMIRI else r.sansBold, Paint.Align.RIGHT, maxW = r.w * 0.5f)
+        r.text(Kit.pName(r, nx), r.w - r.pad, r.h * 0.38f, 22 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.RIGHT, maxW = r.w * 0.5f)
         r.text(Kit.pTime(r, nx.time), r.pad, r.h * 0.38f, 20 * r.u * r.s1, r.c1, r.sansBold, maxW = r.w * 0.45f)
         r.text(r.t("next", "القادمة"), r.w - r.pad, r.h * 0.18f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         Kit.countdown(r, r.w - r.pad, r.h * 0.7f, 11 * r.u, r.accent, Paint.Align.RIGHT)
