@@ -291,4 +291,212 @@ object Moments3R {
             r.text(Kit.pTime(r, p.time), rc.centerX(), rc.top + eH * 0.68f, 12 * u * r.s2, ink, r.sansBold, Paint.Align.CENTER, maxW = cw - 4 * u)
         }
     }
+
+    // =================================================================== separate widgets (as in the references)
+    private fun mirror(r: RenderCtx, x: Float) = if (r.ar) x else r.w - x
+
+    // ---------------------------------------------------- rose · next prayer (small)
+    fun roseNext(r: RenderCtx) {
+        val u = r.u; val R = 19 * u; val ar = r.ar
+        val card = RectF(0f, R * 0.45f, r.w, r.h)
+        val nx = r.w - R - 10 * u
+        val bx = if (ar) nx else r.w - nx
+        val by = card.top + R * 0.55f
+        notchedCard(r, card, 22 * u, bx, by, R + 5 * u, r.cfg.bgColor, r.cfg.bgColor2)
+        bubble(r, bx, by, R, r.accent)
+        val d = Kit.day(r); val p = d.next
+        Kit.prayerIcon(r, p.key, bx, by, R * 0.5f, Color.WHITE)
+        val pad = 14 * u
+        val lx = if (ar) pad else r.w - pad
+        r.text(r.t("Next prayer", "الصلاة القادمة"), lx, card.top + 18 * u, 10 * u * r.s2, withAlpha(r.c1, 200), r.sans, if (ar) Paint.Align.LEFT else Paint.Align.RIGHT, maxW = r.w - 2 * R - 34 * u)
+        val tx = if (ar) r.w - pad else pad
+        val al = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
+        val h = card.height()
+        r.text(Kit.pName(r, p), tx, card.top + h * 0.56f, 22 * u * r.s1, r.c1, r.sansBold, al, maxW = r.w - 2 * pad)
+        r.text(timeAmPm(r, p), tx, card.top + h * 0.75f, 15 * u * r.s2, r.c1, r.sansBold, al)
+        r.text(r.t("in ", "بعد ") + left(r, p), tx, card.top + h * 0.89f, 10.5f * u * r.s2, withAlpha(r.c1, 200), r.sans, al)
+    }
+
+    // ---------------------------------------------------- rose · weather (small)
+    fun roseWeather(r: RenderCtx) {
+        val u = r.u; val R = 19 * u; val ar = r.ar
+        val card = RectF(0f, R * 0.45f, r.w, r.h)
+        val bx = if (ar) R + 10 * u else r.w - R - 10 * u
+        val by = card.top + R * 0.55f
+        notchedCard(r, card, 22 * u, bx, by, R + 5 * u, r.cfg.bgColor, r.cfg.bgColor2)
+        bubble(r, bx, by, R, r.accent)
+        val w = Kit.weather(r)
+        Glyphs.weather(r.canvas, w.cond, w.night, bx, by, R * 1.1f, color = false)
+        val pad = 14 * u
+        val tx = if (ar) r.w - pad else pad
+        val al = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
+        val h = card.height()
+        r.text(w.city.ifBlank { r.t("My city", "مدينتي") }, tx, card.top + 18 * u, 11 * u * r.s2, withAlpha(r.c1, 200), r.sans, al, maxW = r.w - 2 * R - 34 * u)
+        r.text(Kit.temp(r, w.temp), tx, card.top + h * 0.56f, 32 * u * r.s1, r.c1, r.sansBold, al)
+        r.text(WeatherRepo.condName(w.cond, ar), tx, card.top + h * 0.75f, 12 * u * r.s2, r.c1, r.sansMed, al, maxW = r.w - 2 * pad)
+        r.text(Kit.temp(r, w.lo) + " / " + Kit.temp(r, w.hi), tx, card.top + h * 0.89f, 10.5f * u * r.s2, withAlpha(r.c1, 200), r.sans, al)
+    }
+
+    // ---------------------------------------------------- rose · prayer times (wide)
+    fun rosePrayers(r: RenderCtx) {
+        val u = r.u; val R = 18 * u; val ar = r.ar
+        val card = RectF(0f, R * 0.95f, r.w, r.h)
+        val by = card.top + R * 0.05f
+        notchedCard(r, card, 22 * u, r.w / 2, by, R + 5 * u, r.cfg.bgColor, r.cfg.bgColor2)
+        bubble(r, r.w / 2, by, R, r.accent)
+        val d = Kit.day(r); val nx = d.next
+        Kit.prayerIcon(r, nx.key, r.w / 2, by, R * 0.5f, Color.WHITE)
+        val pad = 16 * u; val h = card.height()
+        val ix = if (ar) r.w - pad else pad; val ox = if (ar) pad else r.w - pad
+        val ial = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT; val oal = if (ar) Paint.Align.LEFT else Paint.Align.RIGHT
+        val sub = withAlpha(r.c1, 200)
+        r.text(gregDay(r), ix, card.top + h * 0.17f, 13 * u * r.s1, r.c1, r.sansBold, ial, maxW = r.w / 2 - R - 2 * pad)
+        r.text(hijriFull(r), ix, card.top + h * 0.33f, 10 * u * r.s2, sub, r.sans, ial, maxW = r.w / 2 - R - 2 * pad)
+        r.text(Kit.pName(r, nx), ox, card.top + h * 0.17f, 13 * u * r.s1, r.c1, r.sansBold, oal)
+        r.text(r.t("in ", "بعد ") + left(r, nx), ox, card.top + h * 0.33f, 10 * u * r.s2, sub, r.sans, oal)
+        val list = Kit.ordered(r, d.list)
+        val cw = (r.w - 2 * pad) / list.size
+        list.forEachIndexed { i, p ->
+            val cx = pad + cw * (i + 0.5f); val on = p.key == nx.key
+            val col = if (on) r.c1 else withAlpha(r.c1, 175)
+            r.text(Kit.pName(r, p), cx, card.top + h * 0.55f, 10.5f * u * r.s2, col, if (on) r.sansBold else r.sans, Paint.Align.CENTER, maxW = cw - 4 * u)
+            Kit.prayerIcon(r, p.key, cx, card.top + h * 0.70f, 7 * u, col)
+            r.text(Kit.pTime(r, p.time), cx, card.top + h * 0.85f, 12 * u * r.s2, col, if (on) r.sansBold else r.sans, Paint.Align.CENTER, maxW = cw - 2 * u)
+            if (on) {
+                val ty = card.top + h * 0.95f
+                r.canvas.drawPath(Path().apply { moveTo(cx - 3.5f * u, ty + 2.5f * u); lineTo(cx + 3.5f * u, ty + 2.5f * u); lineTo(cx, ty - 2.5f * u); close() }, r.fillPaint(r.c1))
+            }
+        }
+    }
+
+    // ---------------------------------------------------- rose · music (wide)
+    fun roseMusic(r: RenderCtx) {
+        val u = r.u; val R = 18 * u; val ar = r.ar
+        val card = RectF(0f, R * 0.95f, r.w, r.h)
+        val by = card.top + R * 0.05f
+        val W = r.w
+        notchedCard(r, card, 22 * u, W / 2, by, R + 5 * u, r.cfg.bgColor, r.cfg.bgColor2)
+        val m = MediaR.st(r)
+        val artRc = RectF(W / 2 - R, by - R, W / 2 + R, by + R)
+        bubble(r, W / 2, by, R, r.accent)
+        MediaR.art(r, m, artRc, R)
+        r.circle(W / 2, by, R, withAlpha(Color.BLACK, 70))
+        Glyphs.playPause(r.canvas, m.playing, W / 2 + if (m.playing) 0f else R * 0.06f, by, R * 0.7f, Color.WHITE)
+        MediaR.openHit(r, artRc)
+        val pad = 16 * u; val h = card.height()
+        val ix = if (ar) W - pad else pad; val ox = if (ar) pad else W - pad
+        val ial = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT; val oal = if (ar) Paint.Align.LEFT else Paint.Align.RIGHT
+        val sub = withAlpha(r.c1, 200)
+        r.text(MediaR.title(r, m), ix, card.top + h * 0.16f, 13 * u * r.s1, r.c1, r.sansBold, ial, maxW = W / 2 - R - 2 * pad)
+        r.text(MediaR.artist(r, m), ix, card.top + h * 0.32f, 10.5f * u * r.s2, sub, r.sans, ial, maxW = W / 2 - R - 2 * pad)
+        r.text(MediaR.time(r, m.position), ox, card.top + h * 0.16f, 13 * u * r.s1, r.c1, r.sansBold, oal)
+        r.text(MediaR.time(r, m.duration), ox, card.top + h * 0.32f, 10.5f * u * r.s2, sub, r.sans, oal)
+        val py = card.top + h * 0.56f
+        r.canvas.drawLine(pad, py, W - pad, py, r.strokePaint(withAlpha(r.c1, 60), 3 * u))
+        r.canvas.drawLine(pad, py, pad + (W - 2 * pad) * m.progress, py, r.strokePaint(r.c1, 3 * u))
+        val cy = card.top + h * 0.80f
+        val pill = RectF(W / 2 - 22 * u, cy - 14 * u, W / 2 + 22 * u, cy + 14 * u)
+        r.canvas.drawRoundRect(pill, 11 * u, 11 * u, r.fillPaint(Color.WHITE))
+        Glyphs.playPause(r.canvas, m.playing, W / 2 + if (m.playing) 0f else 1.5f * u, cy, 13 * u, RenderCtx.mix(r.cfg.bgColor, Color.BLACK, 0.55f))
+        r.hit(RectF(pill.left - 6 * u, pill.top - 6 * u, pill.right + 6 * u, pill.bottom + 6 * u), MediaR.cmd("play_pause"))
+        MediaR.btn(r, "prev", W / 2 - 50 * u, cy, 15 * u, m, filled = false, glyphColor = r.c1)
+        MediaR.btn(r, "next", W / 2 + 50 * u, cy, 15 * u, m, filled = false, glyphColor = r.c1)
+    }
+
+    // =================================================================== dark calligraphy set
+    private fun plate(r: RenderCtx, rc: RectF, rad: Float = 20 * r.u) {
+        r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, rc.top, 0f, rc.bottom, RenderCtx.mix(r.cfg.bgColor, Color.WHITE, 0.04f), r.cfg.bgColor, Shader.TileMode.CLAMP)
+        })
+        r.canvas.drawRoundRect(rc, rad, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 0.8f * r.u; color = withAlpha(Color.WHITE, 18) })
+    }
+
+    // ---------------------------------------------------- 1 · day + months (wide)
+    fun darkDay(r: RenderCtx) {
+        val u = r.u; val ar = r.ar
+        val c = RectF(0f, 0f, r.w, r.h)
+        plate(r, c)
+        val h = r.h
+        r.textTight(Calendars.dayName(r.today, ar), r.w / 2, h * 0.38f, h * 0.62f * r.s1, r.c1, if (ar) r.calliFont else F.PLAYFAIR, maxW = r.w - 50 * u, maxH = h * 0.56f)
+        r.canvas.drawLine(r.w * 0.18f, h * 0.72f, r.w * 0.82f, h * 0.72f, r.strokePaint(withAlpha(r.c1, 40), 0.8f * u))
+        val hd = Calendars.hijri(r.today); val g = r.today
+        val l1 = if (ar) "${Calendars.hijriMonth(hd.month, true)} • ${r.n(hd.year)}" else "${Calendars.hijriMonth(hd.month, false)} • ${hd.year}"
+        val l2 = if (ar) "${Calendars.monthName(g.monthValue, true)} • ${r.n(g.year)}" else "${Calendars.monthName(g.monthValue, false)} • ${g.year}"
+        r.text(l1, r.w / 2, h * 0.81f, 11 * u * r.s2, r.c1, r.sansBold, Paint.Align.CENTER)
+        r.text(l2, r.w / 2, h * 0.92f, 11 * u * r.s2, r.c2, r.sansBold, Paint.Align.CENTER)
+    }
+
+    // ---------------------------------------------------- 2 · next prayer + big date (large, one piece)
+    fun darkPrayerDate(r: RenderCtx) {
+        val u = r.u; val ar = r.ar
+        val W = r.w; val H = r.h
+        plate(r, RectF(0f, 0f, W, H), 22 * u)
+        val d = Kit.day(r); val nx = d.next
+        val topH = H * 0.46f
+        // time block on the reading-end side, a slightly lifted panel
+        val bw = W * 0.38f
+        val blk = if (ar) RectF(10 * u, 10 * u, 10 * u + bw, topH - 6 * u) else RectF(W - 10 * u - bw, 10 * u, W - 10 * u, topH - 6 * u)
+        r.canvas.drawRoundRect(blk, 16 * u, 16 * u, r.fillPaint(withAlpha(Color.WHITE, 14)))
+        val inX = if (ar) blk.right - 12 * u else blk.left + 12 * u
+        r.text(r.t("in", "بعد"), inX, blk.top + 12 * u, 9 * u * r.s2, r.c2, r.sans, if (ar) Paint.Align.RIGHT else Paint.Align.LEFT)
+        r.textTight(Kit.pTime(r, nx.time), blk.centerX(), blk.top + blk.height() * 0.48f, blk.height() * 0.34f * r.s1, r.c1, r.sansBold, maxW = blk.width() - 20 * u)
+        pill(r, left(r, nx), blk.centerX(), blk.top + blk.height() * 0.8f, 9.5f * u * r.s2)
+        val nameL = if (ar) blk.right + 8 * u else 10 * u
+        val nameR = if (ar) W - 10 * u else blk.left - 8 * u
+        r.textTight(Kit.pName(r, nx), (nameL + nameR) / 2, topH * 0.48f, topH * 0.55f * r.s1, r.c1, if (ar) r.calliFont else F.PLAYFAIR, maxW = nameR - nameL - 16 * u, maxH = topH * 0.6f)
+        // the line with a dot: how far we are towards the next prayer
+        val ly = topH + 6 * u
+        val x0 = 18 * u; val x1 = W - 18 * u
+        r.canvas.drawLine(x0, ly, x1, ly, r.strokePaint(withAlpha(r.c1, 45), 2 * u))
+        val f = d.progress.coerceIn(0f, 1f)
+        val dot = if (ar) x1 - (x1 - x0) * f else x0 + (x1 - x0) * f
+        r.canvas.drawLine(if (ar) x1 else x0, ly, dot, ly, r.strokePaint(r.c1, 2 * u))
+        r.circle(dot, ly, 4 * u, r.c1)
+        // big date: faint number behind the month in script
+        val g = r.today
+        val cy = (ly + H) / 2 + 2 * u
+        val bh = H - ly - 12 * u
+        r.textTight(r.n(g.dayOfMonth), W / 2, cy, bh * 0.85f, withAlpha(r.c1, 42), r.sansBold, maxH = bh * 0.8f)
+        r.textTight(Calendars.monthName(g.monthValue, ar), W / 2, cy, bh * 0.75f * r.s1, r.c1, if (ar) r.calliFont else F.PLAYFAIR, maxW = W - 60 * u, maxH = bh * 0.72f)
+    }
+
+    // ---------------------------------------------------- 3 · one connected grid (large)
+    fun darkGrid(r: RenderCtx) {
+        val u = r.u; val ar = r.ar
+        val W = r.w; val H = r.h
+        plate(r, RectF(0f, 0f, W, H), 22 * u)
+        val line = r.strokePaint(withAlpha(Color.WHITE, 22), 0.8f * u, false)
+        val topH = H * 0.6f
+        val cw = W / 3f
+        // grid lines inside the one card
+        r.canvas.drawLine(0f, topH, W, topH, line)
+        r.canvas.drawLine(cw, 8 * u, cw, topH - 8 * u, line)
+        r.canvas.drawLine(2 * cw, 8 * u, 2 * cw, topH - 8 * u, line)
+        val d = Kit.day(r); val nx = d.next
+        val hd = Calendars.hijri(r.today)
+        // reading order: day (start) · next prayer (middle) · hijri month (end)
+        val dayCx = mirror(r, W - cw / 2); val hijCx = mirror(r, cw / 2)
+        val w = Kit.weather(r)
+        val tx = if (ar) dayCx - cw / 2 + 12 * u else dayCx + cw / 2 - 12 * u
+        r.text(Kit.temp(r, w.temp) + r.t("", "م"), tx, topH * 0.16f, 10 * u * r.s2, r.c1, r.sansBold, if (ar) Paint.Align.LEFT else Paint.Align.RIGHT)
+        r.textTight(Calendars.dayName(r.today, ar), dayCx, topH * 0.58f, topH * 0.38f * r.s1, r.c1, if (ar) r.calliFont else F.PLAYFAIR, maxW = cw - 18 * u, maxH = topH * 0.42f)
+        r.text(Kit.pName(r, nx), W / 2, topH * 0.24f, 12 * u * r.s2, r.c1, r.sansBold, Paint.Align.CENTER)
+        r.textTight(Kit.pTime(r, nx.time), W / 2, topH * 0.5f, topH * 0.22f * r.s1, r.c1, r.sansBold, maxW = cw - 16 * u)
+        pill(r, left(r, nx), W / 2, topH * 0.78f, 9.5f * u * r.s2)
+        r.text(r.n(hd.year), hijCx, topH * 0.18f, 10 * u * r.s2, r.c2, r.sansBold, Paint.Align.CENTER)
+        r.textTight(Calendars.hijriMonth(hd.month, ar), hijCx, topH * 0.52f, topH * 0.34f * r.s1, r.c1, if (ar) r.calliFont else F.PLAYFAIR, maxW = cw - 16 * u, maxH = topH * 0.36f)
+        r.text(r.n(hd.day), hijCx, topH * 0.84f, 11 * u * r.s2, r.c1, r.sansBold, Paint.Align.CENTER)
+        // bottom row: the five prayers, the next one on a lighter tile
+        val five = Kit.ordered(r, d.five)
+        val pw = W / five.size
+        five.forEachIndexed { i, p ->
+            val x0 = i * pw
+            val on = p.key == nx.key
+            if (on) r.canvas.drawRoundRect(RectF(x0 + 5 * u, topH + 6 * u, x0 + pw - 5 * u, H - 6 * u), 14 * u, 14 * u, r.fillPaint(withAlpha(Color.WHITE, 30)))
+            else if (i > 0 && five[i - 1].key != nx.key) r.canvas.drawLine(x0, topH + 10 * u, x0, H - 10 * u, line)
+            val bh = H - topH
+            r.text(Kit.pName(r, p), x0 + pw / 2, topH + bh * 0.36f, 9.5f * u * r.s2, if (on) r.c1 else r.c2, r.sans, Paint.Align.CENTER, maxW = pw - 6 * u)
+            r.text(Kit.pTime(r, p.time), x0 + pw / 2, topH + bh * 0.66f, 12 * u * r.s2, r.c1, r.sansBold, Paint.Align.CENTER, maxW = pw - 4 * u)
+        }
+    }
 }

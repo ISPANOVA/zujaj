@@ -131,10 +131,11 @@ private fun WelcomePage(phase: Float) {
                         style = androidx.compose.ui.graphics.drawscope.Stroke(5.dp.toPx()))
                 }
             }
-            Box(Modifier.size(92.dp).clip(RoundedCornerShape(28.dp))
-                .background(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.08f))))
-                .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) {
-                Text("ز", fontFamily = Z.kufi, fontSize = 52.sp, color = Color.White)
+            // the real app logo
+            Box(Modifier.size(96.dp).clip(RoundedCornerShape(28.dp))
+                .background(androidx.compose.ui.res.colorResource(com.smrh.zujaj.R.color.ic_bg))
+                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.smrh.zujaj.R.drawable.ic_fg), null, Modifier.fillMaxSize())
             }
         }
         Spacer(Modifier.height(26.dp))
