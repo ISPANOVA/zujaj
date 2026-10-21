@@ -126,4 +126,29 @@ class RenderAllTest {
         File(out, "errors.txt").writeText(errors.toString().ifBlank { "OK" })
         println("RENDER ERRORS:\n$errors")
     }
+
+    /** Finds widgets that still paint a background when the user turns the background off. */
+    @Test
+    fun bgAudit() {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        Prefs.init(ctx); Prefs.isPro = true
+        val out = File(System.getProperty("user.dir"), "build/previews").apply { mkdirs() }
+        val sb = StringBuilder()
+        for (st in Catalog.all) {
+            try {
+                val cfg = st.defaultConfig().copy(bg = false, language = com.smrh.zujaj.model.Lang.AR)
+                val b = Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = 1f).bitmap
+                val px = IntArray(b.width * b.height); b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
+                val covered = px.count { (it ushr 24) > 40 }.toFloat() / px.size
+                // corners: a real background fills them, plain text/graphics don't
+                val pts = listOf(6 to b.height / 2, b.width - 7 to b.height / 2, b.width / 2 to 4, b.width / 2 to b.height - 5)
+                val edges = pts.count { (x, y) -> (b.getPixel(x, y) ushr 24) > 40 }
+                if (covered > 0.45f || edges >= 3) {
+                    sb.append("${st.id} covered=${"%.2f".format(covered)} edges=$edges\n")
+                    save(b, File(out, "nb_${st.id}.png"))
+                }
+            } catch (e: Throwable) { sb.append("${st.id} ERROR $e\n") }
+        }
+        File(out, "bg_audit.txt").writeText(sb.toString())
+    }
 }
