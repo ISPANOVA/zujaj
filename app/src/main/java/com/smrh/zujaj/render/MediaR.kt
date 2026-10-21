@@ -14,30 +14,30 @@ import kotlin.math.min
 import kotlin.math.sin
 
 object MediaR {
-    private fun st(r: RenderCtx): MediaState = MediaRepo.current(r.context)
+    fun st(r: RenderCtx): MediaState = MediaRepo.current(r.context)
 
-    private fun art(r: RenderCtx, m: MediaState, dst: RectF, radius: Float) {
+    fun art(r: RenderCtx, m: MediaState, dst: RectF, radius: Float) {
         val b = m.art ?: (if (m.real) MediaRepo.cachedArt(r.context) else null)
         if (b != null) Renderer.drawImage(r.canvas, b, dst, radius) else Renderer.drawArtPlaceholder(r.canvas, dst, radius)
     }
 
-    private fun title(r: RenderCtx, m: MediaState) = if (m.real) m.title else r.t("Midnight Drive", "رحلة منتصف الليل")
-    private fun artist(r: RenderCtx, m: MediaState) = if (m.real) m.artist.ifBlank { appLabel(r, m.pkg) } else r.t("Tap to connect music", "اضغط لتفعيل الميديا")
+    fun title(r: RenderCtx, m: MediaState) = if (m.real) m.title else r.t("Midnight Drive", "رحلة منتصف الليل")
+    fun artist(r: RenderCtx, m: MediaState) = if (m.real) m.artist.ifBlank { appLabel(r, m.pkg) } else r.t("Tap to connect music", "اضغط لتفعيل الميديا")
 
     private fun appLabel(r: RenderCtx, pkg: String): String = runCatching {
         val pm = r.context.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault("")
 
-    private fun time(r: RenderCtx, ms: Long): String {
+    fun time(r: RenderCtx, ms: Long): String {
         val s = ms / 1000
         return r.n(String.format(java.util.Locale.US, "%02d:%02d", s / 60, s % 60))
     }
 
-    private fun cmd(c: String) = HitAction.Cmd("media", c)
+    fun cmd(c: String) = HitAction.Cmd("media", c)
 
     /** circular button with glyph */
-    private fun btn(r: RenderCtx, kind: String, cx: Float, cy: Float, rad: Float, m: MediaState, filled: Boolean = true, glyphColor: Int = r.c1, bg: Int = withAlpha(r.c1, 34)) {
+    fun btn(r: RenderCtx, kind: String, cx: Float, cy: Float, rad: Float, m: MediaState, filled: Boolean = true, glyphColor: Int = r.c1, bg: Int = withAlpha(r.c1, 34)) {
         if (filled) r.circle(cx, cy, rad, bg)
         val g = rad * 1.0f
         when (kind) {
@@ -59,7 +59,7 @@ object MediaR {
         btn(r, "next", cx + gap, cy, rad, m, filled)
     }
 
-    private fun openHit(r: RenderCtx, rect: RectF) = r.hit(rect, cmd("open"))
+    fun openHit(r: RenderCtx, rect: RectF) = r.hit(rect, cmd("open"))
 
     private fun labels(r: RenderCtx, m: MediaState, x: Float, y: Float, maxW: Float, size: Float = 13f, color: Int = r.c1, sub: Int = r.c2, align: Paint.Align = Paint.Align.LEFT) {
         r.text(title(r, m), x, y - size * 0.55f * r.u, size * r.u * r.s1, color, r.sansBold, align, maxW = maxW)

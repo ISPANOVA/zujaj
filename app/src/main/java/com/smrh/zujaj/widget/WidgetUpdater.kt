@@ -47,6 +47,7 @@ object WidgetUpdater {
         BannerProvider::class.java to Shape.BANNER,
         LargeProvider::class.java to Shape.LARGE,
         TallProvider::class.java to Shape.TALL,
+        XlProvider::class.java to Shape.XL,
     )
 
     fun providerFor(shape: Shape): Class<*> = providers.first { it.second == shape }.first

@@ -765,7 +765,7 @@ private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: Imag
 @Composable
 private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
     val ctx = LocalContext.current
-    val cats = remember { listOf("wall") + com.smrh.zujaj.catalog.Cat.values().filter { c -> Flags.visible().any { it.cat == c && it.shape != com.smrh.zujaj.catalog.Shape.LARGE } }.map { it.name } }
+    val cats = remember { listOf("wall") + com.smrh.zujaj.catalog.Cat.values().filter { c -> Flags.visible().any { it.cat == c && it.shape != com.smrh.zujaj.catalog.Shape.LARGE && it.shape != com.smrh.zujaj.catalog.Shape.XL } }.map { it.name } }
     var cat by remember { mutableStateOf("wall") }
     Column(Modifier.heightIn(max = 640.dp)) {
         androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -787,7 +787,7 @@ private fun WidgetPickerSheet(onAdd: (WallLayer) -> Unit) {
                         }
                     }
                 } else {
-                    val list = pack(Flags.visible().filter { it.cat.name == k && it.shape != com.smrh.zujaj.catalog.Shape.LARGE })
+                    val list = pack(Flags.visible().filter { it.cat.name == k && it.shape != com.smrh.zujaj.catalog.Shape.LARGE && it.shape != com.smrh.zujaj.catalog.Shape.XL })
                     items(list, span = { GridItemSpan(if (it.shape == com.smrh.zujaj.catalog.Shape.SMALL || it.shape == com.smrh.zujaj.catalog.Shape.TALL) 1 else 2) }) { st ->
                         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF232634))
                             .clickable { onAdd(WallLayer(kind = "widget", styleId = st.id, w = if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) 0.45f else 0.9f, cy = 0.35f)) }.padding(10.dp)) {

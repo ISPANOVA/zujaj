@@ -270,7 +270,7 @@ private fun WidgetsAdmin() {
                 if (changes > 0) tr("Publish $changes changes", "نشر $changes تعديل") else tr("Published · live", "منشور · مباشر"),
                 Modifier.fillMaxWidth(),
             ) {
-                scope.launch {
+                scope.launch(kotlinx.coroutines.NonCancellable) {
                     val r = runCatching { Flags.save(flags.copy(pro = pro.toList(), fresh = fresh.toList(), hidden = hidden.toList())) }
                     Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓ — live for everyone", "تم النشر ✓ — ظاهر للجميع الآن") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
                 }
@@ -406,7 +406,7 @@ private fun CodesAdmin() {
                     val c = Codes.normalize(code)
                     if (c.length < 4) { Toast.makeText(ctx, tr("Code is too short", "الكود قصير"), Toast.LENGTH_SHORT).show(); return@PrimaryButton }
                     busy = true
-                    scope.launch {
+                    scope.launch(kotlinx.coroutines.NonCancellable) {
                         val r = runCatching {
                             if (Codes.exists(c)) error(tr("This code already exists", "الكود ده موجود قبل كده"))
                             Codes.create(RedeemCode(c, amount, unit, if (unlimited) 0 else people.toLong(), 0, true,
@@ -434,7 +434,7 @@ private fun CodesAdmin() {
         items(codes ?: emptyList(), key = { it.code }) { c ->
             CodeCard(c,
                 onCopy = { copy(ctx, c.code); Toast.makeText(ctx, tr("Copied", "اتنسخ"), Toast.LENGTH_SHORT).show() },
-                onActive = { a -> scope.launch { runCatching { Codes.setActive(c.code, a) }; reload++ } },
+                onActive = { a -> scope.launch(kotlinx.coroutines.NonCancellable) { runCatching { Codes.setActive(c.code, a) }; reload++ } },
                 onDelete = { confirmDelete = c.code },
                 onUsers = { usersOf = c.code },
             )
@@ -446,7 +446,7 @@ private fun CodesAdmin() {
             onDismissRequest = { confirmDelete = null },
             title = { Text(tr("Delete $c?", "حذف $c؟")) },
             text = { Text(tr("People who already redeemed it keep their Pro time. To take Pro away, use Users → Revoke everyone first.", "اللي استخدموه قبل كده هيفضل معاهم البرو لحد مدته. لو عايز تشيله منهم، ادخل على «المستخدمين» ← «إلغاء للكل» الأول.")) },
-            confirmButton = { TextButton(onClick = { confirmDelete = null; scope.launch { runCatching { Codes.delete(c) }; reload++ } }) { Text(tr("Delete", "حذف"), color = Color(0xFFE5484D)) } },
+            confirmButton = { TextButton(onClick = { confirmDelete = null; scope.launch(kotlinx.coroutines.NonCancellable) { runCatching { Codes.delete(c) }; reload++ } }) { Text(tr("Delete", "حذف"), color = Color(0xFFE5484D)) } },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(tr("Cancel", "إلغاء")) } },
             containerColor = Z.surface,
         )
@@ -544,7 +544,7 @@ private fun CodeUsersDialog(code: String, onDismiss: () -> Unit) {
     var confirmAll by remember { mutableStateOf(false) }
     LaunchedEffect(reload) { runCatching { Codes.redemptions(code) }.onSuccess { list = it; err = null }.onFailure { err = it.message } }
     val df = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
-    fun act(block: suspend () -> Unit) { busy = true; scope.launch { val r = runCatching { block() }; busy = false
+    fun act(block: suspend () -> Unit) { busy = true; scope.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { block() }; busy = false
         if (r.isFailure) Toast.makeText(ctx, adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show(); reload++ } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(18.dp)) {
@@ -698,7 +698,7 @@ private fun GeneralAdmin(email: String, page: Int) {
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
         }
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
-            scope.launch {
+            scope.launch(kotlinx.coroutines.NonCancellable) {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
                 val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1))) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
@@ -762,7 +762,7 @@ private fun PicksAdmin() {
             .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.95f), Z.bg)))
             .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 12.dp)) {
             PrimaryButton(if (changed) tr("Publish picks", "نشر المختارات") else tr("Published · live", "منشور · مباشر"), Modifier.fillMaxWidth()) {
-                scope.launch {
+                scope.launch(kotlinx.coroutines.NonCancellable) {
                     val r = runCatching { Flags.save(flags.copy(featured = picks)) }
                     Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓", "اتنشر ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
                 }
@@ -781,10 +781,25 @@ fun adminError(e: Throwable?): String {
     val m = e?.message.orEmpty().lowercase()
     return when {
         e == null -> tr("Something went wrong — try again", "حصلت مشكلة — جرب تاني")
+        e is kotlinx.coroutines.CancellationException -> tr("Saved ✓", "اتحفظ ✓")
         "unavailable" in m || "network" in m || "offline" in m || "timeout" in m || e is java.io.IOException ->
             tr("No internet — check your connection and try again", "مفيش نت — اتأكد من الاتصال وجرب تاني")
         "permission" in m || "denied" in m || "unauthenticated" in m ->
             tr("Not allowed — sign in to the panel again", "مش مسموح — ادخل لوحة التحكم من جديد")
+        else -> tr("Couldn't save — try again", "مقدرتش أحفظ — جرب تاني")
+    }
+}
+
+
+/** Saves from the panel keep going even if you leave the page, and errors are explained in plain words. */
+object AdminWork {
+    val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
+    fun err(e: Throwable?): String = when {
+        e == null -> tr("Something went wrong", "حصلت مشكلة")
+        e is java.io.IOException || e.javaClass.name.contains("Unavailable") || (e.message ?: "").contains("offline", true) ->
+            tr("Couldn't save — check your internet and try again", "مقدرتش أحفظ — اتأكد من النت وجرب تاني")
+        e.javaClass.name.contains("FirebaseFirestoreException") && (e.message ?: "").contains("PERMISSION", true) ->
+            tr("Not allowed — sign in to the panel again", "مش مسموح — ادخل لوحة التحكم تاني")
         else -> tr("Couldn't save — try again", "مقدرتش أحفظ — جرب تاني")
     }
 }

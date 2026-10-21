@@ -238,7 +238,7 @@ fun collectionTitle(key: String): String = when (key) {
 }
 
 /** Size groups in the order they are shown: small first, big after. */
-fun shapeOrder(s: Shape) = when (s) { Shape.SMALL -> 0; Shape.WIDE -> 1; Shape.BANNER -> 2; Shape.TALL -> 3; Shape.LARGE -> 4 }
+fun shapeOrder(s: Shape) = when (s) { Shape.SMALL -> 0; Shape.WIDE -> 1; Shape.BANNER -> 2; Shape.TALL -> 3; Shape.LARGE -> 4; Shape.XL -> 5 }
 
 fun shapeGroupTitle(s: Shape) = when (s) {
     Shape.LARGE -> tr("Large", "كبيرة")
@@ -246,6 +246,7 @@ fun shapeGroupTitle(s: Shape) = when (s) {
     Shape.BANNER -> tr("Banners", "شرائط")
     Shape.SMALL -> tr("Small", "صغيرة")
     Shape.TALL -> tr("Tall", "طويلة")
+    Shape.XL -> tr("Boards", "لوحات كاملة")
 }
 
 /** Tidy order: by size (big → small), then free before Pro, then the catalogue order. */
@@ -294,6 +295,7 @@ fun sizeLabel(s: Shape) = when (s) {
     Shape.BANNER -> tr("Banner · 4×1", "شريط · ٤×١")
     Shape.LARGE -> tr("Large · 4×3", "كبير · ٤×٣")
     Shape.TALL -> tr("Tall · 2×4", "طويل · ٢×٤")
+    Shape.XL -> tr("Board · 4×5", "لوحة · ٤×٥")
 }
 
 @Composable
@@ -488,7 +490,7 @@ fun DiscoverTab(nav: Nav) {
         var rowsSinceAd = 0
         var slot = 0
         var idx = 0
-        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.TALL, Shape.LARGE).forEach { shape ->
+        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.TALL, Shape.LARGE, Shape.XL).forEach { shape ->
             val group = list.filter { it.shape == shape }
             if (group.isEmpty()) return@forEach
             item(key = "g_${chip}_$shape") { GroupLabel("${shapeGroupTitle(shape)} · ${group.size}") }
@@ -587,7 +589,7 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
         if (header != null) item(span = { GridItemSpan(cols) }) { header() }
         var slot = 0
         var rows = 0
-        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.TALL, Shape.LARGE).forEach { shape ->
+        listOf(Shape.SMALL, Shape.WIDE, Shape.BANNER, Shape.TALL, Shape.LARGE, Shape.XL).forEach { shape ->
             val group = ordered.filter { it.shape == shape }
             if (group.isEmpty()) return@forEach
             val per = perRow(shape, w)
@@ -626,7 +628,7 @@ fun CategoryScreen(nav: Nav, s: Screen.Category) {
     Column(Modifier.fillMaxSize()) {
         TopBar(collectionTitle(s.key), { nav.back() })
         if (s.key != "free") Segmented(listOf(tr("All", "الكل"), tr("Free", "مجاني"), "Pro"), tier, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { tier = it }
-        val shapes = listOf(Shape.LARGE, Shape.TALL, Shape.WIDE, Shape.BANNER, Shape.SMALL).filter { sh -> base.any { it.shape == sh } }
+        val shapes = listOf(Shape.XL, Shape.LARGE, Shape.TALL, Shape.WIDE, Shape.BANNER, Shape.SMALL).filter { sh -> base.any { it.shape == sh } }
         if (shapes.size > 1) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val opts = listOf("" to tr("All sizes", "كل المقاسات")) + shapes.map { it.name to shapeGroupTitle(it) }
             items(opts) { (k, l) -> FilterPill(l, size == k, null, LocalAccent.current) { size = k } }

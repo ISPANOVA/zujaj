@@ -4,6 +4,7 @@ import com.smrh.zujaj.model.Fill
 import com.smrh.zujaj.model.Texture
 import com.smrh.zujaj.model.WidgetConfig
 import com.smrh.zujaj.render.Moments2R
+import com.smrh.zujaj.render.Moments3R
 import com.smrh.zujaj.render.AppsR
 import com.smrh.zujaj.render.CalliR
 import com.smrh.zujaj.render.Prayer2R
@@ -38,6 +39,7 @@ enum class Shape(val cols: Int, val rows: Int, val dw: Float, val dh: Float) {
     BANNER(4, 1, 340f, 84f),
     LARGE(4, 3, 340f, 250f),
     TALL(2, 4, 160f, 340f),
+    XL(4, 5, 340f, 420f),
 }
 
 enum class Cat(val en: String, val ar: String, val tags: String = "") {
@@ -267,6 +269,8 @@ object Catalog {
         WidgetStyle("photo_verse_lg", Cat.PHOTO, "Photo Journal", "صورة ويومية", L, pro = true, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 12, variant = 1, bgColor = 0xFF15131A.toInt()) }) { VerseR.large(it) },
         WidgetStyle("bubble_clock", Cat.CLOCK, "Bubble Clock", "ساعة الفقاعات", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, accent = 0xFFB9A6F2.toInt(), calli = 2) }) { Moments2R.bubble(it) },
         WidgetStyle("words_day_card", Cat.CALLI, "Words of the Day", "كارت اليوم", L, isNew = true, popular = true, feats = setOf(Feat.ROTATE, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), bakeTime = { true }, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF8FB8E6.toInt(), bgColor2 = 0xFF6E9BD3.toInt(), color1 = 0xFFFFFFFF.toInt(), counter = 360, calli = 2) }) { Moments2R.dayCard(it) },
+        WidgetStyle("rose_board", Cat.PRAYER, "Rose Board", "لوحة الورد", Shape.XL, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER, Upd.MEDIA), defaults = { it.copy(fill = Fill.NONE, bgColor = 0xE67A3E68.toInt(), bgColor2 = 0xE6B4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.roseBoard(it) },
+        WidgetStyle("dark_board", Cat.CALLI, "Calligraphy Board", "لوحة الخط", Shape.XL, isNew = true, popular = true, feats = setOf(Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), defaults = { it.copy(fill = Fill.NONE, bgColor = 0xF5161618.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xB3FFFFFF.toInt(), padding = 0, calli = 0) }) { Moments3R.darkBoard(it) },
         WidgetStyle("sport_card", Cat.PRAYER, "Sport Card", "الكارت الرياضي", Shape.TALL, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.COLOR2, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.SYSTEM), bakeTime = { true }, defaults = { it.copy(fill = Fill.SOLID, bgColor = 0xFF0E0E10.toInt(), texture = Texture.GRAIN, color1 = 0xFFFFFFFF.toInt(), color2 = 0xFFD9D9D9.toInt(), accent = 0xFFE5322D.toInt(), calli = 0) }) { Moments2R.sport(it) },
         WidgetStyle("prayer_board", Cat.PRAYER, "Prayer Board", "لوحة الصلاة", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), accent = 0xFFF2E6B8.toInt()) }) { Moments2R.board(it) },
         WidgetStyle("event_ring", Cat.COUNTERS, "Event Ring", "حلقة المناسبة", S, isNew = true, popular = true, feats = setOf(Feat.EVENT, Feat.ACCENT), defaults = { it.copy(event = "ramadan", fill = Fill.GRADIENT, bgColor = 0xFF14102A.toInt(), bgColor2 = 0xFF2A1B4D.toInt(), accent = 0xFFE7B75F.toInt(), accent2 = 0xFFB07BF0.toInt()) }) { EventR.ring(it) },
