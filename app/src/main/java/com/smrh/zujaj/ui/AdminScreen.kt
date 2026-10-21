@@ -791,15 +791,3 @@ fun adminError(e: Throwable?): String {
 }
 
 
-/** Saves from the panel keep going even if you leave the page, and errors are explained in plain words. */
-object AdminWork {
-    val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
-    fun err(e: Throwable?): String = when {
-        e == null -> tr("Something went wrong", "حصلت مشكلة")
-        e is java.io.IOException || e.javaClass.name.contains("Unavailable") || (e.message ?: "").contains("offline", true) ->
-            tr("Couldn't save — check your internet and try again", "مقدرتش أحفظ — اتأكد من النت وجرب تاني")
-        e.javaClass.name.contains("FirebaseFirestoreException") && (e.message ?: "").contains("PERMISSION", true) ->
-            tr("Not allowed — sign in to the panel again", "مش مسموح — ادخل لوحة التحكم تاني")
-        else -> tr("Couldn't save — try again", "مقدرتش أحفظ — جرب تاني")
-    }
-}
