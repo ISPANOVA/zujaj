@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -274,6 +275,11 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 StepperRow(tr("Hijri adjustment", "تعديل الهجري"), Prefs.hijriOffset, -2..2, 1, icon = Icons.Rounded.DarkMode, iconColor = purple) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
             }
             Section(tr("Widgets", "الويدجت")) {
+                val exact = com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx).also { touch(ver) }
+                RowBase(tr("Exact clock time", "الساعة على الثانية"), sub = if (exact) tr("On ✓ — clocks change right on the minute", "شغالة ✓ — الساعة بتتغير مع التليفون بالظبط")
+                    else tr("Tap to allow, so clocks never lag behind the phone", "اضغط واسمح عشان الساعة متتأخرش عن التليفون"),
+                    onClick = { if (!exact) com.smrh.zujaj.widget.Scheduler.askExact(ctx) }, icon = Icons.Rounded.Schedule, iconColor = blue) { if (!exact) Chevron() }
+                Divider()
                 RowBase(tr("Open a shared design", "افتح تصميم اتبعتلك"), sub = tr("Paste the link someone sent you", "الصق اللينك اللي اتبعتلك"), onClick = { showImport = true }, icon = Icons.Rounded.Link, iconColor = blue) { Chevron() }
                 Divider()
                 SwitchRow(tr("Fahrenheit", "فهرنهايت"), Prefs.fahrenheit, icon = Icons.Rounded.Thermostat, iconColor = orange) { Prefs.fahrenheit = it; WidgetUpdater.updateAll(ctx) }

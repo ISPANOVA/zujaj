@@ -207,10 +207,20 @@ object Scheduler {
     fun minuteTick(ctx: Context) = runCatching {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val now = System.currentTimeMillis()
-        val t = now - now % 60_000 + 60_500
+        // right on the minute (a few ms after, so the new minute is drawn)
+        val t = now - now % 60_000 + 60_000 + 40
         val pi = PendingIntent.getBroadcast(ctx, 8, Intent(ctx, SystemEventsReceiver::class.java).setAction(MINUTE),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        am.setWindow(AlarmManager.RTC, t, 1_500, pi)
+        if (exactAllowed(ctx)) am.setExact(AlarmManager.RTC, t, pi) else am.setWindow(AlarmManager.RTC, t, 1_000, pi)
+    }
+
+    /** "Alarms & reminders" access lets clock widgets change exactly on the minute. */
+    fun exactAllowed(ctx: Context): Boolean = android.os.Build.VERSION.SDK_INT < 31 ||
+        (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+
+    fun askExact(ctx: Context) = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= 31) ctx.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+            android.net.Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun ensure(ctx: Context) {

@@ -48,6 +48,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
@@ -122,6 +123,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var showApps by remember { mutableStateOf(false) }
     var showTapApp by remember { mutableStateOf(false) }
     var showCity by remember { mutableStateOf(false) }
+    var askExact by remember { mutableStateOf(false) }
+    if (askExact) ZDialog(Icons.Rounded.Schedule, tr("Keep the clock exact", "خلّي الساعة مظبوطة بالثانية"),
+        tr("Allow \"Alarms & reminders\" so this widget changes right on the minute, together with your phone's clock.",
+            "اسمح بـ «المنبهات والتذكيرات» عشان الويدجت دي تتغير مع ساعة التليفون بالظبط من غير تأخير."),
+        onDismiss = { askExact = false; Prefs.setString("exact_asked", "1") }) {
+        PrimaryButton(tr("Allow", "اسمح"), Modifier.fillMaxWidth()) { askExact = false; Prefs.setString("exact_asked", "1"); com.smrh.zujaj.widget.Scheduler.askExact(ctx) }
+        TextButton(onClick = { askExact = false; Prefs.setString("exact_asked", "1") }) { Text(tr("Later", "بعدين"), color = Z.sub) }
+    }
     val ar = Prefs.isArabicUi
     val f = style.feats
 
@@ -444,7 +453,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
                         else { Toast.makeText(ctx, tr("Saved ✓", "تم الحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
                     }
-                    else -> { Haptics.success(ctx); pin(ctx, cfg, style.shape) }
+                    else -> {
+                        Haptics.success(ctx); pin(ctx, cfg, style.shape)
+                        if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
+                    }
                 }
             }
         }
