@@ -471,8 +471,12 @@ fun AboutScreen(nav: Nav) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
             Text(tr("Privacy", "الخصوصية"), style = MaterialTheme.typography.titleMedium)
             Text(tr(
-                "Zujaj has no accounts, no ads and no analytics. Your widget settings, photos and contacts you choose stay on your phone. Your approximate location is sent only to the weather service (MET Norway) to get the forecast. Purchases are handled by Google Play.",
-                "زجاج بدون حسابات أو إعلانات أو تتبع. إعدادات الويدجت والصور وجهات الاتصال التي تختارها تبقى على هاتفك. يُرسل موقعك التقريبي فقط لخدمة الطقس (MET Norway) لجلب التوقعات. المشتريات تتم عبر جوجل بلاي."), color = Z.sub)
+                "Zujaj has no accounts. Your widget settings, photos and contacts you choose stay on your phone. Your approximate location is sent only to the weather service (MET Norway) to get the forecast.\n\nThe free version shows ads from Google AdMob. AdMob may use your device's advertising ID and technical information to show and measure ads; where the law requires it (e.g. the EU/UK) we ask for your consent first. You can reset your advertising ID or turn off personalised ads in your phone's Google settings. Subscribers see no ads.\n\nPurchases are handled by Google Play. The app is intended for users aged 13 and over.",
+                "زجاج من غير حسابات. إعدادات الويدجت والصور وجهات الاتصال اللي بتختارها بتفضل على تليفونك. موقعك التقريبي بيتبعت بس لخدمة الطقس (MET Norway) عشان تجيب التوقعات.\n\nالنسخة المجانية فيها إعلانات من Google AdMob. AdMob ممكن يستخدم معرّف الإعلانات بتاع جهازك ومعلومات تقنية عشان يعرض الإعلانات ويقيس أداءها، وفي الدول اللي القانون فيها بيطلب ده (زي أوروبا) بنطلب موافقتك الأول. تقدر تعيد ضبط معرّف الإعلانات أو توقف الإعلانات المخصصة من إعدادات جوجل في تليفونك. المشتركين مش بيشوفوا إعلانات.\n\nالمشتريات بتتم عن طريق جوجل بلاي. التطبيق موجّه لمن هم أكبر من 13 سنة."), color = Z.sub)
+            Spacer(Modifier.height(10.dp))
+            val uri = androidx.compose.ui.platform.LocalUriHandler.current
+            Text(tr("Read the full privacy policy", "اقرأ سياسة الخصوصية كاملة"), color = LocalAccent.current, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                modifier = Modifier.clickable { runCatching { uri.openUri(if (Prefs.isArabicUi) "https://zujaj.pages.dev/privacy.html" else "https://zujaj.pages.dev/privacy-en.html") } }.padding(vertical = 6.dp))
             Spacer(Modifier.height(18.dp))
             Text(tr("Credits", "الحقوق"), style = MaterialTheme.typography.titleMedium)
             Text("• Weather data: MET Norway (api.met.no), CC BY 4.0\n• Prayer times: Adhan library (MIT)\n• Fonts: Manrope, Cairo, Playfair Display, Bodoni Moda, Big Shoulders, Oswald, Cormorant, Amiri, Aref Ruqaa, Reem Kufi, Rakkas — SIL Open Font License\n• Designed & built by SMRH", color = Z.sub)
