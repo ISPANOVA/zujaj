@@ -140,7 +140,7 @@ object MediaR {
     fun ring(r: RenderCtx) {
         val m = st(r)
         art(r, m, RectF(0f, 0f, r.w, r.h), 0f)
-        r.canvas.drawRect(0f, 0f, r.w, r.h, r.fillPaint(withAlpha(Color.BLACK, 70)))
+        if (r.cfg.bg) r.canvas.drawRect(0f, 0f, r.w, r.h, r.fillPaint(withAlpha(Color.BLACK, 70)))
         val cx = r.w / 2; val cy = r.h * 0.42f
         val rad = min(r.w, r.h) * 0.2f
         val rect = RectF(cx - rad, cy - rad, cx + rad, cy + rad)
@@ -278,7 +278,7 @@ object MediaR {
         val m = st(r)
         art(r, m, RectF(0f, 0f, r.w, r.h), 0f)
         val g = Paint(); g.shader = LinearGradient(0f, r.h * 0.35f, 0f, r.h, Color.TRANSPARENT, withAlpha(Color.BLACK, 210), Shader.TileMode.CLAMP)
-        r.canvas.drawRect(0f, 0f, r.w, r.h, g)
+        if (r.cfg.bg) r.canvas.drawRect(0f, 0f, r.w, r.h, g)
         openHit(r, RectF(0f, 0f, r.w, r.h * 0.5f))
         Glyphs.note(r.canvas, r.w - r.pad - 12 * r.u, r.pad + 14 * r.u, 18 * r.u, Color.WHITE)
         val x = r.pad + 4 * r.u

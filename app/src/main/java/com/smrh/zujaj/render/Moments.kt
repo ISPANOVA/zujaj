@@ -70,7 +70,7 @@ object VerseR {
         val g = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(0f, r.h * 0.25f, 0f, r.h, intArrayOf(Color.TRANSPARENT, withAlpha(Color.BLACK, 120), withAlpha(Color.BLACK, 205)), floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
         }
-        r.canvas.drawRoundRect(rect, rad, rad, g)
+        if (r.cfg.bg) r.canvas.drawRoundRect(rect, rad, rad, g)
         val top = r.h * 0.42f
         val lbl = label(r)
         if (lbl.isNotBlank()) r.text(lbl, r.w / 2, top, 9.5f * r.u, withAlpha(Color.WHITE, 200), r.sansMed, Paint.Align.CENTER)
