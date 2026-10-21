@@ -59,7 +59,7 @@ object Thuluth {
         val cell = (maxOf(wPx, hPx) / 140f).coerceAtLeast(1f)
         val gw = (wPx / cell).toInt().coerceAtLeast(4); val gh = (hPx / cell).toInt().coerceAtLeast(4)
         val bmp = Bitmap.createBitmap(gw, gh, Bitmap.Config.ALPHA_8)
-        Canvas(bmp).apply { scale(1f / cell, 1f / cell); translate(-left, -top); drawText(s, x, y, Paint(p).apply { color = android.graphics.Color.BLACK }) }
+        Canvas(bmp).apply { scale(1f / cell, 1f / cell); translate(-left, -top); drawText(s, x, y, Paint(p).apply { this.color = android.graphics.Color.BLACK }) }
         val a = ByteArray(gw * gh); bmp.copyPixelsToBuffer(java.nio.ByteBuffer.wrap(a)); bmp.recycle()
         // distance (in cells) from every cell to the nearest ink — breadth-first from all ink cells
         val dist = IntArray(gw * gh) { Int.MAX_VALUE }
