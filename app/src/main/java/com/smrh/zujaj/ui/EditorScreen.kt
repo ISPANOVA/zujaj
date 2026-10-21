@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.animation.togetherWith
+
 import android.app.Activity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.core.animateFloat
@@ -188,7 +190,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 tab, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp),
             ) { tab = it }
             // ---------------------------------------------------------------- controls
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(androidx.compose.animation.core.tween(280))) {
+            androidx.compose.animation.AnimatedContent(tab, Modifier.weight(1f), label = "tabs", transitionSpec = {
+                val dir = (if (targetState > initialState) 1 else -1) * (if (ar) -1 else 1)
+                val ease = androidx.compose.animation.core.FastOutSlowInEasing
+                (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 5 * dir } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240, 60)))
+                    .togetherWith(androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 5 * dir } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)))
+            }) { tab ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).animateContentSize(androidx.compose.animation.core.tween(280))) {
                 if (tab == 0) {
                 Section(tr("Style presets", "أنماط جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -408,6 +416,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 }
                 }
                 Spacer(Modifier.height(130.dp))
+            }
             }
         }
 

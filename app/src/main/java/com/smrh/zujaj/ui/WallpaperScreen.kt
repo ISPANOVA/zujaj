@@ -135,7 +135,7 @@ fun WallGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
     var err by remember { mutableStateOf(false) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1B2030), Z.surface))).padding(22.dp),
+            Modifier.clip(RoundedCornerShape(28.dp)).background(Z.surface).background(Brush.verticalGradient(listOf(LocalAccent.current.copy(alpha = 0.14f), Color.Transparent), 0f, 420f)).padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(LocalAccent.current.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
@@ -147,8 +147,7 @@ fun WallGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             Text(tr("Still in testing. Enter the password to try it.", "لسه تحت التجربة. اكتب الباسورد عشان تجربها."), color = Z.sub, textAlign = TextAlign.Center, fontSize = 13.sp)
             Spacer(Modifier.height(14.dp))
-            OutlinedTextField(pass, { pass = it; err = false }, singleLine = true, isError = err, placeholder = { Text(tr("Password", "الباسورد")) },
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
+            ZField(pass, { pass = it; err = false }, tr("Password", "الباسورد"), Icons.Rounded.Lock, password = true, error = err)
             if (err) Text(tr("Wrong password", "الباسورد غلط"), color = Color(0xFFE5484D), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             Spacer(Modifier.height(14.dp))
             PrimaryButton(tr("Open", "افتح"), Modifier.fillMaxWidth()) { if (WallGate.ok(pass)) { WallGate.unlocked = true; onOk() } else err = true }
@@ -548,7 +547,6 @@ fun WallpaperScreen(nav: Nav) {
                 Box(Modifier.weight(1.4f).height(54.dp).clip(RoundedCornerShape(18.dp)).background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = 0.8f))))
                     .clickable {
                         update(design.copy(zoom = az, px = ax, py = ay)); adjust = false
-                        if (design.layers.isEmpty()) showTemplates = true
                     }, contentAlignment = Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
@@ -1115,8 +1113,17 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
     var redeem by remember { mutableStateOf(false) }
     var pick by remember { mutableStateOf(com.smrh.zujaj.billing.WALL_YEARLY) }
     LaunchedEffect(owned) { if (owned) onDismiss() }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1D1A12)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        var shown by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { shown = true }
+        val sc by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0.88f, androidx.compose.animation.core.spring(0.6f, 320f), label = "sc")
+        Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp).graphicsLayer { scaleX = sc; scaleY = sc; alpha = ((sc - 0.88f) / 0.12f).coerceIn(0f, 1f) }
+            .clip(RoundedCornerShape(30.dp)).background(Z.surface).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.16f), Color.Transparent)))
+            .border(1.dp, Z.line, RoundedCornerShape(30.dp))) {
+        Box(Modifier.align(Alignment.TopEnd).padding(10.dp).size(34.dp).clip(CircleShape).background(Z.tint(0.08f)).clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Close, null, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(top = 24.dp, bottom = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(Z.pro.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Wallpaper, null, tint = Z.pro, modifier = Modifier.size(34.dp))
             }
@@ -1189,6 +1196,7 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
         }
     }
     if (redeem) RedeemDialog { redeem = false }
+    }
 }
 
 /** Shown once after the update: what the new Wallpapers page does. */

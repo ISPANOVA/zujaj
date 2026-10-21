@@ -50,6 +50,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -142,7 +145,7 @@ fun ZChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val ctx = LocalContext.current
     val bg by animateColorAsState(if (selected) accent else Z.tint(0.06f), label = "chip")
     Box(
-        Modifier.pressScale().then(if (selected) Modifier.glow(accent, 18.dp, 0.45f) else Modifier).clip(RoundedCornerShape(50)).background(bg)
+        Modifier.pressScale().clip(RoundedCornerShape(50)).background(bg)
             .border(1.dp, if (selected) Color.Transparent else Z.line, RoundedCornerShape(50))
             .clickable { Haptics.tick(ctx); onClick() }.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -300,13 +303,17 @@ fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector
     val breathe by t.animateFloat(0.35f, 0.7f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600), androidx.compose.animation.core.RepeatMode.Reverse), label = "b")
     val sweep by t.animateFloat(-0.5f, 1.6f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2600, delayMillis = 900)), label = "s")
     Row(
-        modifier.pressScale().glow(accent, 26.dp, breathe).clip(RoundedCornerShape(50))
-            .background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = 0.82f))))
+        modifier.pressScale().clip(RoundedCornerShape(50))
             .drawWithContent {
-                drawContent()
+                // the button itself glows: a bright core that breathes, a lit top edge and a light sweep
+                val lit = androidx.compose.ui.graphics.lerp(accent, Color.White, 0.18f + 0.22f * (breathe - 0.35f) / 0.35f)
+                drawRect(Brush.horizontalGradient(listOf(accent, lit, accent)))
+                drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.28f), Color.Transparent), 0f, size.height * 0.55f))
                 val x = size.width * sweep
-                drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.Transparent), Offset(x - size.height * 1.4f, 0f), Offset(x, size.height)))
+                drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.45f), Color.Transparent), Offset(x - size.height * 1.4f, 0f), Offset(x, size.height)))
+                drawContent()
             }
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f))), RoundedCornerShape(50))
             .clickable { Haptics.click(ctx); onClick() }.padding(horizontal = 26.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
@@ -384,3 +391,74 @@ val pagePadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom =
 /** Reads a value so the caller recomposes when it changes. */
 @Suppress("UNUSED_PARAMETER")
 fun touch(v: Any?) {}
+
+// ------------------------------------------------------------------ modern dialog + text field
+/** A soft card dialog that pops in: icon on top, title, a line under it, then the content. */
+@Composable
+fun ZDialog(icon: ImageVector, title: String, sub: String? = null, iconColor: Color = LocalAccent.current, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        var shown by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { shown = true }
+        val k by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, androidx.compose.animation.core.spring(0.62f, 330f), label = "dlg")
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp).graphicsLayer { scaleX = 0.9f + 0.1f * k; scaleY = 0.9f + 0.1f * k; alpha = k.coerceIn(0f, 1f) }
+                .clip(RoundedCornerShape(30.dp)).background(Z.surface)
+                .background(Brush.verticalGradient(listOf(iconColor.copy(alpha = 0.14f), Color.Transparent), 0f, 420f))
+                .border(1.dp, Z.line, RoundedCornerShape(30.dp)).padding(horizontal = 22.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(62.dp).clip(RoundedCornerShape(20.dp))
+                .background(Brush.linearGradient(listOf(iconColor, iconColor.copy(alpha = 0.7f))))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.Transparent)), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(32.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Z.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            if (sub != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(sub, color = Z.sub, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+            Spacer(Modifier.height(18.dp))
+            content()
+        }
+    }
+}
+
+/** Filled rounded field: soft background, accent ring when focused, optional icon and show/hide for passwords. */
+@Composable
+fun ZField(
+    value: String, onChange: (String) -> Unit, placeholder: String, icon: ImageVector? = null, password: Boolean = false, error: Boolean = false,
+    keyboard: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    center: Boolean = false, mono: Boolean = false, big: Boolean = false, singleLine: Boolean = true, modifier: Modifier = Modifier,
+) {
+    val accent = LocalAccent.current
+    var focused by remember { mutableStateOf(false) }
+    var show by remember { mutableStateOf(false) }
+    val ring by animateColorAsState(when { error -> Color(0xFFE5484D); focused -> accent; else -> Color.Transparent }, label = "ring")
+    val shake = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(error) { if (error) { for (x in listOf(10f, -10f, 7f, -7f, 3f, 0f)) shake.animateTo(x, androidx.compose.animation.core.tween(45)) } }
+    val style = MaterialTheme.typography.bodyLarge.copy(
+        color = Z.text, fontSize = if (big) 24.sp else 16.sp, letterSpacing = if (big) 6.sp else 0.sp,
+        textAlign = if (center) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start,
+        fontFamily = if (mono) androidx.compose.ui.text.font.FontFamily.Monospace else MaterialTheme.typography.bodyLarge.fontFamily,
+    )
+    androidx.compose.foundation.text.BasicTextField(
+        value, onChange, singleLine = singleLine, textStyle = style, keyboardOptions = keyboard,
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
+        visualTransformation = if (password && !show) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        modifier = modifier.fillMaxWidth().graphicsLayer { translationX = shake.value }.onFocusChanged { focused = it.isFocused },
+        decorationBox = { inner ->
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Z.tint(0.07f)).border(1.5.dp, ring, RoundedCornerShape(18.dp))
+                .padding(horizontal = 16.dp, vertical = if (big) 16.dp else 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) { Icon(icon, null, tint = if (focused) accent else Z.sub, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(12.dp)) }
+                Box(Modifier.weight(1f), contentAlignment = if (center) Alignment.Center else Alignment.CenterStart) {
+                    if (value.isEmpty()) Text(placeholder, style = style.copy(color = Z.sub.copy(alpha = 0.7f)))
+                    inner()
+                }
+                if (password) Icon(if (show) androidx.compose.material.icons.Icons.Rounded.VisibilityOff else androidx.compose.material.icons.Icons.Rounded.Visibility, null,
+                    tint = Z.sub, modifier = Modifier.padding(start = 10.dp).size(20.dp).clip(CircleShape).clickable { show = !show })
+            }
+        },
+    )
+}

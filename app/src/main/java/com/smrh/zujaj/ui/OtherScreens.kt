@@ -1,5 +1,10 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.ConfirmationNumber
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.AlternateEmail
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Language
@@ -171,15 +176,17 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     var showImport by remember { mutableStateOf(false) }
     if (showImport) {
         var t by remember { mutableStateOf((ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager)?.primaryClip?.getItemAt(0)?.text?.toString()?.takeIf { ShareDesign.codeFrom(it) != null } ?: "") }
-        androidx.compose.material3.AlertDialog(onDismissRequest = { showImport = false }, containerColor = Z.surface,
-            title = { Text(tr("Open a shared design", "افتح تصميم اتبعتلك")) },
-            text = { androidx.compose.material3.OutlinedTextField(t, { t = it }, placeholder = { Text("zujaj.pages.dev/w#…") }, singleLine = true) },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = {
+        ZDialog(androidx.compose.material.icons.Icons.Rounded.Link, tr("Open a shared design", "افتح تصميم اتبعتلك"), tr("Paste the link someone sent you", "الصق اللينك اللي اتبعتلك"), onDismiss = { showImport = false }) {
+            var bad by remember { mutableStateOf(false) }
+            ZField(t, { t = it; bad = false }, "zujaj.pages.dev/w#…", androidx.compose.material.icons.Icons.Rounded.Link, error = bad)
+            Spacer(Modifier.height(16.dp))
+            PrimaryButton(tr("Open", "افتح"), Modifier.fillMaxWidth()) {
                 val code = ShareDesign.codeFrom(t); val cfg = code?.let { ShareDesign.decode(it) }
-                if (cfg == null) android.widget.Toast.makeText(ctx, tr("That link isn't a Zujaj design", "اللينك ده مش تصميم من زجاج"), android.widget.Toast.LENGTH_SHORT).show()
+                if (cfg == null) bad = true
                 else { showImport = false; Haptics.success(ctx); nav.go(Screen.Editor(cfg.styleId, shared = code)) }
-            }) { Text(tr("Open", "افتح"), color = LocalAccent.current) } },
-            dismissButton = { androidx.compose.material3.TextButton(onClick = { showImport = false }) { Text(tr("Cancel", "إلغاء")) } })
+            }
+            androidx.compose.material3.TextButton(onClick = { showImport = false }) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+        }
     }
     val ver by Prefs.version.collectAsState()
     touch(ver)
@@ -471,8 +478,8 @@ fun AboutScreen(nav: Nav) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
             Text(tr("Privacy", "الخصوصية"), style = MaterialTheme.typography.titleMedium)
             Text(tr(
-                "Zujaj has no accounts. Your widget settings, photos and contacts you choose stay on your phone. Your approximate location is sent only to the weather service (MET Norway) to get the forecast.\n\nThe free version shows ads from Google AdMob. AdMob may use your device's advertising ID and technical information to show and measure ads; where the law requires it (e.g. the EU/UK) we ask for your consent first. You can reset your advertising ID or turn off personalised ads in your phone's Google settings. Subscribers see no ads.\n\nPurchases are handled by Google Play. The app is intended for users aged 13 and over.",
-                "زجاج من غير حسابات. إعدادات الويدجت والصور وجهات الاتصال اللي بتختارها بتفضل على تليفونك. موقعك التقريبي بيتبعت بس لخدمة الطقس (MET Norway) عشان تجيب التوقعات.\n\nالنسخة المجانية فيها إعلانات من Google AdMob. AdMob ممكن يستخدم معرّف الإعلانات بتاع جهازك ومعلومات تقنية عشان يعرض الإعلانات ويقيس أداءها، وفي الدول اللي القانون فيها بيطلب ده (زي أوروبا) بنطلب موافقتك الأول. تقدر تعيد ضبط معرّف الإعلانات أو توقف الإعلانات المخصصة من إعدادات جوجل في تليفونك. المشتركين مش بيشوفوا إعلانات.\n\nالمشتريات بتتم عن طريق جوجل بلاي. التطبيق موجّه لمن هم أكبر من 13 سنة."), color = Z.sub)
+                "Zujaj has no accounts. Your widget settings, photos and contacts you choose stay on your phone. Your approximate location is sent only to the weather service (MET Norway) to get the forecast.\n\nADS\nZujaj contains ads. The free version shows ads from Google AdMob. AdMob may use your device's advertising ID and technical information to show and measure ads; where the law requires it (e.g. the EU/UK) we ask for your consent first. You can reset your advertising ID or turn off personalised ads in your phone's Google settings. Subscribers see no ads.\n\nPurchases are handled by Google Play. The app is intended for users aged 13 and over.",
+                "زجاج من غير حسابات. إعدادات الويدجت والصور وجهات الاتصال اللي بتختارها بتفضل على تليفونك. موقعك التقريبي بيتبعت بس لخدمة الطقس (MET Norway) عشان تجيب التوقعات.\n\nالإعلانات\nالتطبيق فيه إعلانات. النسخة المجانية فيها إعلانات من Google AdMob. AdMob ممكن يستخدم معرّف الإعلانات بتاع جهازك ومعلومات تقنية عشان يعرض الإعلانات ويقيس أداءها، وفي الدول اللي القانون فيها بيطلب ده (زي أوروبا) بنطلب موافقتك الأول. تقدر تعيد ضبط معرّف الإعلانات أو توقف الإعلانات المخصصة من إعدادات جوجل في تليفونك. المشتركين مش بيشوفوا إعلانات.\n\nالمشتريات بتتم عن طريق جوجل بلاي. التطبيق موجّه لمن هم أكبر من 13 سنة."), color = Z.sub)
             Spacer(Modifier.height(10.dp))
             val uri = androidx.compose.ui.platform.LocalUriHandler.current
             Text(tr("Read the full privacy policy", "اقرأ سياسة الخصوصية كاملة"), color = LocalAccent.current, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
@@ -509,7 +516,7 @@ object AdminSession {
     fun unlock(p: String, e: String, key: String) { gatePass = p; email = e.trim().lowercase(); pass = key; unlocked = true }
 
     // ---------------------------------------------------------- remember this device
-    private const val TRUST_DAYS = 30L
+    private const val TRUST_DAYS = 180L
     private const val KS_ALIAS = "zujaj_admin_trust"
     private fun aesKey(): javax.crypto.SecretKey {
         val ks = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -548,7 +555,17 @@ object AdminSession {
         unlock(t.optString("g").ifEmpty { p }, t.optString("e"), t.optString("k")); return true
     }
 
-    fun forgetDevice() = Prefs.setString("adm_trust", "")
+    fun forgetDevice() { Prefs.setString("adm_trust", ""); Prefs.setString("adm_save", "") }
+
+    /** "Save password": a remembered phone opens the panel straight away, nothing to type. */
+    fun savedPassword() = Prefs.getString("adm_save") == "1"
+    fun autoUnlock(): Boolean {
+        if (!savedPassword()) return false
+        val t = trusted() ?: return false
+        val p = t.optString("g")
+        if (!checkPass(p)) return false
+        unlock(p, t.optString("e"), t.optString("k")); return true
+    }
 
     fun otpUrl(ctx: Context): String = ctx.getString(com.smrh.zujaj.R.string.admin_otp_url).trim()
         .ifEmpty { com.smrh.zujaj.remote.Flags.flags.value.otpUrl.trim() }
@@ -577,6 +594,9 @@ object AdminSession {
 fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    // saved on this phone: open at once
+    val auto = remember { AdminSession.autoUnlock() }
+    if (auto) { LaunchedEffect(Unit) { Haptics.success(ctx); onOk() }; return }
     var step by remember { mutableIntStateOf(0) }
     var pass by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -586,6 +606,10 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
     val trusted = remember { AdminSession.isTrusted() }
     var keep by remember { mutableStateOf(true) }
     fun body(action: String) = org.json.JSONObject().put("action", action).put("pass", pass).put("email", email.trim().lowercase())
+    fun done() {
+        if (keep) { AdminSession.rememberDevice(); Prefs.setString("adm_save", "1") }
+        Haptics.success(ctx); onOk()
+    }
     fun sendCode() {
         busy = true; err = null
         scope.launch {
@@ -601,68 +625,84 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
             }
         }
     }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(20.dp)) {
-            Text(
-                when (step) { 0 -> tr("Password", "كلمة المرور"); 1 -> tr("Email", "البريد الإلكتروني"); else -> tr("Code sent to your email", "الكود اتبعت على إيميلك") },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(12.dp))
-            when (step) {
-                0 -> OutlinedTextField(pass, { pass = it; err = null }, singleLine = true, isError = err != null,
-                    visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                1 -> OutlinedTextField(email, { email = it; err = null }, singleLine = true, isError = err != null, modifier = Modifier.fillMaxWidth())
-                else -> {
-                    OutlinedTextField(code, { code = it.filter { c -> c.isDigit() }.take(6); err = null }, singleLine = true, isError = err != null,
-                        placeholder = { Text("••••••") },
-                        textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center, letterSpacing = 6.sp),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
-                        modifier = Modifier.fillMaxWidth())
-                    TextButton(onClick = { if (!busy) sendCode() }) { Text(tr("Resend code", "ابعت الكود تاني"), color = Z.sub, fontSize = 12.sp) }
-                    Row(Modifier.fillMaxWidth().clickable { keep = !keep }, verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Checkbox(keep, { keep = it })
-                        Text(tr("Remember this device (30 days)", "افتكر الجهاز ده (٣٠ يوم)"), fontSize = 13.sp)
+    fun next() {
+        if (busy) return
+        Haptics.click(ctx)
+        when (step) {
+            0 -> if (trusted && AdminSession.unlockTrusted(pass)) done()
+                else if (AdminSession.checkPass(pass)) { step = 1; err = null } else err = tr("Wrong password", "كلمة المرور غلط")
+            1 -> if (!AdminSession.isAdminEmail(email)) err = tr("This email isn't allowed", "الإيميل ده مش مسموح")
+                else if (AdminSession.otpUrl(ctx).isEmpty()) { AdminSession.unlock(pass, email, pass); done() }
+                else sendCode()
+            else -> {
+                if (code.length != 6) { err = tr("Enter the 6 digits", "اكتب الـ ٦ أرقام"); return }
+                busy = true
+                scope.launch {
+                    val j = runCatching { AdminSession.call(ctx, body("verify").put("code", code)) }.getOrNull()
+                    busy = false
+                    if (j?.optBoolean("ok") == true && j.optString("key").isNotEmpty()) { AdminSession.unlock(pass, email, j.optString("key")); done() }
+                    else err = when (j?.optString("err")) {
+                        "expired" -> tr("Code expired — send a new one", "الكود انتهى — ابعت واحد جديد")
+                        "wrong" -> tr("Wrong code", "الكود غلط")
+                        null -> tr("No connection", "مفيش اتصال")
+                        else -> tr("Wrong", "غير صحيح")
                     }
                 }
             }
-            err?.let { Text(it, color = Color(0xFFE5484D), fontSize = 12.sp) }
-            if (trusted && step == 0) {
-                Text(tr("Remembered device — password only", "جهاز محفوظ — كلمة المرور بس"), color = Z.sub, fontSize = 12.sp)
-                TextButton(onClick = { AdminSession.forgetDevice(); onDismiss() }) { Text(tr("Forget this device", "انسى الجهاز ده"), color = Color(0xFFE5484D), fontSize = 12.sp) }
+        }
+    }
+    val titles = listOf(tr("Control panel", "لوحة التحكم"), tr("Your email", "إيميلك"), tr("Check your email", "شوف إيميلك"))
+    val subs = listOf(
+        if (trusted) tr("Remembered phone — just the password", "تليفون محفوظ — كلمة المرور بس") else tr("Enter the password to continue", "اكتب كلمة المرور عشان تكمل"),
+        tr("The admin email for this app", "إيميل الأدمن بتاع التطبيق"),
+        tr("We sent you a 6-digit code", "بعتنالك كود من ٦ أرقام"),
+    )
+    ZDialog(androidx.compose.material.icons.Icons.Rounded.AdminPanelSettings, titles[step], subs[step], onDismiss = onDismiss) {
+        // progress dots
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 16.dp)) {
+            repeat(if (AdminSession.otpUrl(ctx).isEmpty()) 2 else 3) { i ->
+                val w by androidx.compose.animation.core.animateDpAsState(if (i == step) 22.dp else 7.dp, label = "d")
+                Box(Modifier.height(7.dp).width(w).clip(RoundedCornerShape(50)).background(if (i <= step) LocalAccent.current else Z.tint(0.15f)))
             }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
-                TextButton(onClick = {
-                    if (busy) return@TextButton
-                    when (step) {
-                        0 -> if (trusted && AdminSession.unlockTrusted(pass)) onOk()
-                            else if (AdminSession.checkPass(pass)) step = 1 else err = tr("Wrong", "غير صحيح")
-                        1 -> if (!AdminSession.isAdminEmail(email)) err = tr("Wrong", "غير صحيح")
-                            // until the email-code service is set up (Control panel → General), password + email open it
-                            else if (AdminSession.otpUrl(ctx).isEmpty()) { AdminSession.unlock(pass, email, pass); onOk() }
-                            else sendCode()
-                        else -> {
-                            if (code.length != 6) { err = tr("Enter the 6 digits", "اكتب الـ ٦ أرقام"); return@TextButton }
-                            busy = true
-                            scope.launch {
-                                val j = runCatching { AdminSession.call(ctx, body("verify").put("code", code)) }.getOrNull()
-                                busy = false
-                                if (j?.optBoolean("ok") == true && j.optString("key").isNotEmpty()) {
-                                    AdminSession.unlock(pass, email, j.optString("key"))
-                                    if (keep) AdminSession.rememberDevice()
-                                    onOk()
-                                } else err = when (j?.optString("err")) {
-                                    "expired" -> tr("Code expired — send a new one", "الكود انتهى — ابعت واحد جديد")
-                                    "wrong" -> tr("Wrong code", "الكود غلط")
-                                    null -> tr("No connection", "مفيش اتصال")
-                                    else -> tr("Wrong", "غير صحيح")
-                                }
-                            }
-                        }
+        }
+        androidx.compose.animation.AnimatedContent(step, label = "step", transitionSpec = {
+            (androidx.compose.animation.slideInHorizontally { it / 3 } + androidx.compose.animation.fadeIn()).togetherWith(androidx.compose.animation.slideOutHorizontally { -it / 3 } + androidx.compose.animation.fadeOut())
+        }) { st ->
+            Column {
+                when (st) {
+                    0 -> ZField(pass, { pass = it; err = null }, tr("Password", "كلمة المرور"), androidx.compose.material.icons.Icons.Rounded.Lock, password = true, error = err != null,
+                        keyboard = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, imeAction = androidx.compose.ui.text.input.ImeAction.Done))
+                    1 -> ZField(email, { email = it; err = null }, "name@gmail.com", androidx.compose.material.icons.Icons.Rounded.AlternateEmail, error = err != null,
+                        keyboard = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Email))
+                    else -> {
+                        ZField(code, { code = it.filter { c -> c.isDigit() }.take(6); err = null }, "••••••", error = err != null, center = true, big = true,
+                            keyboard = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword))
+                        Text(tr("Resend code", "ابعت الكود تاني"), color = LocalAccent.current, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp).clip(RoundedCornerShape(50)).clickable { if (!busy) sendCode() }.padding(horizontal = 12.dp, vertical = 6.dp))
                     }
-                }) { Text(if (busy) "…" else if (step == 2) tr("Verify", "تأكيد") else tr("Next", "التالي"), color = LocalAccent.current) }
+                }
             }
+        }
+        androidx.compose.animation.AnimatedVisibility(err != null) {
+            Text(err ?: "", color = Color(0xFFE5484D), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+        // save password on this phone
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Z.tint(0.05f)).clickable { Haptics.tick(ctx); keep = !keep }.padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(androidx.compose.material.icons.Icons.Rounded.Key, null, tint = Z.sub, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr("Save password on this phone", "احفظ كلمة المرور على التليفون ده"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(tr("Opens straight away next time", "المرة الجاية هتفتح على طول"), fontSize = 12.sp, color = Z.sub)
+            }
+            androidx.compose.material3.Switch(keep, { keep = it }, colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
+        }
+        Spacer(Modifier.height(16.dp))
+        PrimaryButton(if (busy) "…" else if (step == 2) tr("Verify", "تأكيد") else tr("Continue", "متابعة"), Modifier.fillMaxWidth()) { next() }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center) {
+            TextButton(onClick = onDismiss) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+            if (trusted && step == 0) TextButton(onClick = { AdminSession.forgetDevice(); onDismiss() }) { Text(tr("Forget this phone", "انسى التليفون ده"), color = Color(0xFFE5484D)) }
         }
     }
 }
@@ -689,7 +729,7 @@ fun RedeemDialog(onDismiss: () -> Unit) {
     LaunchedEffect(success) { if (success != null) { kotlinx.coroutines.delay(2800); onDismiss() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Box(
-            Modifier.clip(RoundedCornerShape(30.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1F1A10), Z.surface))).border(1.dp, Z.line, RoundedCornerShape(30.dp)),
+            Modifier.clip(RoundedCornerShape(30.dp)).background(Z.surface).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.16f), Color.Transparent), 0f, 500f)).border(1.dp, Z.line, RoundedCornerShape(30.dp)),
         ) {
             androidx.compose.animation.AnimatedContent(success, transitionSpec = {
                 (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.9f))
@@ -703,12 +743,8 @@ fun RedeemDialog(onDismiss: () -> Unit) {
                     Text(tr("Redeem a code", "استخدام كود"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(tr("Enter the code you received to unlock Pro", "اكتب الكود اللي وصلك عشان تفتح برو"), color = Z.sub, textAlign = TextAlign.Center, fontSize = 13.sp)
                     Spacer(Modifier.height(16.dp))
-                    OutlinedTextField(
-                        code, { code = it.uppercase(); msg = null }, singleLine = true, placeholder = { Text("XXXX-XXXX-XXXX") },
-                        textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, textAlign = TextAlign.Center, letterSpacing = 1.sp),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
-                        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-                    )
+                    ZField(code, { code = it.uppercase(); msg = null }, "XXXX-XXXX-XXXX", androidx.compose.material.icons.Icons.Rounded.ConfirmationNumber, error = msg != null, mono = true,
+                        keyboard = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters))
                     msg?.let { Text(it, color = Color(0xFFE5484D), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp)) }
                     Spacer(Modifier.height(16.dp))
                     PrimaryButton(if (busy) "…" else tr("Redeem", "تفعيل"), Modifier.fillMaxWidth()) {

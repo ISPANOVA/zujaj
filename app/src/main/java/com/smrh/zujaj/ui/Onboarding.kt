@@ -171,7 +171,7 @@ private fun LookPage() {
                 .forEach { (m, label, icon) ->
                     val on = Z.mode() == m
                     val bw by animateDpAsState(if (on) 2.dp else 1.dp, label = "bw")
-                    Column(Modifier.weight(1f).pressScale().then(if (on) Modifier.glow(accent, 16.dp, 0.4f) else Modifier).clip(RoundedCornerShape(22.dp))
+                    Column(Modifier.weight(1f).pressScale().clip(RoundedCornerShape(22.dp))
                         .background(Z.surface).border(bw, if (on) accent else Z.line, RoundedCornerShape(22.dp))
                         .clickable { Haptics.tick(ctx); Prefs.setString("theme_mode", m.toString()); Z.refresh(ctx) }.padding(vertical = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -202,7 +202,7 @@ private fun LookPage() {
             Z.accents.forEachIndexed { i, a ->
                 val on = i == Prefs.accentIndex
                 val s by animateFloatAsState(if (on) 1.15f else 1f, spring(0.5f, 500f), label = "s")
-                Box(Modifier.graphicsLayer { scaleX = s; scaleY = s }.then(if (on) Modifier.glow(a.color, 14.dp, 0.6f) else Modifier).size(38.dp).clip(CircleShape)
+                Box(Modifier.graphicsLayer { scaleX = s; scaleY = s }.size(38.dp).clip(CircleShape)
                     .background(Brush.linearGradient(listOf(a.color, a.color.copy(alpha = 0.75f))))
                     .border(if (on) 3.dp else 0.dp, Color.White, CircleShape)
                     .clickable { Haptics.tick(ctx); Prefs.accentIndex = i }, contentAlignment = Alignment.Center) {
@@ -231,7 +231,7 @@ private fun StepsPage(active: Boolean) {
             Row(Modifier.fillMaxWidth().padding(vertical = 7.dp).graphicsLayer { alpha = a; translationX = (1 - a) * 80f }
                 .clip(RoundedCornerShape(22.dp)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(22.dp)).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.glow(accent, 10.dp, 0.35f).size(48.dp).clip(RoundedCornerShape(15.dp))
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp))
                     .background(Brush.linearGradient(listOf(accent, accent.copy(alpha = 0.7f)))), contentAlignment = Alignment.Center) {
                     Icon(icon, null, tint = Color(0xFF14110A), modifier = Modifier.size(26.dp))
                 }
