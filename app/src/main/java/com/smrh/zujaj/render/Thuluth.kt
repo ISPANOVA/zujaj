@@ -35,7 +35,7 @@ object Thuluth {
         val b = Rect()
         p.getTextBounds(s, 0, s.length, b)
         // room for the marks around the word
-        val padK = 0.16f
+        val padK = 0.24f
         var k = 1f
         val needW = b.width() + p.textSize * padK * 2; val needH = b.height() + p.textSize * padK * 2
         if (maxW > 0 && needW > maxW) k = min(k, maxW / needW)
@@ -43,7 +43,8 @@ object Thuluth {
         if (k < 1f) { p.textSize *= k; p.getTextBounds(s, 0, s.length, b) }
         val x = cx - b.exactCenterX()
         val y = cy - b.exactCenterY()
-        r.canvas.drawText(s, x, y, p)
+        // a touch heavier than the plain font, like a broad calligraphy pen
+        r.canvas.drawText(s, x, y, Paint(p).apply { style = Paint.Style.FILL_AND_STROKE; strokeWidth = textSize * 0.028f; strokeJoin = Paint.Join.ROUND })
         if (s.none { it in 'ء'..'ي' }) return
         marks(r, s, p, x, y, b, color)
     }
@@ -51,8 +52,8 @@ object Thuluth {
     /** Sprinkles ornament marks in a band around the ink (stable for the same word). */
     private fun marks(r: RenderCtx, s: String, p: Paint, x: Float, y: Float, b: Rect, color: Int) {
         val em = p.textSize
-        val ms = em * 0.11f                      // mark size
-        val margin = em * 0.2f
+        val ms = em * 0.135f                      // mark size
+        val margin = em * 0.3f
         val left = x + b.left - margin; val top = y + b.top - margin
         val wPx = b.width() + 2 * margin; val hPx = b.height() + 2 * margin
         // a small grid of the word's ink
@@ -72,13 +73,13 @@ object Thuluth {
             if (cy > 0 && dist[i - gw] > nd) { dist[i - gw] = nd; q[qt++] = i - gw }
             if (cy < gh - 1 && dist[i + gw] > nd) { dist[i + gw] = nd; q[qt++] = i + gw }
         }
-        val near = (ms * 1.15f / cell).toInt(); val far = (ms * 3.2f / cell).toInt()
+        val near = (ms * 1.6f / cell).toInt(); val far = (ms * 3.6f / cell).toInt()
         val cand = ArrayList<Int>()
         for (i in dist.indices) if (dist[i] in near..far) cand.add(i)
         val rnd = java.util.Random(s.hashCode().toLong())
         java.util.Collections.shuffle(cand, rnd)
         val placed = ArrayList<Pair<Float, Float>>()
-        val minGap = ms * 3.2f
+        val minGap = ms * 2.8f
         val maxMarks = (wPx / (ms * 3.6f)).toInt().coerceIn(5, 16)
         val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = color; style = Paint.Style.STROKE; strokeWidth = ms * 0.2f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND

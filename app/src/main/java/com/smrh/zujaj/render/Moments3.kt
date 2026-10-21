@@ -231,12 +231,12 @@ object Moments3R {
         // ---- A: the day in big decorative script, months and years under a thin rule
         val a = RectF(0f, aTop, W, aTop + aH)
         darkCard(r, a)
-        r.textTight(Calendars.dayName(r.today, ar), W / 2, a.top + aH * 0.40f, aH * 0.62f * r.s1, ink, if (ar) deco else F.PLAYFAIR, maxW = W - 44 * u, maxH = aH * 0.58f)
-        r.canvas.drawLine(W * 0.16f, a.top + aH * 0.75f, W * 0.84f, a.top + aH * 0.75f, r.strokePaint(withAlpha(ink, 40), 0.8f * u))
+        r.textTight(Calendars.dayName(r.today, ar), W / 2, a.top + aH * 0.38f, aH * 0.62f * r.s1, ink, if (ar) deco else F.PLAYFAIR, maxW = W - 44 * u, maxH = aH * 0.58f)
+        r.canvas.drawLine(W * 0.16f, a.top + aH * 0.73f, W * 0.84f, a.top + aH * 0.73f, r.strokePaint(withAlpha(ink, 40), 0.8f * u))
         val l1 = if (ar) "${Calendars.hijriMonth(hd.month, true)} • ${r.n(hd.year)}" else "${Calendars.hijriMonth(hd.month, false)} • ${hd.year}"
         val l2 = if (ar) "${Calendars.monthName(greg.monthValue, true)} • ${r.n(greg.year)}" else "${Calendars.monthName(greg.monthValue, false)} • ${greg.year}"
-        r.text(l1, W / 2, a.top + aH * 0.84f, 11.5f * u * r.s2, ink, r.sansBold, Paint.Align.CENTER)
-        r.text(l2, W / 2, a.top + aH * 0.94f, 11.5f * u * r.s2, sub, r.sansBold, Paint.Align.CENTER)
+        r.text(l1, W / 2, a.top + aH * 0.835f, 11f * u * r.s2, ink, r.sansBold, Paint.Align.CENTER)
+        r.text(l2, W / 2, a.top + aH * 0.945f, 11f * u * r.s2, sub, r.sansBold, Paint.Align.CENTER)
 
         // ---- B: time of the next prayer + countdown | its name in script, with a progress line under both
         val bSmall = xs(0f, W * 0.42f); val bBig = xs(W * 0.42f + g, W)
