@@ -1,0 +1,2 @@
+clock_bold covered=0.64 edges=0
+media_deck covered=0.63 edges=3

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.smrh.zujaj.UiShotsTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-21T12:09:53.364Z" hostname="runnervm8k3b6" time="93.309">
+  <properties/>
+  <testcase name="screens" classname="com.smrh.zujaj.UiShotsTest" time="93.309"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

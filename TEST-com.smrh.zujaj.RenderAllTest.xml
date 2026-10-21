@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.smrh.zujaj.RenderAllTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-21T12:09:13.076Z" hostname="runnervm8k3b6" time="40.283">
+  <properties/>
+  <testcase name="bgAudit" classname="com.smrh.zujaj.RenderAllTest" time="9.244"/>
+  <testcase name="renderAll" classname="com.smrh.zujaj.RenderAllTest" time="31.039"/>
+  <system-out><![CDATA[RENDER ERRORS:
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
