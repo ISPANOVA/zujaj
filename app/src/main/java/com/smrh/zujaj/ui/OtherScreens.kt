@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material.icons.rounded.NewReleases
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.Key
@@ -362,69 +366,111 @@ fun PaywallScreen(nav: Nav) {
         }
         if (msg != null) Billing.consumeMessage()
     }
-    Column(Modifier.fillMaxSize()) {
-        TopBar("", { nav.back() })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(84.dp).clip(RoundedCornerShape(26.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A2C12), Color(0xFF17130B)))), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(48.dp))
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(tr("Zujaj Pro", "زجاج برو"), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(tr("Unlock every widget and future drops", "افتح كل الويدجت وكل الإضافات القادمة"), color = Z.sub, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(18.dp))
-            listOf(
-                tr("All ${Catalog.all.size}+ widgets — clocks, prayer, media, calendar…", "كل الويدجت (${Catalog.all.size}+) — ساعات، صلاة، ميديا، تقويم…"),
-                tr("Glass, aurora & texture backgrounds", "خلفيات زجاجية وشفق وملمس"),
-                tr("New widgets every month", "ويدجت جديدة كل شهر"),
-                tr("Support an independent developer ♥", "ادعم مطوراً مستقلاً ♥"),
-            ).forEach {
-                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CheckCircle, null, tint = LocalAccent.current, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp)); Text(it)
-                }
-            }
-            Spacer(Modifier.height(18.dp))
-            if (pro) {
-                Text(tr("You already have Pro ✓", "أنت مشترك في برو بالفعل ✓"), color = LocalAccent.current, style = MaterialTheme.typography.titleMedium)
-            } else {
-                Plan.values().forEach { plan ->
-                    val p = prices[plan]
-                    val (title, sub) = when (plan) {
-                        Plan.MONTHLY -> tr("Monthly", "شهري") to tr("Billed every month", "يُجدد كل شهر")
-                        Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية ثم سنوي") else tr("Best value", "الأوفر"))
-                        Plan.LIFETIME -> tr("Lifetime", "مدى الحياة") to tr("Pay once, keep forever", "ادفع مرة واحدة للأبد")
+    val accent = LocalAccent.current
+    Box(Modifier.fillMaxSize()) {
+        // a quiet gold wash behind the header — the only decoration on the page
+        Box(Modifier.fillMaxWidth().height(320.dp).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.16f), Color.Transparent))))
+        Column(Modifier.fillMaxSize()) {
+            TopBar("", { nav.back() })
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+                // ---- header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC8902E)))), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.WorkspacePremium, null, tint = Color(0xFF2A1C05), modifier = Modifier.size(30.dp))
                     }
-                    val selected = sel == plan
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) LocalAccent.current.copy(alpha = 0.14f) else Z.tint(0.05f))
-                            .border(1.5.dp, if (selected) LocalAccent.current else Z.line, RoundedCornerShape(20.dp))
-                            .clickable { sel = plan }.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(title, style = MaterialTheme.typography.titleMedium)
-                                if (plan == Plan.YEARLY) { Spacer(Modifier.width(8.dp)); NewBadge() }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(tr("Zujaj Pro", "زجاج برو"), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
+                        Text(tr("Every widget, every look, no ads", "كل الويدجت، كل الأشكال، من غير إعلانات"), color = Z.sub, fontSize = 14.sp)
+                    }
+                }
+                Spacer(Modifier.height(22.dp))
+                // ---- what you get: compact two-column list (four columns on wide screens)
+                val benefits = listOf(
+                    Triple(Icons.Rounded.Widgets, tr("All ${Catalog.all.size}+ widgets", "كل الويدجت (${Catalog.all.size}+)"), tr("Clocks, prayer, media, calendar", "ساعات، صلاة، ميديا، تقويم")),
+                    Triple(Icons.Rounded.AutoAwesome, tr("Premium looks", "أشكال مميزة"), tr("Glass, aurora & textures", "زجاج، شفق وملمس")),
+                    Triple(Icons.Rounded.Block, tr("No ads", "من غير إعلانات"), tr("Clean, uninterrupted app", "تطبيق نضيف من غير مقاطعة")),
+                    Triple(Icons.Rounded.NewReleases, tr("New every month", "جديد كل شهر"), tr("Future drops included", "الإضافات الجاية معاك")),
+                )
+                val wide = LocalConfiguration.current.screenWidthDp >= 600
+                benefits.chunked(if (wide) 4 else 2).forEach { row ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { (icon, t, sub) ->
+                            Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(18.dp)).padding(14.dp)) {
+                                Icon(icon, null, tint = Z.pro, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.height(10.dp))
+                                Text(t, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Z.text)
+                                Text(sub, color = Z.sub, fontSize = 12.sp, lineHeight = 16.sp)
                             }
-                            Text(sub, color = Z.sub, style = MaterialTheme.typography.bodySmall)
                         }
-                        Text(p?.price ?: "—", style = MaterialTheme.typography.titleMedium)
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
+                Spacer(Modifier.height(22.dp))
+                if (pro) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Z.pro.copy(alpha = 0.12f)).border(1.dp, Z.pro.copy(alpha = 0.5f), RoundedCornerShape(20.dp)).padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.CheckCircle, null, tint = Z.pro, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(tr("You have Pro", "انت مشترك في برو"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(tr("Manage or cancel any time in Google Play.", "تقدر تدير أو تلغي الاشتراك من جوجل بلاي في أي وقت."), color = Z.sub, fontSize = 13.sp)
+                        }
+                    }
+                } else {
+                    Text(tr("Choose a plan", "اختار الخطة"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text, modifier = Modifier.padding(bottom = 8.dp))
+                    // plan cards: side by side on wide screens, stacked on phones
+                    @Composable
+                    fun PlanCard(plan: Plan, mod: Modifier) {
+                        val p = prices[plan]
+                        val (title, sub) = when (plan) {
+                            Plan.MONTHLY -> tr("Monthly", "شهري") to tr("Renews every month", "بيتجدد كل شهر")
+                            Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية ثم سنوي") else tr("Renews every year", "بيتجدد كل سنة"))
+                            Plan.LIFETIME -> tr("Lifetime", "مدى الحياة") to tr("One payment, yours forever", "تدفع مرة واحدة وتبقى ليك")
+                        }
+                        val on = sel == plan
+                        val ring by androidx.compose.animation.animateColorAsState(if (on) accent else Z.line, label = "ring")
+                        Box(mod) {
+                            Row(Modifier.fillMaxWidth().padding(top = if (plan == Plan.YEARLY) 10.dp else 0.dp).clip(RoundedCornerShape(20.dp))
+                                .background(if (on) accent.copy(alpha = 0.10f) else Z.tint(0.04f))
+                                .border(if (on) 2.dp else 1.dp, ring, RoundedCornerShape(20.dp))
+                                .clickable { Haptics.tick(ctx); sel = plan }.padding(horizontal = 16.dp, vertical = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                // radio
+                                Box(Modifier.size(22.dp).clip(CircleShape).border(2.dp, if (on) accent else Z.sub, CircleShape), contentAlignment = Alignment.Center) {
+                                    androidx.compose.animation.AnimatedVisibility(on, enter = androidx.compose.animation.scaleIn(), exit = androidx.compose.animation.scaleOut()) {
+                                        Box(Modifier.size(11.dp).clip(CircleShape).background(accent))
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
+                                    Text(sub, color = Z.sub, fontSize = 12.sp)
+                                }
+                                Text(p?.price ?: "—", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Z.text)
+                            }
+                            if (plan == Plan.YEARLY) Text(if (p?.trial == true) tr("FREE TRIAL", "تجربة مجانية") else tr("MOST POPULAR", "الأكثر اختيارًا"),
+                                color = Color(0xFF2A1C05), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp,
+                                modifier = Modifier.align(Alignment.TopCenter).clip(RoundedCornerShape(50)).background(Z.pro).padding(horizontal = 10.dp, vertical = 3.dp))
+                        }
+                    }
+                    if (wide) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Plan.values().forEach { PlanCard(it, Modifier.weight(1f)) } }
+                    else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { listOf(Plan.YEARLY, Plan.MONTHLY, Plan.LIFETIME).forEach { PlanCard(it, Modifier.fillMaxWidth()) } }
+                }
+                Spacer(Modifier.height(18.dp))
+            }
+            // ---- sticky actions + disclosure
+            Column(Modifier.fillMaxWidth().background(Z.bg.copy(alpha = 0.96f)).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                if (!pro) PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
                     val ok = Billing.buy(ctx as Activity, sel)
                     if (!ok) Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show()
                 }
-                Row {
-                    TextButton(onClick = { Billing.restore() }) { Text(tr("Restore purchases", "استعادة المشتريات"), color = Z.sub) }
-                    TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = LocalAccent.current) }
+                Row(horizontalArrangement = Arrangement.Center) {
+                    TextButton(onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking your purchases…", "بنراجع مشترياتك…"), Toast.LENGTH_SHORT).show() }) { Text(tr("Restore purchases", "استرجاع المشتريات"), color = Z.sub) }
+                    TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = accent) }
                 }
+                Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي. تقدر تلغي في أي وقت."),
+                    color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center)
             }
-            Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات تتجدد تلقائياً حتى تلغيها من جوجل بلاي. يمكنك الإلغاء في أي وقت."),
-                color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 12.dp))
-            Spacer(Modifier.height(30.dp))
         }
     }
 }

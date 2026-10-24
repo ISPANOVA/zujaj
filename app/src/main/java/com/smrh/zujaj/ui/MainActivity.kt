@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.displayCutoutPadding
 
 import androidx.compose.foundation.layout.imePadding
@@ -91,8 +92,8 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // system splash: shown only while the first frame is prepared (no artificial delay), then the logo
         // shrinks and fades into the app
-        val splash = androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
-        splash.setOnExitAnimationListener { v ->
+        val splash = installSplashScreen()
+        splash.setOnExitAnimationListener { v: androidx.core.splashscreen.SplashScreenViewProvider ->
             val icon = v.iconView
             v.view.animate().alpha(0f).setDuration(260).withEndAction { v.remove() }.start()
             icon.animate().scaleX(0.82f).scaleY(0.82f).setDuration(260)
