@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -448,7 +449,7 @@ fun DiscoverTab(nav: Nav) {
     val wide = WidthClass.of(screenDp) != WidthClass.COMPACT
     val gut = Sp.gutter(screenDp)
 
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = LocalDockSpace.current + 10.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("discover_list"), state = listState, contentPadding = PaddingValues(bottom = LocalDockSpace.current + 10.dp)) {
         // ---- header: greeting + wordmark on a still light wash (no looping motion on the home page —
         // it cost battery and pulled the eye away from the widgets), then a real search entry
         item(key = "head") {
