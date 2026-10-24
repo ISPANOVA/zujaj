@@ -62,5 +62,10 @@ class WidgetTapTest {
         settle()
         Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")).setup(bundle)
         settle()
+        // as in release builds before the fix: the page list could not be read back, but the pages' saved
+        // UI state still was — new pages must not pick up an old page's state
+        val noHistory = android.os.Bundle(bundle).apply { remove("nav") }
+        Robolectric.buildActivity(MainActivity::class.java, editIntent(7)).setup(noHistory)
+        settle()
     }
 }
