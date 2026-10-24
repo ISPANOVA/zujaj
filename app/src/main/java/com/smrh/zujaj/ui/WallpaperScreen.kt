@@ -1117,7 +1117,8 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
         var shown by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { shown = true }
         val sc by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0.88f, androidx.compose.animation.core.spring(0.6f, 320f), label = "sc")
-        Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp).graphicsLayer { scaleX = sc; scaleY = sc; alpha = ((sc - 0.88f) / 0.12f).coerceIn(0f, 1f) }
+        // phones: near full width · tablets/foldables: a comfortable fixed-width card
+        Box(Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 480.dp).padding(horizontal = 18.dp).graphicsLayer { scaleX = sc; scaleY = sc; alpha = ((sc - 0.88f) / 0.12f).coerceIn(0f, 1f) }
             .clip(RoundedCornerShape(30.dp)).background(Z.surface).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.16f), Color.Transparent)))
             .border(1.dp, Z.line, RoundedCornerShape(30.dp))) {
         Box(Modifier.align(Alignment.TopEnd).padding(10.dp).size(34.dp).clip(CircleShape).background(Z.tint(0.08f)).clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
@@ -1133,16 +1134,18 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
             Text(tr("Apply your designs to the home & lock screen and save them to your photos.", "طبّق تصميماتك على الشاشة الرئيسية وشاشة القفل واحفظها في الصور."),
                 color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
             Spacer(Modifier.height(14.dp))
-            listOf(tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
-                tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
-                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.AutoAwesome, null, tint = Z.pro, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp)
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Z.tint(0.04f)).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                listOf(tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
+                    tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Check, null, tint = Z.pro, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp, color = Z.text)
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))
             val options = listOf(
                 Triple(com.smrh.zujaj.billing.WALL_MONTHLY, tr("Monthly", "شهري"), tr("Billed every month", "بيتجدد كل شهر")),
-                Triple(com.smrh.zujaj.billing.WALL_YEARLY, tr("Yearly", "سنوي"), tr("Best value", "أوفر اختيار")),
+                Triple(com.smrh.zujaj.billing.WALL_YEARLY, tr("Yearly", "سنوي"), tr("Billed every year", "بيتجدد كل سنة")),
                 Triple(com.smrh.zujaj.billing.WALL_PRODUCT, tr("Lifetime", "مدى الحياة"), tr("Pay once, yours forever", "تدفع مرة واحدة وتبقى ليك")),
             )
             options.forEach { (id, name, sub) ->
@@ -1150,7 +1153,11 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(18.dp))
                     .background(if (on) Z.pro.copy(alpha = 0.14f) else Z.tint(0.05f))
                     .border(if (on) 1.5.dp else 1.dp, if (on) Z.pro else Z.tint(0.08f), RoundedCornerShape(18.dp))
-                    .clickable { pick = id }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                    .clickable { Haptics.tick(ctx); pick = id }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(20.dp).clip(CircleShape).border(2.dp, if (on) Z.pro else Z.sub, CircleShape), contentAlignment = Alignment.Center) {
+                        if (on) Box(Modifier.size(10.dp).clip(CircleShape).background(Z.pro))
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(sub, color = Z.sub, fontSize = 12.sp)
@@ -1177,8 +1184,8 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         if (left > 0) {
-                            Text(tr("Watch a short ad — use it once free", "شوف إعلان قصير واستخدمها مرة ببلاش"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(tr("$left left today", "فاضلك $left النهارده"), color = Z.sub, fontSize = 12.sp)
+                            Text(tr("Or watch a short ad — use it once", "أو شوف إعلان قصير واستخدمها مرة"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(tr("$left of ${flags.adWallPerDay} free uses left today", "فاضلك $left من ${flags.adWallPerDay} مرات النهارده"), color = Z.sub, fontSize = 12.sp)
                         } else {
                             val h = (com.smrh.zujaj.ads.Ads.waitMs() / 3_600_000L); val m = (com.smrh.zujaj.ads.Ads.waitMs() / 60_000L) % 60
                             Text(tr("No free uses left today", "خلصت المرات المجانية النهارده"), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Z.sub)
@@ -1189,7 +1196,7 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
                 }
             }
             Row {
-                TextButton(onClick = { com.smrh.zujaj.billing.Billing.restore() }) { Text(tr("Restore", "استرجاع"), color = Z.sub) }
+                TextButton(onClick = { com.smrh.zujaj.billing.Billing.restore(); Toast.makeText(ctx, tr("Checking your purchases…", "بنراجع مشترياتك…"), Toast.LENGTH_SHORT).show() }) { Text(tr("Restore purchases", "استرجاع المشتريات"), color = Z.sub) }
                 TextButton(onClick = { redeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = Z.pro) }
             }
             Text(tr("Subscriptions renew automatically until cancelled in Google Play.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي."), color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center)

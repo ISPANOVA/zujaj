@@ -380,10 +380,13 @@ fun DiscoverTab(nav: Nav) {
     if (showUnlock) AdUnlockIntro { Prefs.setString("unlock_intro", "1"); showUnlock = false }
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
 
+    val ctxHome = androidx.compose.ui.platform.LocalContext.current
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
     val screenDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "home")
-    val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
+    val still = remember { Z.reducedMotion(ctxHome) }
+    val tAnim by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
+    val t = if (still) 0.35f else tAnim
 
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 130.dp)) {
         // ---- header over a slowly drifting aurora

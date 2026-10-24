@@ -48,6 +48,11 @@ object Z {
     /** A soft wash for cards and chips: white on dark, black on light. */
     fun tint(a: Float) = (if (light) Color.Black else Color.White).copy(alpha = if (light) a * 0.75f else a)
 
+    /** The phone's "remove animations" setting: decorative looping motion is skipped when it is on. */
+    fun reducedMotion(ctx: android.content.Context): Boolean = runCatching {
+        android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }.getOrDefault(false)
+
     /** 0 = follow the phone, 1 = dark, 2 = light. */
     fun mode() = Prefs.getString("theme_mode", "1").toIntOrNull() ?: 1
     fun refresh(ctx: android.content.Context) {
