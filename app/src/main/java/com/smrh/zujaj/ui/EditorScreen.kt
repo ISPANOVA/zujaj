@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.runtime.saveable.rememberSaveable
 
@@ -177,19 +178,55 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 .lives.any { it is com.smrh.zujaj.render.LiveClock && it.sizePx >= 18f } || Feat.HUB in style.feats
         }.getOrDefault(false)
     }
+    val applyBar: @Composable () -> Unit = {
+        // ---------------------------------------------------------------- apply
+        val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
+        val locked = remember(unlockVer, style.id) { Flags.locked(style) }
+        // the action bar is part of the layout (not floating over it), so it never hides a control;
+        // on wide screens it sits at the foot of the controls pane, never over the preview
+        Column(
+            Modifier.fillMaxWidth().background(Z.bg)
+                .drawBehind { drawLine(Z.tint(0.07f), androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx()) }
+                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
+        ) {
+            AdUnlockCard(style.id, locked, unlockVer)
+            PrimaryButton(
+                modifier = Modifier.fillMaxWidth(),
+                text = if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
+                icon = if (locked) Icons.Rounded.Lock else Icons.Rounded.Check,
+            ) {
+                when {
+                    locked -> nav.go(Screen.Paywall)
+                    s.widgetId != -1 -> {
+                        Haptics.success(ctx)
+                        Prefs.saveWidgetConfig(s.widgetId, cfg); cleanJson = cfg.toJson()
+                        WidgetUpdater.update(ctx, s.widgetId)
+                        if (cfg.cities.isNotEmpty()) Scheduler.refreshNow(ctx)
+                        if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
+                        else { Toast.makeText(ctx, tr("Saved ✓", "تم الحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
+                    }
+                    else -> {
+                        Haptics.success(ctx); pin(ctx, cfg, style.shape)
+                        appliedOnce = true; cleanJson = cfg.toJson()
+                        if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
+                    }
+                }
+            }
+        }
+    }
     var tab by rememberSaveable(s) { mutableIntStateOf(editorStartTab) }
     var stage by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(style.name(ar), tryLeave) {
                 val accentArgb = LocalAccent.current.let { android.graphics.Color.argb(255, (it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
-                IconButton(onClick = { Haptics.tick(ctx); runCatching { ShareDesign.share(ctx, cfg, accentArgb) } }) { Icon(Icons.Rounded.Share, null, tint = Z.text) }
+                IconButton(onClick = { Haptics.tick(ctx); runCatching { ShareDesign.share(ctx, cfg, accentArgb) } }) { Icon(Icons.Rounded.Share, tr("Share design", "شارك التصميم"), tint = Z.text) }
                 IconButton(onClick = {
                     fav = !fav
                     Prefs.favorites = if (fav) Prefs.favorites + style.id else Prefs.favorites - style.id
-                }) { Icon(if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null, tint = if (fav) LocalAccent.current else Z.text) }
+                }) { Icon(if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, tr("Save to favourites", "حفظ في المفضلة"), tint = if (fav) LocalAccent.current else Z.text) }
                 IconButton(onClick = { cfg = style.defaultConfig().copy(apps = cfg.apps, contacts = cfg.contacts, photos = cfg.photos, cities = cfg.cities) }) {
-                    Icon(Icons.Rounded.Refresh, null, tint = Z.text)
+                    Icon(Icons.Rounded.Refresh, tr("Reset to default", "رجّع الافتراضي"), tint = Z.text)
                 }
             }
             // phones: preview above the controls · tablets/foldables open: preview beside them
@@ -211,7 +248,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 Modifier.fillMaxWidth().offset(y = (-36).dp), horizontalArrangement = Arrangement.Center,
             ) {
                 Row(
-                    Modifier.clip(RoundedCornerShape(50)).background(Color(0xCC0B0B12)).padding(horizontal = 10.dp, vertical = 6.dp),
+                    Modifier.clip(RoundedCornerShape(50)).background(Z.surface.copy(alpha = 0.92f)).border(1.dp, Z.line, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     repeat(Backdrops.count) { i ->
@@ -234,9 +271,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             // ---------------------------------------------------------------- controls
             androidx.compose.animation.AnimatedContent(tab, Modifier.weight(1f).fillMaxWidth(), label = "tabs", transitionSpec = {
                 val dir = (if (targetState > initialState) 1 else -1) * (if (ar) -1 else 1)
-                val ease = androidx.compose.animation.core.FastOutSlowInEasing
-                (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 5 * dir } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240, 60)))
-                    .togetherWith(androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { -it / 5 * dir } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)))
+                (androidx.compose.animation.slideInHorizontally(Motion.std(Motion.SLOW)) { minOf(it / 6, 120) * dir } + androidx.compose.animation.fadeIn(Motion.std(Motion.MED)))
+                    .togetherWith(androidx.compose.animation.slideOutHorizontally(Motion.std(Motion.SLOW)) { -minOf(it / 6, 120) * dir } + androidx.compose.animation.fadeOut(Motion.std(Motion.FAST)))
             }) { tab ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).animateContentSize(androidx.compose.animation.core.tween(280))) {
                 if (tab == 0) {
@@ -457,55 +493,25 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     )) { cfg = cfg.copy(tap = it); if (it == Tap.OPEN_APP) showTapApp = true }
                 }
                 }
-                Spacer(Modifier.height(130.dp))
+                Spacer(Modifier.height(24.dp))
             }
             }
                     }
                 }
                 if (wide) Row(Modifier.fillMaxSize()) {
                     Column(Modifier.weight(0.46f).fillMaxHeight().padding(top = 8.dp), verticalArrangement = Arrangement.Center) { PreviewPane() }
-                    ControlsPane(Modifier.weight(0.54f).fillMaxHeight().padding(top = 8.dp))
+                    Column(Modifier.weight(0.54f).fillMaxHeight()) {
+                        ControlsPane(Modifier.weight(1f).padding(top = 8.dp))
+                        applyBar()
+                    }
                 } else Column(Modifier.fillMaxSize()) {
                     PreviewPane()
                     ControlsPane(Modifier.weight(1f))
+                    applyBar()
                 }
             }
         }
 
-        // ---------------------------------------------------------------- apply
-        val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
-        val locked = remember(unlockVer, style.id) { Flags.locked(style) }
-        val wideApply = LocalPaneWidth.current >= 760
-        Column(
-            // on large screens the actions sit under the controls pane, never over the preview
-            (if (wideApply) Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.54f) else Modifier.align(Alignment.BottomCenter).fillMaxWidth())
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.96f), Z.bg)))
-                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 14.dp)
-        ) {
-            AdUnlockCard(style.id, locked, unlockVer)
-            PrimaryButton(
-                modifier = Modifier.fillMaxWidth(),
-                text = if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
-                icon = if (locked) Icons.Rounded.Lock else Icons.Rounded.Check,
-            ) {
-                when {
-                    locked -> nav.go(Screen.Paywall)
-                    s.widgetId != -1 -> {
-                        Haptics.success(ctx)
-                        Prefs.saveWidgetConfig(s.widgetId, cfg); cleanJson = cfg.toJson()
-                        WidgetUpdater.update(ctx, s.widgetId)
-                        if (cfg.cities.isNotEmpty()) Scheduler.refreshNow(ctx)
-                        if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
-                        else { Toast.makeText(ctx, tr("Saved ✓", "تم الحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
-                    }
-                    else -> {
-                        Haptics.success(ctx); pin(ctx, cfg, style.shape)
-                        appliedOnce = true; cleanJson = cfg.toJson()
-                        if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
-                    }
-                }
-            }
-        }
     }
 
     if (colorTarget != -1) {

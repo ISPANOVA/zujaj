@@ -15,10 +15,12 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class NavTest {
-    private fun push(n: Nav, s: Screen) { Thread.sleep(320); n.go(s) } // real taps are never 300ms apart within one gesture
+    private var t = 10_000L
+    private fun nav() = Nav(Screen.Home).also { it.clock = { t } }
+    private fun push(n: Nav, s: Screen) { t += 1000; n.go(s) } // separate taps
 
     @Test fun backReturnsToActualPreviousScreen() {
-        val n = Nav(Screen.Home)
+        val n = nav()
         push(n, Screen.Search); push(n, Screen.Category("CLOCK")); push(n, Screen.Editor("clock_dots")); push(n, Screen.Paywall)
         assertTrue(n.back()); assertEquals(Screen.Editor("clock_dots"), n.top)
         assertTrue(n.back()); assertEquals(Screen.Category("CLOCK"), n.top)
@@ -28,15 +30,15 @@ class NavTest {
     }
 
     @Test fun duplicateAndDoubleTapPushesAreIgnored() {
-        val n = Nav(Screen.Home)
+        val n = nav()
         push(n, Screen.Editor("a"))
-        n.go(Screen.Editor("a"))           // same page again
-        n.go(Screen.Editor("b"))           // second card hit within the same tap
+        t += 50; n.go(Screen.Editor("b"))    // second card hit within the same tap
+        t += 1000; n.go(Screen.Editor("a"))  // same page again
         assertEquals(2, n.stack.size)
     }
 
     @Test fun historySurvivesSaveAndRestore() {
-        val n = Nav(Screen.Home)
+        val n = nav()
         push(n, Screen.Category("PRAYER")); push(n, Screen.Pick(Shape.WIDE, 7)); push(n, Screen.Editor("prayer_grid", 7, true, "x"))
         val saved = n.save()
         val ids = n.entries.map { it.id }

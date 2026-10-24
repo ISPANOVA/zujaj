@@ -68,11 +68,13 @@ class Nav(start: Screen) {
         private set
     /** Called when an entry leaves the stack for good, so its saved state can be dropped. */
     var onPop: (Long) -> Unit = {}
-    private var lastPush = 0L
+    private var lastPush = Long.MIN_VALUE / 2
+    /** Time source for the double-tap guard (replaceable in tests). */
+    var clock: () -> Long = { android.os.SystemClock.uptimeMillis() }
     fun go(s: Screen) {
         // ignore double taps that would open the same screen twice, and a second push fired within the
         // same tap (two cards hit at once) — both used to leave a duplicate page in the history
-        val now = android.os.SystemClock.uptimeMillis()
+        val now = clock()
         if (entries.last().screen == s || now - lastPush < 300) return
         lastPush = now
         forward = true; entries.add(Entry(s, next++))

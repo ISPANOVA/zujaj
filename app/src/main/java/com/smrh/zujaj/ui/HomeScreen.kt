@@ -489,22 +489,27 @@ fun DiscoverTab(nav: Nav) {
                         HorizontalPager(pager, contentPadding = PaddingValues(horizontal = if (wide) 0.dp else gut), pageSpacing = 12.dp) { page ->
                             val st = featured[page]
                             val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                            Box(Modifier.fillMaxWidth().height(if (wide) 260.dp else 220.dp)
+                            val cardH = if (wide) 260.dp else 232.dp
+                            val capH = 58.dp
+                            Column(Modifier.fillMaxWidth().height(cardH)
                                 .graphicsLayer { alpha = 1f - 0.35f * kotlin.math.abs(off) }
-                                .clip(RoundedCornerShape(Rad.xl)).background(Backdrops.brush(page + 1))
+                                .clip(RoundedCornerShape(Rad.xl)).background(Z.surface)
                                 .border(1.dp, Z.tint(0.08f), RoundedCornerShape(Rad.xl))
                                 .clickable { nav.go(Screen.Editor(st.id)) }) {
-                                Box(Modifier.fillMaxWidth().padding(start = if (st.shape == Shape.SMALL) 80.dp else 22.dp, end = if (st.shape == Shape.SMALL) 80.dp else 22.dp, top = 20.dp)
-                                    .graphicsLayer { translationX = off * 40.dp.toPx() }, contentAlignment = Alignment.TopCenter) {
-                                    WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth().widthIn(max = 460.dp), density = 2.3f)
-                                }
-                                Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB8000000))))
-                                    .padding(start = 18.dp, end = 14.dp, top = 22.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(tr("Editor's pick", "اختيارنا"), color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                        Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                // the widget sits on its own stage and is sized to fit it — never cut by the caption
+                                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).padding(6.dp).clip(RoundedCornerShape(Rad.l)).background(Backdrops.brush(page + 1)),
+                                    contentAlignment = Alignment.Center) {
+                                    val fitW = minOf(maxWidth - 32.dp, (maxHeight - 28.dp) * (st.shape.dw.toFloat() / st.shape.dh))
+                                    Box(Modifier.width(fitW).graphicsLayer { translationX = off * 40.dp.toPx() }) {
+                                        WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.3f)
                                     }
-                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                                Row(Modifier.fillMaxWidth().height(capH).padding(start = 18.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(tr("Editor's pick", "اختيارنا"), color = accent, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                        Text(st.name(Prefs.isArabicUi), color = Z.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Z.sub, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
