@@ -62,7 +62,7 @@ object Ads {
     private fun boot(a: Activity) {
         if (booted) return
         booted = true
-        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext); Banners.ensure(a, 0); Banners.ensure(a, 1) } }
+        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext); AdPolicy.preload(a.applicationContext); Banners.ensure(a, 0); Banners.ensure(a, 1) } }
             .onFailure { Log.w("Zujaj", "ads init", it) }
     }
 
@@ -120,6 +120,61 @@ object Ads {
         }
         ad.show(a) { earned = true }
         return true
+    }
+}
+
+/**
+ * One place that decides where ads may appear and how often (all numbers come from the control panel).
+ * Rules: never on the wallpaper canvas, the editor, the paywalls or the widget-picker (configure) flow;
+ * favourites only when the list is long; interstitials only after a finished action, with a cooldown and a per-session cap.
+ */
+object AdPolicy {
+    enum class Place { HOME, CATALOG, SEARCH, FAVORITES, SETTINGS }
+    private fun f() = Flags.flags.value
+    /** Banner after every N rows in this list (0 = no banners). */
+    fun every(place: Place, listSize: Int = 0): Int = if (!Ads.on()) 0 else when (place) {
+        Place.HOME -> f().adHomeEvery.coerceIn(0, 50)
+        Place.CATALOG -> f().adCatalogEvery.coerceIn(0, 50)
+        Place.SEARCH -> if (listSize >= 6) (f().adCatalogEvery.coerceIn(0, 50)) else 0
+        Place.FAVORITES -> if (listSize >= 8) (f().adCatalogEvery.coerceIn(0, 50) + 2) else 0
+        Place.SETTINGS -> 1
+    }
+
+    // ---------------------------------------------------------------- interstitials
+    private var inter: com.google.android.gms.ads.interstitial.InterstitialAd? = null
+    private var loading = false
+    private var shownThisSession = 0
+    private var lastShown = 0L
+    private val sessionStart = System.currentTimeMillis()
+    private fun unit(): String = if (com.smrh.zujaj.BuildConfig.DEBUG) "ca-app-pub-3940256099942544/1033173712" else f().adInterstitial
+
+    fun preload(ctx: Context) {
+        if (inter != null || loading || !Ads.on() || unit().isBlank() || Billing.pro.value || Billing.wall.value) return
+        loading = true
+        runCatching {
+            com.google.android.gms.ads.interstitial.InterstitialAd.load(ctx, unit(), AdRequest.Builder().build(),
+                object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: com.google.android.gms.ads.interstitial.InterstitialAd) { inter = ad; loading = false }
+                    override fun onAdFailedToLoad(e: LoadAdError) { inter = null; loading = false; Log.w("Zujaj", "inter: ${e.code}") }
+                })
+        }.onFailure { loading = false }
+    }
+
+    /** Call at a natural break (after a widget was added, after saving). Shows only if every rule allows it. */
+    fun atBreak(a: Activity) {
+        val now = System.currentTimeMillis()
+        val ok = Ads.on() && unit().isNotBlank() && !Billing.pro.value && !Billing.wall.value &&
+            now - sessionStart > 90_000L &&                                   // not in the first minute and a half
+            shownThisSession < f().adInterPerSession.coerceIn(0, 10) &&
+            now - lastShown > f().adInterGapMin.coerceIn(1, 120) * 60_000L
+        val ad = inter
+        if (!ok || ad == null) { preload(a); return }
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() { inter = null; preload(a) }
+            override fun onAdFailedToShowFullScreenContent(e: com.google.android.gms.ads.AdError) { inter = null }
+        }
+        shownThisSession++; lastShown = now
+        ad.show(a)
     }
 }
 

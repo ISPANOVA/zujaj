@@ -629,6 +629,11 @@ private fun GeneralAdmin(email: String, page: Int) {
     var adLock by remember(flags) { mutableStateOf(flags.adblockLock) }
     var unAds by remember(flags) { mutableStateOf(flags.adUnlockAds.toString()) }
     var unDays by remember(flags) { mutableStateOf(flags.adUnlockDays.toString()) }
+    var homeEvery by remember(flags) { mutableStateOf(flags.adHomeEvery.toString()) }
+    var catEvery by remember(flags) { mutableStateOf(flags.adCatalogEvery.toString()) }
+    var interUnit by remember(flags) { mutableStateOf(flags.adInterstitial) }
+    var interGap by remember(flags) { mutableStateOf(flags.adInterGapMin.toString()) }
+    var interMax by remember(flags) { mutableStateOf(flags.adInterPerSession.toString()) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (page == 0) Section(tr("Promotion", "العروض")) {
@@ -679,6 +684,27 @@ private fun GeneralAdmin(email: String, page: Int) {
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
             }
         }
+        if (page == 1) Section(tr("Ad placement & frequency", "أماكن الإعلانات وتكرارها")) {
+            @Composable
+            fun num(label: String, v: String, set: (String) -> Unit, mod: Modifier) = OutlinedTextField(v, { set(it.filter { c -> c.isDigit() }.take(3)) }, singleLine = true, label = { Text(label) },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number), shape = RoundedCornerShape(14.dp), modifier = mod)
+            Text(tr("Banners appear after every N rows of widgets (0 = none). Never shown in the editor, wallpapers or paywalls.",
+                "البانر بيظهر بعد كل كام صف ويدجت (٠ = مفيش). مش بيظهر أبداً في المحرر أو الخلفيات أو صفحات الاشتراك."),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                num(tr("Home: every", "الرئيسية: كل"), homeEvery, { homeEvery = it }, Modifier.weight(1f))
+                num(tr("Catalogues: every", "الأقسام: كل"), catEvery, { catEvery = it }, Modifier.weight(1f))
+            }
+            Text(tr("Interstitial: shown only after a widget was added and the editor is closed. Leave the unit empty to turn them off.",
+                "الإعلان بملء الشاشة: بيظهر بس بعد إضافة ويدجت وقفل المحرر. سيب الكود فاضي عشان يتقفل."),
+                color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp))
+            OutlinedTextField(interUnit, { interUnit = it.trim() }, singleLine = true, label = { Text(tr("Interstitial ad unit ID", "كود الإعلان بملء الشاشة")) }, placeholder = { Text("ca-app-pub-…/…") },
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                num(tr("Minutes between", "دقايق بين كل واحد"), interGap, { interGap = it }, Modifier.weight(1f))
+                num(tr("Max per session", "أقصى عدد في الجلسة"), interMax, { interMax = it }, Modifier.weight(1f))
+            }
+        }
         if (page == 2) Section(tr("Anti-piracy", "الحماية من التهكير")) {
             Text(tr("After uploading to Google Play, paste the SHA-256 of the \"App signing key certificate\" (Play Console → Test and release → App integrity). Copies signed with any other key never get Pro.",
                 "بعد ما ترفع على جوجل بلاي، الصق SHA-256 بتاع \"App signing key certificate\" (Play Console ← Test and release ← App integrity). أي نسخة متوقعة بمفتاح تاني مش هتاخد برو أبداً."),
@@ -700,7 +726,7 @@ private fun GeneralAdmin(email: String, page: Int) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch(kotlinx.coroutines.NonCancellable) {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1))) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1), adHomeEvery = homeEvery.toIntOrNull() ?: 5, adCatalogEvery = catEvery.toIntOrNull() ?: 6, adInterstitial = interUnit, adInterGapMin = (interGap.toIntOrNull() ?: 4).coerceAtLeast(1), adInterPerSession = interMax.toIntOrNull() ?: 2)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
             }
         }

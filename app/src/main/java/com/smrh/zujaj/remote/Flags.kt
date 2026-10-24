@@ -50,6 +50,13 @@ data class CatalogFlags(
     val adWallPerDay: Int = 3,
     /** Watch this many rewarded ads to open one Pro widget (0 = off)… */
     val adUnlockAds: Int = 3,
+    /** Ad placement & frequency (central): a banner every N rows on Home / in catalogues (0 = none). */
+    val adHomeEvery: Int = 5,
+    val adCatalogEvery: Int = 6,
+    /** Interstitial unit (empty = interstitials off), minimum minutes between two, and the most per session. */
+    val adInterstitial: String = "",
+    val adInterGapMin: Int = 4,
+    val adInterPerSession: Int = 2,
     /** …for this many days. */
     val adUnlockDays: Int = 3,
     /** "Editor's choice" on the home page, in order (empty = the app's own picks). */
@@ -118,6 +125,11 @@ object Flags {
                 adReward = snap.getString("adReward") ?: "",
                 adWallPerDay = snap.getLong("adWallPerDay")?.toInt() ?: 3,
                 adUnlockAds = snap.getLong("adUnlockAds")?.toInt() ?: 3,
+                adHomeEvery = snap.getLong("adHomeEvery")?.toInt() ?: 5,
+                adCatalogEvery = snap.getLong("adCatalogEvery")?.toInt() ?: 6,
+                adInterstitial = snap.getString("adInterstitial") ?: "",
+                adInterGapMin = snap.getLong("adInterGapMin")?.toInt() ?: 4,
+                adInterPerSession = snap.getLong("adInterPerSession")?.toInt() ?: 2,
                 adUnlockDays = snap.getLong("adUnlockDays")?.toInt() ?: 3,
                 featured = (snap.get("featured") as? List<String>) ?: emptyList(),
                 adblockLock = snap.getBoolean("adblockLock") ?: true,
@@ -162,6 +174,11 @@ object Flags {
             "adReward" to f.adReward,
             "adWallPerDay" to f.adWallPerDay,
             "adUnlockAds" to f.adUnlockAds,
+            "adHomeEvery" to f.adHomeEvery,
+            "adCatalogEvery" to f.adCatalogEvery,
+            "adInterstitial" to f.adInterstitial,
+            "adInterGapMin" to f.adInterGapMin,
+            "adInterPerSession" to f.adInterPerSession,
             "adUnlockDays" to f.adUnlockDays,
             "featured" to f.featured,
             "adblockLock" to f.adblockLock,

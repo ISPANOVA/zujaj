@@ -512,7 +512,8 @@ fun DiscoverTab(nav: Nav) {
                     }
                 }
                 rowsSinceAd++
-                if (rowsSinceAd >= 5) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
+                val homeEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.HOME)
+                if (homeEvery > 0 && rowsSinceAd >= homeEvery) { rowsSinceAd = 0; val sl = slot++; item(key = "ad_${chip}_${row.first().id}") { com.smrh.zujaj.ads.AdBanner(sl) } }
             }
         }
     }
@@ -576,12 +577,12 @@ fun pack(list: List<WidgetStyle>): List<WidgetStyle> {
 }
 
 @Composable
-fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null, ads: Boolean = true, onPick: (WidgetStyle) -> Unit) {
+fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null, ads: Boolean = true, adEvery: Int = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.CATALOG), onPick: (WidgetStyle) -> Unit) {
     // small ones first, then the bigger sizes; each size under its own label, several per row;
     // free before Pro; a small ad every few rows
     val ordered = tidy(list)
     val w = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-    val cols = 12 // every row count used (2, 3, 4) divides 12
+    val cols = 60 // every row count used (2, 3, 4, 5, 6) divides 60
     LazyVerticalGrid(
         columns = GridCells.Fixed(cols),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
@@ -604,7 +605,7 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
                 // keep the grid aligned when a row isn't full
                 if (row.size < per) item(key = "pad_${row.first().id}", span = { GridItemSpan(cols / per * (per - row.size)) }) { Spacer(Modifier) }
                 rows++
-                if (ads && rows % 5 == 0) { val sl = slot++; item(key = "ad_g_${row.first().id}", span = { GridItemSpan(cols) }) { com.smrh.zujaj.ads.AdBanner(sl) } }
+                if (ads && adEvery > 0 && rows % adEvery == 0) { val sl = slot++; item(key = "ad_g_${row.first().id}", span = { GridItemSpan(cols) }) { com.smrh.zujaj.ads.AdBanner(sl) } }
             }
         }
     }
@@ -661,7 +662,7 @@ fun FavoritesTab(nav: Nav) {
                 Spacer(Modifier.height(14.dp))
                 Text(tr("Tap ♥ on any widget to keep it here", "اضغط ♥ على أي ويدجت لتحفظه هنا"), color = Z.sub, textAlign = TextAlign.Center)
             }
-        } else StyleGrid(list) { nav.go(Screen.Editor(it.id)) }
+        } else StyleGrid(list, adEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.FAVORITES, list.size)) { nav.go(Screen.Editor(it.id)) }
     }
 }
 
@@ -683,7 +684,7 @@ fun SearchScreen(nav: Nav) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).focusRequester(focus),
         )
         if (q.isNotBlank() && res.isEmpty()) Text(tr("No widgets match", "لا توجد نتائج"), color = Z.sub, modifier = Modifier.padding(24.dp))
-        StyleGrid(res) { nav.go(Screen.Editor(it.id)) }
+        StyleGrid(res, adEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.SEARCH, res.size)) { nav.go(Screen.Editor(it.id)) }
     }
 }
 
@@ -709,7 +710,7 @@ fun PickScreen(nav: Nav, s: Screen.Pick) {
             item { ZChip(tr("All", "الكل"), chip == "all") { chip = "all" } }
             items(cats) { c -> ZChip(if (Prefs.isArabicUi) c.ar else c.en, chip == c.name) { chip = c.name } }
         }
-        StyleGrid(list) { st ->
+        StyleGrid(list, ads = false) { st ->
             nav.go(Screen.Editor(st.id, s.widgetId, configure = true))
         }
     }

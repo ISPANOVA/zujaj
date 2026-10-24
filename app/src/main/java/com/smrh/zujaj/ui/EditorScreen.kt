@@ -61,6 +61,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -127,6 +128,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var showTapApp by remember { mutableStateOf(false) }
     var showCity by remember { mutableStateOf(false) }
     var askExact by remember { mutableStateOf(false) }
+    // an interstitial may follow only after the user finished (added a widget) and leaves the editor
+    var appliedOnce by remember { mutableStateOf(false) }
+    val actForAd = ctx as? Activity
+    DisposableEffect(Unit) { onDispose { if (appliedOnce && actForAd != null) com.smrh.zujaj.ads.AdPolicy.atBreak(actForAd) } }
     if (askExact) ZDialog(Icons.Rounded.Schedule, tr("Keep the clock exact", "خلّي الساعة مظبوطة بالثانية"),
         tr("Allow \"Alarms & reminders\" so this widget changes right on the minute, together with your phone's clock.",
             "اسمح بـ «المنبهات والتذكيرات» عشان الويدجت دي تتغير مع ساعة التليفون بالظبط من غير تأخير."),
@@ -454,8 +459,10 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         // ---------------------------------------------------------------- apply
         val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
         val locked = remember(unlockVer, style.id) { Flags.locked(style) }
+        val wideApply = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 760
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            // on large screens the actions sit under the controls pane, never over the preview
+            (if (wideApply) Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.54f) else Modifier.align(Alignment.BottomCenter).fillMaxWidth())
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.96f), Z.bg)))
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 14.dp)
         ) {
@@ -477,6 +484,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                     else -> {
                         Haptics.success(ctx); pin(ctx, cfg, style.shape)
+                        appliedOnce = true
                         if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
                     }
                 }
