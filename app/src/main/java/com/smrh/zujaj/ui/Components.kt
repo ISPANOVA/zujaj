@@ -363,8 +363,11 @@ object PreviewCache {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
+    private fun key(cfg: WidgetConfig, density: Float, stamp: Long) = "${cfg.hashCode()}|$density|$stamp|${Prefs.version.value}"
+    /** Already-rendered bitmap, so a screen coming back (Back) shows its widgets on the very first frame. */
+    fun peek(cfg: WidgetConfig, density: Float, stamp: Long): Bitmap? = cache.get(key(cfg, density, stamp))
     fun get(ctx: android.content.Context, cfg: WidgetConfig, density: Float, stamp: Long): Bitmap {
-        val key = "${cfg.hashCode()}|$density|$stamp|${Prefs.version.value}"
+        val key = key(cfg, density, stamp)
         cache.get(key)?.let { return it }
         val st = Catalog.byId(cfg.styleId)!!
         val b = Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = density).bitmap
@@ -391,7 +394,7 @@ fun WidgetPreview(cfg: WidgetConfig, modifier: Modifier = Modifier, density: Flo
     val st = Catalog.byId(cfg.styleId) ?: return
     val ver by Prefs.version.collectAsState()
     val tick = rememberTicker(if (live && cfg.seconds) 1000L else 30_000L)
-    val bmp by produceState<ImageBitmap?>(null, cfg, tick, ver, density) {
+    val bmp by produceState(remember { PreviewCache.peek(cfg, density, tick)?.asImageBitmap() }, cfg, tick, ver, density) {
         value = withContext(Dispatchers.Default) { runCatching { PreviewCache.get(ctx, cfg, density, tick).asImageBitmap() }.getOrNull() }
     }
     Box(modifier.aspectRatio(st.shape.dw / st.shape.dh)) {

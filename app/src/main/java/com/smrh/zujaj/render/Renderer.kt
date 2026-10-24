@@ -239,10 +239,12 @@ object Renderer {
         val full = dst.width() >= rc.w * 0.85f && dst.height() >= rc.h * 0.6f
         if (!full || rc.style.id !in PHOTO_BG) { if (b != null) drawImage(rc.canvas, b, dst, radius) else drawArtPlaceholder(rc.canvas, dst, radius); return }
         val cfg = rc.cfg
+        // the photo the user picked is the content, not a background: it always shows, fully opaque,
+        // whatever the background switch/opacity say (those only style the empty placeholder)
+        if (b != null) { drawImage(rc.canvas, b, dst, radius); return }
         if (!cfg.bg) return
         val a = cfg.bgAlpha.coerceIn(0, 100) * 255 / 100
         when {
-            b != null -> drawImage(rc.canvas, b, dst, radius, a)
             cfg.fill == Fill.AURORA || cfg.fill == Fill.NONE -> drawArtPlaceholder(rc.canvas, dst, radius, a)
             else -> cardBody(rc, dst, radius)
         }

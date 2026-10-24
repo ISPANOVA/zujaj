@@ -1,5 +1,17 @@
 package com.smrh.zujaj.ui
 
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.rounded.LocationCity
+import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -115,6 +127,24 @@ private fun WidgetConfig.applyLook(p: WidgetConfig) = copy(
 
 /** Tab the editor opens on (used by screenshot tests). */
 internal var editorStartTab = 0
+
+/** A "More …" line inside a section: tap to reveal the rarely-used controls under it. */
+@Composable
+fun ColumnScope.Expander(title: String, content: @Composable ColumnScope.() -> Unit) {
+    var open by rememberSaveable(title) { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    Divider()
+    Row(Modifier.fillMaxWidth().clickable { Haptics.tick(ctx); open = !open }.heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(title, color = LocalAccent.current, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        val rot by androidx.compose.animation.core.animateFloatAsState(if (open) 180f else 0f, Motion.std(), label = "ex")
+        Icon(Icons.Rounded.ExpandMore, null, tint = LocalAccent.current, modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rot })
+    }
+    androidx.compose.animation.AnimatedVisibility(open, enter = androidx.compose.animation.expandVertically(Motion.std()) + androidx.compose.animation.fadeIn(Motion.std()),
+        exit = androidx.compose.animation.shrinkVertically(Motion.std()) + androidx.compose.animation.fadeOut(Motion.std(Motion.FAST))) {
+        Column(Modifier.background(Z.tint(0.025f))) { Divider(); content() }
+    }
+}
 
 @Composable
 fun EditorScreen(nav: Nav, s: Screen.Editor) {
@@ -264,152 +294,78 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 @Composable
                 fun ControlsPane(mod: Modifier) {
                     Column(mod) {
-            Segmented(
-                listOf(tr("Look", "الشكل"), tr("Content", "المحتوى"), tr("Region", "اللغة"), tr("More", "المزيد")),
-                tab, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp),
-            ) { tab = it }
+            // Tabs follow what people want to do, in that order: put my stuff in it → colour it → its card →
+            // the text. Each tab shows the everyday controls; rarer ones sit under "More …" lines.
+            val hasContent = listOf(Feat.PHOTOS, Feat.APPS, Feat.CONTACTS, Feat.CITIES, Feat.TEXT, Feat.TITLE, Feat.AUTHOR, Feat.GOAL,
+                Feat.TARGET_DATE, Feat.ROTATE, Feat.VERSE, Feat.EVENT).any { it in f }
+            val keys = (if (hasContent) listOf("content") else emptyList()) + listOf("colors", "card", "text")
+            val labels = keys.map { when (it) { "content" -> tr("Content", "المحتوى"); "colors" -> tr("Colours", "الألوان"); "card" -> tr("Background", "الخلفية"); else -> tr("Text", "النص") } }
+            val ti = tab.coerceIn(0, keys.lastIndex)
+            Segmented(labels, ti, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp)) { Haptics.tick(ctx); tab = it }
             // ---------------------------------------------------------------- controls
-            androidx.compose.animation.AnimatedContent(tab, Modifier.weight(1f).fillMaxWidth(), label = "tabs", transitionSpec = {
+            androidx.compose.animation.AnimatedContent(ti, Modifier.weight(1f).fillMaxWidth(), label = "tabs", transitionSpec = {
                 val dir = (if (targetState > initialState) 1 else -1) * (if (ar) -1 else 1)
-                (androidx.compose.animation.slideInHorizontally(Motion.std(Motion.SLOW)) { minOf(it / 6, 120) * dir } + androidx.compose.animation.fadeIn(Motion.std(Motion.MED)))
-                    .togetherWith(androidx.compose.animation.slideOutHorizontally(Motion.std(Motion.SLOW)) { -minOf(it / 6, 120) * dir } + androidx.compose.animation.fadeOut(Motion.std(Motion.FAST)))
-            }) { tab ->
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).animateContentSize(androidx.compose.animation.core.tween(280))) {
-                if (tab == 0) {
-                Section(tr("Style presets", "أنماط جاهزة")) {
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
-                    }
-                }
-
-                Section(tr("Background", "الخلفية")) {
-                    SwitchRow(tr("Enable", "تفعيل"), cfg.bg) { cfg = cfg.copy(bg = it) }
-                    if (cfg.bg) {
-                        Divider()
-                        ChoiceRow(tr("Fill", "التعبئة"), cfg.fill, listOf(
-                            Fill.SOLID to tr("Solid", "سادة"), Fill.GRADIENT to tr("Gradient", "متدرج"),
-                            Fill.GLASS to tr("Glass", "زجاجي"), Fill.AURORA to tr("Aurora", "شفق"),
-                        )) { cfg = cfg.copy(fill = it) }
-                        Divider()
-                        RowBase(tr("Color", "اللون")) { ColorDot(cfg.bgColor) { colorTarget = 10 } }
-                        if (cfg.fill == Fill.GRADIENT || cfg.fill == Fill.AURORA) {
-                            Divider(); RowBase(tr("Color 2", "اللون ٢")) { ColorDot(cfg.bgColor2) { colorTarget = 11 } }
+                (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(260, 50, Motion.ease)) { (it / 14) * dir } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180, 70)))
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(80)))
+            }) { tabIdx ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).offset(y = (-10).dp)) {
+                when (keys[tabIdx]) {
+                "content" -> {
+                if (Feat.PHOTOS in f) Section(tr("Photos", "الصور")) {
+                    // the photos themselves, big enough to see what you picked
+                    if (cfg.photos.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        cfg.photos.forEachIndexed { i, path ->
+                            val thumb by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, path) {
+                                value = withContext(kotlinx.coroutines.Dispatchers.IO) { com.smrh.zujaj.render.AppIcons.loadFile(path, 240)?.asImageBitmap() }
+                            }
+                            Box(Modifier.size(76.dp).clip(RoundedCornerShape(Rad.s)).background(Z.tint(0.06f))) {
+                                thumb?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                                Box(Modifier.align(Alignment.TopEnd).padding(4.dp).size(22.dp).clip(CircleShape).background(Color(0xB0000000))
+                                    .clickable { cfg = cfg.copy(photos = cfg.photos.filterIndexed { j, _ -> j != i }) }, contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Rounded.Close, tr("Remove", "شيل"), tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
+                            }
                         }
-                        Divider()
-                        StepperRow(tr("Opacity", "الشفافية"), cfg.bgAlpha, 0..100, 5, "%") { cfg = cfg.copy(bgAlpha = it) }
-                        Divider()
-                        ChoiceRow(tr("Texture", "الملمس"), cfg.texture, listOf(
-                            Texture.OFF to tr("Off", "بدون"), Texture.NOISE to tr("Noise", "حبيبات"), Texture.GRAIN to tr("Grain", "خشن"),
-                            Texture.LINES to tr("Lines", "خطوط"), Texture.DOTS to tr("Dots", "نقاط"), Texture.GRID to tr("Grid", "شبكة"), Texture.WAVES to tr("Waves", "أمواج"),
-                        )) { cfg = cfg.copy(texture = it) }
-                        Divider()
-                        StepperRow(tr("Corners", "الحواف"), cfg.corner, 0..60, 2) { cfg = cfg.copy(corner = it) }
-                        Divider()
-                        SwitchRow(tr("Border", "إطار"), cfg.border) { cfg = cfg.copy(border = it) }
+                    }
+                    RowBase(if (cfg.photos.isEmpty()) tr("Add photos", "ضيف صور") else tr("Add more", "ضيف كمان"),
+                        sub = if (cfg.photos.size > 1) tr("${cfg.photos.size} photos · a new one every day", "${cfg.photos.size} صور · صورة جديدة كل يوم") else tr("Up to ${style.maxItems}", "لحد ${style.maxItems} صورة"),
+                        onClick = { photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = Icons.Rounded.AddPhotoAlternate, iconColor = LocalAccent.current) {}
+                }
+                if (Feat.APPS in f || Feat.CONTACTS in f || Feat.CITIES in f) Section(tr("Shortcuts", "الاختصارات")) {
+                    var first = true
+                    fun sep() { first = false }
+                    if (Feat.APPS in f) {
+                        RowBase(tr("Apps", "التطبيقات"), sub = "${cfg.apps.size}/${style.maxItems}", onClick = { showApps = true }, icon = Icons.Rounded.Apps, iconColor = Color(0xFF4D8DFF)) { Text(tr("Choose", "اختيار"), color = LocalAccent.current) }
+                        sep()
+                    }
+                    if (Feat.CONTACTS in f) {
+                        if (!first) Divider()
+                        RowBase(tr("People", "الأشخاص"), sub = cfg.contacts.joinToString { it.name }.ifBlank { "0/${style.maxItems}" }, onClick = { contactLauncher.launch(Unit) }, icon = Icons.Rounded.People, iconColor = Color(0xFF34C77B)) {
+                            Text(tr("Add", "إضافة"), color = LocalAccent.current)
+                        }
+                        cfg.contacts.forEachIndexed { i, c ->
+                            Divider()
+                            ChoiceRow(c.name, c.action, listOf(
+                                ContactAction.CALL to tr("Call", "اتصال"), ContactAction.SMS to tr("Message", "رسالة"),
+                                ContactAction.WHATSAPP to "WhatsApp", ContactAction.OPEN to tr("Remove", "حذف"),
+                            )) { a ->
+                                cfg = if (a == ContactAction.OPEN) cfg.copy(contacts = cfg.contacts.filterIndexed { j, _ -> j != i })
+                                else cfg.copy(contacts = cfg.contacts.mapIndexed { j, x -> if (j == i) x.copy(action = a) else x })
+                            }
+                        }
+                        sep()
+                    }
+                    if (Feat.CITIES in f) {
+                        if (!first) Divider()
+                        RowBase(tr("Cities", "المدن"), sub = cfg.cities.joinToString { it.name }.ifBlank { tr("Your location", "موقعك") }, onClick = { showCity = true }, icon = Icons.Rounded.LocationCity, iconColor = Color(0xFF13B5A8)) {
+                            Text(tr("Add", "إضافة"), color = LocalAccent.current)
+                        }
+                        if (cfg.cities.isNotEmpty()) { Divider(); RowBase(tr("Clear cities", "مسح المدن"), onClick = { cfg = cfg.copy(cities = emptyList()) }) {} }
                     }
                 }
-
-                }
-                if (tab == 1) {
-                Section(tr("Numerals", "الأرقام")) { NumeralsSwitch(cfg) { cfg = it } }
-                if (hasTime) Section(tr("Clock font", "خط الساعة")) { ClockFontGrid(cfg, { cfg = it }) { nav.go(Screen.Paywall) } }
-                if (Feat.HUB in f) Section(tr("Colours of each part", "ألوان كل جزء")) {
-                    ChoiceRow(tr("Clock colours", "ألوان الساعة"), cfg.timeMerge, listOf(false to tr("Separate", "منفصلة"), true to tr("One gradient", "تدرج واحد"))) { cfg = cfg.copy(timeMerge = it) }
-                    if (cfg.timeMerge) {
-                        Divider(); RowBase(tr("Gradient start", "بداية التدرج")) { ColorDot(cfg.color1) { colorTarget = 1 } }
-                        Divider(); RowBase(tr("Gradient end", "نهاية التدرج")) { ColorDot(cfg.accent2) { colorTarget = 5 } }
-                    } else {
-                        Divider(); RowBase(tr("Hours", "الساعات")) { ColorDot(cfg.color1) { colorTarget = 1 } }
-                        Divider(); SwitchRow(tr("Gradient hours", "ساعات متدرجة"), cfg.hourGrad) { cfg = cfg.copy(hourGrad = it) }
-                        if (cfg.hourGrad) { Divider(); RowBase(tr("Hours — 2nd colour", "اللون التاني للساعات")) { ColorDot(cfg.hourColor2) { colorTarget = 14 } } }
-                        Divider(); RowBase(tr("Minutes", "الدقايق")) { ColorDot(cfg.accent) { colorTarget = 3 } }
-                        Divider(); SwitchRow(tr("Gradient minutes", "دقايق متدرجة"), cfg.minGrad) { cfg = cfg.copy(minGrad = it) }
-                        if (cfg.minGrad) { Divider(); RowBase(tr("Minutes — 2nd colour", "اللون التاني للدقايق")) { ColorDot(cfg.accent2) { colorTarget = 5 } } }
-                    }
-                    if (cfg.timeMerge || cfg.hourGrad || cfg.minGrad)
-                        Text(tr("Gradients are drawn into the picture and refreshed every minute.", "التدرج بيترسم في الصورة وبيتحدث كل دقيقة."),
-                            color = Z.sub, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                    Divider(); RowBase(tr("Day name", "اسم اليوم")) { ColorDot(cfg.dayColor) { colorTarget = 6 } }
-                    Divider(); SwitchRow(tr("Gradient day name", "اسم اليوم متدرج"), cfg.dayGrad) { cfg = cfg.copy(dayGrad = it) }
-                    if (cfg.dayGrad) { Divider(); RowBase(tr("Day — 2nd colour", "اللون التاني لليوم")) { ColorDot(cfg.dayColor2) { colorTarget = 15 } } }
-                    Divider(); RowBase(tr("Hijri date", "التاريخ الهجري")) { ColorDot(cfg.hijriColor) { colorTarget = 7 } }
-                    Divider(); RowBase(tr("Gregorian date", "التاريخ الميلادي")) { ColorDot(cfg.color2) { colorTarget = 2 } }
-                    Divider(); RowBase(tr("Prayer names", "أسماء الصلوات")) { ColorDot(cfg.nameColor) { colorTarget = 8 } }
-                    Divider(); RowBase(tr("Prayer times", "مواعيد الصلوات")) { ColorDot(cfg.timeColor) { colorTarget = 9 } }
-                    Divider(); RowBase(tr("Next prayer", "الصلاة الجاية")) { ColorDot(cfg.nextColor) { colorTarget = 12 } }
-                    Divider(); RowBase(tr("Divider line", "الخط الفاصل")) { ColorDot(cfg.lineColor) { colorTarget = 13 } }
-                }
-                if (Feat.HUB !in f) Section(tr("Content", "المحتوى")) {
-                    RowBase(tr("Color 1", "اللون ١")) { ColorDot(cfg.color1) { colorTarget = 1 } }
-                    if (Feat.HUB !in f) { Divider(); RowBase(tr("Color 2", "اللون ٢")) { ColorDot(cfg.color2) { colorTarget = 2 } } }
-                    if (Feat.ACCENT in f && Feat.HUB !in f) { Divider(); RowBase(tr("Accent", "لون مميز")) { ColorDot(cfg.accent) { colorTarget = 3 } } }
-                }
-                Section(tr("Text size", "حجم النص")) {
-                    if (Feat.HUB in f) {
-                        StepperRow(tr("Clock", "الساعة"), cfg.size1, 50..120, 5, "%") { cfg = cfg.copy(size1 = it) }
-                        Divider(); StepperRow(tr("Day name", "اسم اليوم"), cfg.size2, 50..140, 5, "%") { cfg = cfg.copy(size2 = it) }
-                        Divider(); StepperRow(tr("Dates", "التاريخ"), cfg.sizeDate, 60..150, 5, "%") { cfg = cfg.copy(sizeDate = it) }
-                        Divider(); StepperRow(tr("Prayer names", "أسماء الصلوات"), cfg.sizeNames, 60..150, 5, "%") { cfg = cfg.copy(sizeNames = it) }
-                        Divider(); StepperRow(tr("Prayer times", "مواعيد الصلوات"), cfg.sizeTimes, 60..150, 5, "%") { cfg = cfg.copy(sizeTimes = it) }
-                    } else {
-                        StepperRow(tr("Main text", "النص الأساسي"), cfg.size1, 50..160, 5, "%") { cfg = cfg.copy(size1 = it) }
-                        Divider(); StepperRow(tr("Secondary text", "النص التاني"), cfg.size2, 50..160, 5, "%") { cfg = cfg.copy(size2 = it) }
-                        Divider(); StepperRow(tr("Small text (labels, dates)", "النص الصغير (العناوين والتاريخ)"), cfg.size3, 60..160, 5, "%") { cfg = cfg.copy(size3 = it) }
-                    }
-                    Divider(); RowBase(tr("Reset sizes", "رجّع الأحجام زي ما كانت"), onClick = { cfg = cfg.copy(size1 = 100, size2 = 100, size3 = 100, sizeDate = 100, sizeNames = 100, sizeTimes = 100) }) {}
-                }
-                Section(tr("More", "إضافات")) {
-                    StepperRow(tr("Spacing", "تباعد الحروف"), cfg.spacing, -10..40, 1) { cfg = cfg.copy(spacing = it) }
-                    if (Feat.CALENDAR in f) {
-                        Divider(); ChoiceRow(tr("Calendar", "التقويم"), cfg.calendar, listOf(Cal.GREGORIAN to tr("Gregorian", "ميلادي"), Cal.HIJRI to tr("Hijri", "هجري"))) { cfg = cfg.copy(calendar = it) }
-                    }
-                    if (Feat.HOUR24 in f || style.feats.contains(Feat.SECONDS)) {
-                        Divider(); SwitchRow(tr("24-hour", "نظام ٢٤ ساعة"), cfg.hour24) { cfg = cfg.copy(hour24 = it) }
-                    }
-                    if (Feat.SECONDS in f) {
-                        Divider(); SwitchRow(tr("Seconds hand", "عقرب الثواني"), cfg.seconds, tr("Android 12+", "أندرويد ١٢ فأحدث")) { cfg = cfg.copy(seconds = it) }
-                    }
-                    if (Feat.TITLE in f) {
-                        Divider(); TextInput(tr("Title", "العنوان"), cfg.title) { cfg = cfg.copy(title = it) }
-                    }
-                    if (Feat.TEXT in f) {
-                        Divider(); TextInput(tr("Text", "النص"), cfg.text, single = false) { cfg = cfg.copy(text = it) }
-                    }
-                    if (Feat.AUTHOR in f) {
-                        Divider(); TextInput(tr("Author", "الكاتب"), cfg.author) { cfg = cfg.copy(author = it) }
-                    }
-                    if (Feat.GOAL in f) {
-                        Divider(); ChoiceRow(tr("Goal", "الهدف"), cfg.goal, listOf(33 to "33", 99 to "99", 100 to "100", 1000 to "1000")) { cfg = cfg.copy(goal = it) }
-                        Divider(); RowBase(tr("Reset counter", "تصفير العداد"), sub = cfg.counter.toString(), onClick = { cfg = cfg.copy(counter = 0) }) {}
-                    }
-                    if (Feat.TARGET_DATE in f) {
-                        Divider()
-                        val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
-                        RowBase(tr("Target date", "التاريخ المستهدف"), sub = label, onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
-                    }
-                    if (Feat.ROTATE in f) {
-                        Divider()
-                        ChoiceRow(tr("Words", "الكلام"), cfg.variant, listOf(
-                            0 to tr("Duas", "أدعية"), 1 to tr("Verses", "آيات"),
-                            2 to tr("Dhikr", "أذكار"), 3 to tr("My own words", "كلامي أنا"),
-                        )) { cfg = cfg.copy(variant = it) }
-                        if (cfg.variant == 3) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
-                        Divider()
-                        ChoiceRow(tr("Change every", "يتغير كل"), if (cfg.counter > 0) cfg.counter else 360, listOf(
-                            30 to tr("30 min", "نص ساعة"), 60 to tr("1 hour", "ساعة"), 180 to tr("3 hours", "3 ساعات"),
-                            360 to tr("6 hours", "6 ساعات"), 720 to tr("12 hours", "12 ساعة"), 1440 to tr("Daily", "يوميًا"),
-                        )) { cfg = cfg.copy(counter = it) }
-                    }
-                    if (Feat.VERSE in f) {
-                        Divider()
-                        ChoiceRow(tr("Words on the photo", "الكلام على الصورة"), cfg.variant, listOf(
-                            1 to tr("Verse of the day", "آية اليوم"), 0 to tr("Dhikr of the day", "ذكر اليوم"),
-                            2 to tr("My own words", "كلامي أنا"), 3 to tr("Nothing", "بدون كلام"),
-                        )) { cfg = cfg.copy(variant = it) }
-                        if (cfg.variant == 2) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
-                    }
+                val words = listOf(Feat.TEXT, Feat.TITLE, Feat.AUTHOR, Feat.ROTATE, Feat.VERSE, Feat.EVENT, Feat.GOAL, Feat.TARGET_DATE).any { it in f }
+                if (words) Section(tr("What it says", "الكلام والمحتوى")) {
                     if (Feat.EVENT in f) {
-                        Divider()
                         Text(tr("Count down to", "العد لـ"), color = Z.sub, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
                         androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             val evs = listOf("ramadan" to tr("Ramadan", "رمضان"), "fitr" to tr("Eid al-Fitr", "عيد الفطر"), "adha" to tr("Eid al-Adha", "عيد الأضحى"),
@@ -424,73 +380,156 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         }
                         Divider(); TextInput(tr("Title (optional)", "العنوان (اختياري)"), cfg.title) { cfg = cfg.copy(title = it) }
                     }
-                    if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) {
+                    if (Feat.ROTATE in f) {
+                        ChoiceRow(tr("Words", "الكلام"), cfg.variant, listOf(
+                            0 to tr("Duas", "أدعية"), 1 to tr("Verses", "آيات"),
+                            2 to tr("Dhikr", "أذكار"), 3 to tr("My own words", "كلامي أنا"),
+                        )) { cfg = cfg.copy(variant = it) }
+                        if (cfg.variant == 3) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
                         Divider()
-                        SwitchRow(tr("Colours follow the time of day", "الألوان تتغير مع الوقت"), cfg.dayTint,
-                            tr("Dawn, day, sunset and night colours on their own", "ألوان الفجر والنهار والمغرب والليل لوحدها")) { cfg = cfg.copy(dayTint = it) }
+                        ChoiceRow(tr("Change every", "يتغير كل"), if (cfg.counter > 0) cfg.counter else 360, listOf(
+                            30 to tr("30 min", "نص ساعة"), 60 to tr("1 hour", "ساعة"), 180 to tr("3 hours", "3 ساعات"),
+                            360 to tr("6 hours", "6 ساعات"), 720 to tr("12 hours", "12 ساعة"), 1440 to tr("Daily", "يوميًا"),
+                        )) { cfg = cfg.copy(counter = it) }
                     }
-                    if (Feat.APPS in f) {
-                        Divider()
-                        RowBase(tr("Apps", "التطبيقات"), sub = "${cfg.apps.size}/${style.maxItems}", onClick = { showApps = true }) { Text(tr("Choose", "اختيار"), color = LocalAccent.current) }
+                    if (Feat.VERSE in f) {
+                        ChoiceRow(tr("Words on the photo", "الكلام على الصورة"), cfg.variant, listOf(
+                            1 to tr("Verse of the day", "آية اليوم"), 0 to tr("Dhikr of the day", "ذكر اليوم"),
+                            2 to tr("My own words", "كلامي أنا"), 3 to tr("Nothing", "بدون كلام"),
+                        )) { cfg = cfg.copy(variant = it) }
+                        if (cfg.variant == 2) { Divider(); TextInput(tr("Your words", "كلامك"), cfg.text, single = false) { cfg = cfg.copy(text = it) } }
                     }
-                    if (Feat.CONTACTS in f) {
-                        Divider()
-                        RowBase(tr("People", "الأشخاص"), sub = cfg.contacts.joinToString { it.name }.ifBlank { "0/${style.maxItems}" }, onClick = { contactLauncher.launch(Unit) }) {
-                            Text("+", color = LocalAccent.current)
-                        }
-                        cfg.contacts.forEachIndexed { i, c ->
-                            Divider()
-                            ChoiceRow(c.name, c.action, listOf(
-                                ContactAction.CALL to tr("Call", "اتصال"), ContactAction.SMS to tr("Message", "رسالة"),
-                                ContactAction.WHATSAPP to "WhatsApp", ContactAction.OPEN to tr("Remove", "حذف"),
-                            )) { a ->
-                                cfg = if (a == ContactAction.OPEN) cfg.copy(contacts = cfg.contacts.filterIndexed { j, _ -> j != i })
-                                else cfg.copy(contacts = cfg.contacts.mapIndexed { j, x -> if (j == i) x.copy(action = a) else x })
-                            }
-                        }
+                    if (Feat.TITLE in f && Feat.EVENT !in f) TextInput(tr("Title", "العنوان"), cfg.title) { cfg = cfg.copy(title = it) }
+                    if (Feat.TEXT in f && Feat.ROTATE !in f && Feat.VERSE !in f) TextInput(tr("Text", "النص"), cfg.text, single = false) { cfg = cfg.copy(text = it) }
+                    if (Feat.AUTHOR in f) TextInput(tr("Author", "الكاتب"), cfg.author) { cfg = cfg.copy(author = it) }
+                    if (Feat.GOAL in f) {
+                        ChoiceRow(tr("Goal", "الهدف"), cfg.goal, listOf(33 to "33", 99 to "99", 100 to "100", 1000 to "1000")) { cfg = cfg.copy(goal = it) }
+                        Divider(); RowBase(tr("Reset counter", "تصفير العداد"), sub = cfg.counter.toString(), onClick = { cfg = cfg.copy(counter = 0) }) {}
                     }
-                    if (Feat.PHOTOS in f) {
+                    if (Feat.TARGET_DATE in f) {
                         Divider()
-                        RowBase(tr("Photos", "الصور"), sub = tr("${cfg.photos.size} selected · changes daily", "${cfg.photos.size} صورة · تتغير يومياً"),
-                            onClick = { photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                            Text(tr("Add", "إضافة"), color = LocalAccent.current)
-                        }
-                        if (cfg.photos.isNotEmpty()) { Divider(); RowBase(tr("Clear photos", "حذف الصور"), onClick = { cfg = cfg.copy(photos = emptyList()) }) {} }
-                    }
-                    if (Feat.CITIES in f) {
-                        Divider()
-                        RowBase(tr("Cities", "المدن"), sub = cfg.cities.joinToString { it.name }.ifBlank { tr("Default", "افتراضي") }, onClick = { showCity = true }) {
-                            Text("+", color = LocalAccent.current)
-                        }
-                        if (cfg.cities.isNotEmpty()) { Divider(); RowBase(tr("Clear cities", "مسح المدن"), onClick = { cfg = cfg.copy(cities = emptyList()) }) {} }
+                        val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
+                        RowBase(tr("Target date", "التاريخ المستهدف"), sub = label, onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
                     }
                 }
-
-                }
-                if (tab == 2) {
-                Section(tr("Region", "المنطقة")) {
-                    ChoiceRow(tr("Language", "اللغة"), cfg.language, listOf(Lang.AUTO to tr("Auto", "تلقائي"), Lang.EN to "English", Lang.AR to "العربية")) { cfg = cfg.copy(language = it) }
-                    Divider()
-                    ChoiceRow(tr("Numerals", "الأرقام"), if (cfg.numerals == Numerals.ARABIC) Numerals.ARABIC else Numerals.LATIN, listOf(Numerals.LATIN to "123", Numerals.ARABIC to "١٢٣")) { cfg = cfg.copy(numerals = it) }
-                    Divider()
-                    ChoiceRow(tr("Arabic calligraphy", "الخط العربي"), cfg.calli, listOf(
-                        0 to tr("Kufi", "كوفي مزخرف"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Naskh", "نسخ"),
-                    )) { cfg = cfg.copy(calli = it) }
-                    if (cfg.calli == 0) {
-                        Divider(); SwitchRow(tr("Ornament", "زخرفة"), cfg.ornament) { cfg = cfg.copy(ornament = it) }
-                        if (cfg.ornament) { Divider(); RowBase(tr("Ornament color", "لون الزخرفة")) { ColorDot(cfg.ornColor) { colorTarget = 4 } } }
-                    }
-                }
-
-                }
-                if (tab == 3) {
-                Section(tr("Advanced", "متقدم")) {
-                    StepperRow(tr("Padding", "الهوامش"), cfg.padding, 0..40, 2) { cfg = cfg.copy(padding = it) }
-                    Divider()
-                    ChoiceRow(tr("Tap action", "عند الضغط"), cfg.tap, listOf(
+                Section(tr("When tapped", "لما تضغط عليها")) {
+                    ChoiceRow(tr("Action", "الفعل"), cfg.tap, listOf(
                         Tap.DEFAULT to tr("Default", "افتراضي"), Tap.EDIT to tr("Edit widget", "تعديل"),
                         Tap.OPEN_APP to tr("Open app…", "فتح تطبيق…"), Tap.NONE to tr("Nothing", "لا شيء"),
                     )) { cfg = cfg.copy(tap = it); if (it == Tap.OPEN_APP) showTapApp = true }
+                }
+                }
+                "colors" -> {
+                Section(tr("Ready-made looks", "أشكال جاهزة")) {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
+                    }
+                }
+                if (Feat.HUB in f) Section(tr("Main colours", "الألوان الأساسية")) {
+                    RowBase(tr("Hours", "الساعات")) { ColorDot(cfg.color1) { colorTarget = 1 } }
+                    Divider(); RowBase(tr("Minutes", "الدقايق")) { ColorDot(cfg.accent) { colorTarget = 3 } }
+                    Divider(); RowBase(tr("Day name", "اسم اليوم")) { ColorDot(cfg.dayColor) { colorTarget = 6 } }
+                    Divider(); RowBase(tr("Prayer times", "مواعيد الصلوات")) { ColorDot(cfg.timeColor) { colorTarget = 9 } }
+                    Expander(tr("More colours & gradients", "ألوان وتدرجات أكتر")) {
+                        ChoiceRow(tr("Clock colours", "ألوان الساعة"), cfg.timeMerge, listOf(false to tr("Separate", "منفصلة"), true to tr("One gradient", "تدرج واحد"))) { cfg = cfg.copy(timeMerge = it) }
+                        if (cfg.timeMerge) {
+                            Divider(); RowBase(tr("Gradient end", "نهاية التدرج")) { ColorDot(cfg.accent2) { colorTarget = 5 } }
+                        } else {
+                            Divider(); SwitchRow(tr("Gradient hours", "ساعات متدرجة"), cfg.hourGrad) { cfg = cfg.copy(hourGrad = it) }
+                            if (cfg.hourGrad) { Divider(); RowBase(tr("Hours — 2nd colour", "اللون التاني للساعات")) { ColorDot(cfg.hourColor2) { colorTarget = 14 } } }
+                            Divider(); SwitchRow(tr("Gradient minutes", "دقايق متدرجة"), cfg.minGrad) { cfg = cfg.copy(minGrad = it) }
+                            if (cfg.minGrad) { Divider(); RowBase(tr("Minutes — 2nd colour", "اللون التاني للدقايق")) { ColorDot(cfg.accent2) { colorTarget = 5 } } }
+                        }
+                        Divider(); SwitchRow(tr("Gradient day name", "اسم اليوم متدرج"), cfg.dayGrad) { cfg = cfg.copy(dayGrad = it) }
+                        if (cfg.dayGrad) { Divider(); RowBase(tr("Day — 2nd colour", "اللون التاني لليوم")) { ColorDot(cfg.dayColor2) { colorTarget = 15 } } }
+                        Divider(); RowBase(tr("Hijri date", "التاريخ الهجري")) { ColorDot(cfg.hijriColor) { colorTarget = 7 } }
+                        Divider(); RowBase(tr("Gregorian date", "التاريخ الميلادي")) { ColorDot(cfg.color2) { colorTarget = 2 } }
+                        Divider(); RowBase(tr("Prayer names", "أسماء الصلوات")) { ColorDot(cfg.nameColor) { colorTarget = 8 } }
+                        Divider(); RowBase(tr("Next prayer", "الصلاة الجاية")) { ColorDot(cfg.nextColor) { colorTarget = 12 } }
+                        Divider(); RowBase(tr("Divider line", "الخط الفاصل")) { ColorDot(cfg.lineColor) { colorTarget = 13 } }
+                    }
+                } else Section(tr("Text colours", "ألوان الكلام")) {
+                    RowBase(tr("Main", "الأساسي")) { ColorDot(cfg.color1) { colorTarget = 1 } }
+                    Divider(); RowBase(tr("Secondary", "التاني")) { ColorDot(cfg.color2) { colorTarget = 2 } }
+                    if (Feat.ACCENT in f) { Divider(); RowBase(tr("Accent", "لون مميز")) { ColorDot(cfg.accent) { colorTarget = 3 } } }
+                }
+                if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) Section(tr("Automatic", "تلقائي")) {
+                    SwitchRow(tr("Colours follow the time of day", "الألوان تتغير مع الوقت"), cfg.dayTint,
+                        tr("Dawn, day, sunset and night colours on their own", "ألوان الفجر والنهار والمغرب والليل لوحدها")) { cfg = cfg.copy(dayTint = it) }
+                }
+                }
+                "card" -> {
+                Section(tr("Background", "الخلفية")) {
+                    SwitchRow(tr("Show background", "إظهار الخلفية"), cfg.bg) { cfg = cfg.copy(bg = it) }
+                    if (cfg.bg) {
+                        Divider()
+                        // fills as visual chips instead of a hidden dropdown
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(Fill.SOLID to tr("Solid", "سادة"), Fill.GRADIENT to tr("Gradient", "متدرج"), Fill.GLASS to tr("Glass", "زجاجي"), Fill.AURORA to tr("Aurora", "شفق"))
+                                .forEach { (v, l) -> ZChip(l, cfg.fill == v) { cfg = cfg.copy(fill = v) } }
+                        }
+                        Divider()
+                        RowBase(tr("Colour", "اللون")) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ColorDot(cfg.bgColor) { colorTarget = 10 }
+                                if (cfg.fill == Fill.GRADIENT || cfg.fill == Fill.AURORA) ColorDot(cfg.bgColor2) { colorTarget = 11 }
+                            }
+                        }
+                        Divider()
+                        StepperRow(tr("Opacity", "الشفافية"), cfg.bgAlpha, 0..100, 5, "%") { cfg = cfg.copy(bgAlpha = it) }
+                    }
+                    Expander(tr("Corners, border & texture", "الحواف والإطار والملمس")) {
+                        StepperRow(tr("Corners", "الحواف"), cfg.corner, 0..60, 2) { cfg = cfg.copy(corner = it) }
+                        Divider()
+                        SwitchRow(tr("Border", "إطار"), cfg.border) { cfg = cfg.copy(border = it) }
+                        Divider()
+                        ChoiceRow(tr("Texture", "الملمس"), cfg.texture, listOf(
+                            Texture.OFF to tr("Off", "بدون"), Texture.NOISE to tr("Noise", "حبيبات"), Texture.GRAIN to tr("Grain", "خشن"),
+                            Texture.LINES to tr("Lines", "خطوط"), Texture.DOTS to tr("Dots", "نقاط"), Texture.GRID to tr("Grid", "شبكة"), Texture.WAVES to tr("Waves", "أمواج"),
+                        )) { cfg = cfg.copy(texture = it) }
+                        Divider()
+                        StepperRow(tr("Inner padding", "الهوامش"), cfg.padding, 0..40, 2) { cfg = cfg.copy(padding = it) }
+                    }
+                }
+                }
+                else -> {
+                if (hasTime) Section(tr("Clock font", "خط الساعة")) { ClockFontGrid(cfg, { cfg = it }) { nav.go(Screen.Paywall) } }
+                Section(tr("Size", "الحجم")) {
+                    if (Feat.HUB in f) {
+                        StepperRow(tr("Clock", "الساعة"), cfg.size1, 50..120, 5, "%") { cfg = cfg.copy(size1 = it) }
+                        Divider(); StepperRow(tr("Day name", "اسم اليوم"), cfg.size2, 50..140, 5, "%") { cfg = cfg.copy(size2 = it) }
+                        Expander(tr("Dates & prayer list", "التاريخ وقائمة الصلوات")) {
+                            StepperRow(tr("Dates", "التاريخ"), cfg.sizeDate, 60..150, 5, "%") { cfg = cfg.copy(sizeDate = it) }
+                            Divider(); StepperRow(tr("Prayer names", "أسماء الصلوات"), cfg.sizeNames, 60..150, 5, "%") { cfg = cfg.copy(sizeNames = it) }
+                            Divider(); StepperRow(tr("Prayer times", "مواعيد الصلوات"), cfg.sizeTimes, 60..150, 5, "%") { cfg = cfg.copy(sizeTimes = it) }
+                        }
+                    } else {
+                        StepperRow(tr("Main text", "النص الأساسي"), cfg.size1, 50..160, 5, "%") { cfg = cfg.copy(size1 = it) }
+                        Divider(); StepperRow(tr("Secondary text", "النص التاني"), cfg.size2, 50..160, 5, "%") { cfg = cfg.copy(size2 = it) }
+                        Expander(tr("Small text & spacing", "النص الصغير والتباعد")) {
+                            StepperRow(tr("Small text", "النص الصغير"), cfg.size3, 60..160, 5, "%") { cfg = cfg.copy(size3 = it) }
+                            Divider(); StepperRow(tr("Letter spacing", "تباعد الحروف"), cfg.spacing, -10..40, 1) { cfg = cfg.copy(spacing = it) }
+                        }
+                    }
+                    Divider(); RowBase(tr("Reset sizes", "رجّع الأحجام"), onClick = { cfg = cfg.copy(size1 = 100, size2 = 100, size3 = 100, sizeDate = 100, sizeNames = 100, sizeTimes = 100, spacing = 0) }, icon = Icons.Rounded.Refresh, iconColor = Z.sub) {}
+                }
+                Section(tr("Language & numbers", "اللغة والأرقام")) {
+                    ChoiceRow(tr("Language", "اللغة"), cfg.language, listOf(Lang.AUTO to tr("Like the app", "زي التطبيق"), Lang.EN to "English", Lang.AR to "العربية")) { cfg = cfg.copy(language = it) }
+                    Divider()
+                    NumeralsSwitch(cfg) { cfg = it }
+                    if (Feat.HOUR24 in f || Feat.SECONDS in f) { Divider(); SwitchRow(tr("24-hour clock", "نظام ٢٤ ساعة"), cfg.hour24) { cfg = cfg.copy(hour24 = it) } }
+                    if (Feat.SECONDS in f) { Divider(); SwitchRow(tr("Seconds hand", "عقرب الثواني"), cfg.seconds, tr("Android 12+", "أندرويد ١٢ فأحدث")) { cfg = cfg.copy(seconds = it) } }
+                    if (Feat.CALENDAR in f) { Divider(); ChoiceRow(tr("Calendar", "التقويم"), cfg.calendar, listOf(Cal.GREGORIAN to tr("Gregorian", "ميلادي"), Cal.HIJRI to tr("Hijri", "هجري"))) { cfg = cfg.copy(calendar = it) } }
+                    Expander(tr("Arabic calligraphy style", "شكل الخط العربي")) {
+                        ChoiceRow(tr("Calligraphy", "الخط"), cfg.calli, listOf(
+                            0 to tr("Kufi", "كوفي مزخرف"), 1 to tr("Ruqaa", "رقعة"), 2 to tr("Nastaliq", "نستعليق"), 3 to tr("Naskh", "نسخ"),
+                        )) { cfg = cfg.copy(calli = it) }
+                        if (cfg.calli == 0) {
+                            Divider(); SwitchRow(tr("Ornament", "زخرفة"), cfg.ornament) { cfg = cfg.copy(ornament = it) }
+                            if (cfg.ornament) { Divider(); RowBase(tr("Ornament colour", "لون الزخرفة")) { ColorDot(cfg.ornColor) { colorTarget = 4 } } }
+                        }
+                    }
+                }
                 }
                 }
                 Spacer(Modifier.height(24.dp))

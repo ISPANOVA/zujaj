@@ -132,14 +132,16 @@ fun HomeScreen(nav: Nav) {
     val pane = LocalPaneWidth.current
     val rail = WidthClass.of(pane) == WidthClass.EXPANDED
     val ver by Prefs.version.collectAsState()
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     val content: @Composable () -> Unit = {
         androidx.compose.animation.AnimatedContent(
             targetState = tab,
             transitionSpec = {
                 val dir = if (targetState > initialState) 1 else -1
-                (androidx.compose.animation.fadeIn(Motion.std(Motion.MED)) +
-                    androidx.compose.animation.slideInHorizontally(Motion.std(Motion.SLOW)) { minOf(it / 8, 96) * dir })
-                    .togetherWith(androidx.compose.animation.fadeOut(Motion.std(Motion.FAST)))
+                // fade-through: old tab fades out fast, new one fades in with a 24dp drift
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(210, 90)) +
+                    androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(280, 60, Motion.ease)) { (24 * density).toInt() * dir })
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
             },
             label = "tabs",
         ) { t ->
@@ -410,6 +412,9 @@ fun DiscoverTab(nav: Nav) {
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
     var chip by rememberSaveable { mutableStateOf("popular") }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // rows animate in once per visit to Discover; returning from a widget shows them in place at once
+    var entered by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(900); entered = true }
     val featured = remember(flags) {
         flags.featured.ifEmpty { DEFAULT_PICKS }.mapNotNull { id -> all.firstOrNull { it.id == id } }
     }
@@ -556,7 +561,7 @@ fun DiscoverTab(nav: Nav) {
                 val order = idx++
                 item(key = "r_${chip}_${row.joinToString { it.id }}") {
                     // rows rise in once, lightly staggered; scrolling back up doesn't replay it
-                    val shown = remember { androidx.compose.animation.core.Animatable(if (still) 1f else 0f) }
+                    val shown = remember { androidx.compose.animation.core.Animatable(if (still || entered) 1f else 0f) }
                     LaunchedEffect(Unit) { if (shown.value < 1f) { delay((order.coerceAtMost(5) * 40L)); shown.animateTo(1f, Motion.std(Motion.SLOW)) } }
                     Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 7.dp)
                         .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 18.dp.toPx() },
@@ -571,10 +576,14 @@ fun DiscoverTab(nav: Nav) {
             }
         }
     }
-    // a new tab starts from its top (tabs stay pinned)
+    // a NEW collection starts from its top (tabs stay pinned). Only on an actual change of collection —
+    // coming back from a widget re-runs this screen and must leave the scroll exactly where it was.
+    var shownChip by rememberSaveable { mutableStateOf(chip) }
     LaunchedEffect(chip) {
-        val tabs = (if (featured.isNotEmpty()) 3 else 2) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
-        if (listState.firstVisibleItemIndex > tabs) listState.animateScrollToItem(tabs)
+        if (chip == shownChip) return@LaunchedEffect
+        shownChip = chip
+        val tabs = 2 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
+        if (listState.firstVisibleItemIndex > tabs) listState.scrollToItem(tabs)
     }
 }
 

@@ -220,13 +220,19 @@ fun Root(nav: Nav) {
         // every screen keeps its remembered state (tab, chips, filters, scroll position) while it is in the
         // back stack, so Back returns to exactly where you were
         val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+        val density = androidx.compose.ui.platform.LocalDensity.current.density
         nav.onPop = { holder.removeState(it) }
         AnimatedContent(nav.topEntry, transitionSpec = {
             // new pages slide in from the reading edge; going back slides them away again
             val dir = (if (nav.forward) 1 else -1) * (if (rtl) -1 else 1)
             // one easing for every page move; a short, shallow slide so it reads as direction, not as a show
-            (slideInHorizontally(Motion.std(Motion.SLOW)) { w -> minOf(w / 5, 160) * dir } + fadeIn(Motion.std(Motion.MED)))
-                .togetherWith(slideOutHorizontally(Motion.std(Motion.SLOW)) { w -> -minOf(w / 10, 80) * dir } + fadeOut(Motion.std(Motion.FAST)))
+            // Material "shared axis": the old page leaves quickly with a short nudge, the new one arrives a beat
+            // later from 30dp away. Short distances + opacity only → GPU-cheap and smooth even while the new
+            // page is still drawing its widget previews.
+            val d = (30 * density).toInt() * dir
+            (slideInHorizontally(androidx.compose.animation.core.tween(300, 60, Motion.ease)) { d } + fadeIn(androidx.compose.animation.core.tween(210, 90, androidx.compose.animation.core.LinearOutSlowInEasing)))
+                .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(300, easing = Motion.ease)) { -d } + fadeOut(androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutLinearInEasing)))
+                .using(androidx.compose.animation.SizeTransform(clip = false))
         }, label = "nav", contentKey = { it.id }) { entry -> val s = entry.screen
             holder.SaveableStateProvider(entry.id) {
             // full window width: each screen adapts its own layout to the space (grids, split panes, reading width)

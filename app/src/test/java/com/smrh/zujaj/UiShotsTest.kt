@@ -54,7 +54,7 @@ open class UiShotsTest {
             for (ar in listOf(false, true)) {
                 rule.runOnUiThread {
                     Prefs.appLanguage = if (ar) "ar" else "en"
-                    com.smrh.zujaj.ui.editorStartTab = if (name == "editor_font") 1 else 0
+                    com.smrh.zujaj.ui.editorStartTab = if (name == "editor_font") 99 else 0
                     nav.reset(s)
                 }
                 repeat(6) {

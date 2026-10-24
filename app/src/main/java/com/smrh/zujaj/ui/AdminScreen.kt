@@ -1,5 +1,8 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.rounded.Widgets
@@ -210,46 +213,46 @@ private fun WidgetsAdmin() {
     }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
-            // stats
-            item {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Stat(tr("Total", "الكل"), Catalog.all.size, Z.text, Modifier.weight(1f))
-                    Stat("Pro", pro.size, Z.pro, Modifier.weight(1f))
-                    Stat(tr("New", "جديد"), fresh.size, Color(0xFF3DDC97), Modifier.weight(1f))
-                    Stat(tr("Hidden", "مخفي"), hidden.size, Color(0xFFE5484D), Modifier.weight(1f))
-                }
-            }
-            // search
+            // one search, one row of status filters that also carry the counts (no separate stat boxes),
+            // then category + bulk actions folded into a single compact line
             item {
                 OutlinedTextField(
                     q, { q = it }, singleLine = true, placeholder = { Text(tr("Search widgets", "ابحث عن ويدجت")) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(16.dp),
+                    leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(Rad.m),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = LocalAccent.current, unfocusedBorderColor = Z.line),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
-            // categories
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item { ZChip(tr("All", "الكل") + " · ${Catalog.all.size}", cat == null) { cat = null } }
-                    items(Cat.values().filter { c -> Catalog.all.any { it.cat == c } }) { c ->
-                        ZChip((if (Prefs.isArabicUi) c.ar else c.en) + " · ${Catalog.all.count { it.cat == c }}", cat == c) { cat = c }
+                    val opts = listOf(tr("All", "الكل") to Catalog.all.size, "Pro" to pro.size, tr("Free", "مجاني") to (Catalog.all.size - pro.size),
+                        tr("New", "جديد") to fresh.size, tr("Hidden", "مخفي") to hidden.size)
+                    items(opts.size) { i -> ZChip("${opts[i].first} · ${opts[i].second}", filter == i) { filter = i } }
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    var catOpen by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { catOpen = true }) {
+                            Text((cat?.let { if (Prefs.isArabicUi) it.ar else it.en } ?: tr("All categories", "كل الأقسام")) + "  ▾", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
+                        }
+                        DropdownMenu(catOpen, { catOpen = false }, modifier = Modifier.background(Z.surface2)) {
+                            DropdownMenuItem(text = { Text(tr("All categories", "كل الأقسام")) }, onClick = { cat = null; catOpen = false })
+                            Cat.values().filter { c -> Catalog.all.any { it.cat == c } }.forEach { c ->
+                                DropdownMenuItem(text = { Text((if (Prefs.isArabicUi) c.ar else c.en) + " · ${Catalog.all.count { it.cat == c }}") }, onClick = { cat = c; catOpen = false })
+                            }
+                        }
                     }
-                }
-            }
-            // status filter
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val opts = listOf(tr("Any", "أي حالة"), "Pro", tr("Free", "مجاني"), tr("New", "جديد"), tr("Hidden", "مخفي"))
-                    items(opts.size) { i -> ZChip(opts[i], filter == i) { filter = i } }
-                }
-            }
-            // bulk actions for what's on screen
-            item {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("${list.size} shown", "${list.size} ظاهرة"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                    SmallAction(tr("All Pro", "الكل برو"), Z.pro) { pro = pro + list.map { it.id } }
-                    SmallAction(tr("All free", "الكل مجاني"), Z.sub) { pro = pro - list.map { it.id }.toSet() }
+                    Text(tr("${list.size} shown", "${list.size} ظاهرة"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.weight(1f).padding(start = 4.dp))
+                    var bulk by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { bulk = true }) { Icon(Icons.Rounded.MoreVert, tr("Bulk actions", "إجراءات جماعية"), tint = Z.sub) }
+                        DropdownMenu(bulk, { bulk = false }, modifier = Modifier.background(Z.surface2)) {
+                            DropdownMenuItem(text = { Text(tr("Make all shown Pro", "خلّي الظاهر كله برو")) }, onClick = { pro = pro + list.map { it.id }; bulk = false })
+                            DropdownMenuItem(text = { Text(tr("Make all shown free", "خلّي الظاهر كله مجاني")) }, onClick = { pro = pro - list.map { it.id }.toSet(); bulk = false })
+                        }
+                    }
                 }
             }
             items(list, key = { it.id }) { st ->
@@ -664,10 +667,6 @@ private fun GeneralAdmin(email: String, page: Int) {
             SwitchRow(tr("Show ads to free users", "إعلانات للمستخدمين المجانيين"), adsOn, tr("Pro & wallpaper subscribers never see ads", "المشتركين مبيشوفوش إعلانات")) { adsOn = it }
             SwitchRow(tr("Lock the app for ad blockers", "اقفل التطبيق على اللي بيمنع الإعلانات"), adLock,
                 tr("AdGuard, private DNS, Blokada… must be turned off (subscribers aren't affected)", "AdGuard أو DNS خاص أو Blokada… لازم يتقفلوا (المشتركين مش متأثرين)")) { adLock = it }
-            OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner ad unit ID", "كود البانر (Ad unit ID)")) }, placeholder = { Text("ca-app-pub-…/…") },
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
-            OutlinedTextField(adReward, { adReward = it.trim() }, singleLine = true, label = { Text(tr("Rewarded ad unit ID", "كود إعلان المكافأة (Rewarded)")) }, placeholder = { Text("ca-app-pub-…/…") },
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             OutlinedTextField(adPer, { adPer = it.filter { c -> c.isDigit() }.take(2) }, singleLine = true, label = { Text(tr("Free wallpaper uses per day (ads)", "عدد مرات الخلفيات بالإعلانات في اليوم")) },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(12.dp))
@@ -699,11 +698,22 @@ private fun GeneralAdmin(email: String, page: Int) {
             Text(tr("Interstitial: shown only after a widget was added and the editor is closed. Leave the unit empty to turn them off.",
                 "الإعلان بملء الشاشة: بيظهر بس بعد إضافة ويدجت وقفل المحرر. سيب الكود فاضي عشان يتقفل."),
                 color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp))
-            OutlinedTextField(interUnit, { interUnit = it.trim() }, singleLine = true, label = { Text(tr("Interstitial ad unit ID", "كود الإعلان بملء الشاشة")) }, placeholder = { Text("ca-app-pub-…/…") },
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 num(tr("Minutes between", "دقايق بين كل واحد"), interGap, { interGap = it }, Modifier.weight(1f))
                 num(tr("Max per session", "أقصى عدد في الجلسة"), interMax, { interMax = it }, Modifier.weight(1f))
+            }
+        }
+        // the unit IDs are set once, so they sit folded at the end instead of between everyday settings
+        if (page == 1) Section(tr("Ad unit IDs", "أكواد الإعلانات")) {
+            val set = listOf(adBanner, adReward, interUnit).count { it.isNotBlank() }
+            Text(tr("$set of 3 set · from AdMob → Apps → Ad units", "$set من 3 متحطين · من AdMob ← Apps ← Ad units"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            Expander(tr("Edit ad unit IDs", "تعديل الأكواد")) {
+                OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner", "البانر")) }, placeholder = { Text("ca-app-pub-…/…") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+                OutlinedTextField(adReward, { adReward = it.trim() }, singleLine = true, label = { Text(tr("Rewarded", "المكافأة (Rewarded)")) }, placeholder = { Text("ca-app-pub-…/…") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+                OutlinedTextField(interUnit, { interUnit = it.trim() }, singleLine = true, label = { Text(tr("Interstitial (empty = off)", "ملء الشاشة (فاضي = مقفول)")) }, placeholder = { Text("ca-app-pub-…/…") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             }
         }
         if (page == 2) Section(tr("Anti-piracy", "الحماية من التهكير")) {
