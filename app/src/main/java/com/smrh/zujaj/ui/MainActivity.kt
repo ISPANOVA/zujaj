@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.displayCutoutPadding
+
 import androidx.compose.foundation.layout.imePadding
 
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -51,15 +53,29 @@ sealed class Screen {
     data object Wallpapers : Screen()
 }
 
+/** One back-stack entry; [id] is unique so each entry keeps its own saved UI state (tab, filters, scroll…). */
+data class Entry(val screen: Screen, val id: Long)
+
 class Nav(start: Screen) {
-    val stack = mutableStateListOf(start)
-    val top get() = stack.last()
+    private var next = 1L
+    val entries = mutableStateListOf(Entry(start, 0L))
+    val stack: List<Screen> get() = entries.map { it.screen }
+    val top get() = entries.last().screen
+    val topEntry get() = entries.last()
     /** Direction of the last move, for the page transition. */
     var forward = true
         private set
-    fun go(s: Screen) { forward = true; stack.add(s) }
-    fun back(): Boolean = if (stack.size > 1) { forward = false; stack.removeAt(stack.lastIndex); true } else false
-    fun replace(s: Screen) { stack[stack.lastIndex] = s }
+    /** Called when an entry leaves the stack for good, so its saved state can be dropped. */
+    var onPop: (Long) -> Unit = {}
+    fun go(s: Screen) {
+        // ignore double taps that would open the same screen twice
+        if (entries.last().screen == s) return
+        forward = true; entries.add(Entry(s, next++))
+    }
+    fun back(): Boolean = if (entries.size > 1) { forward = false; onPop(entries.removeAt(entries.lastIndex).id); true } else false
+    /** Start over at [s] (tests, deep links). */
+    fun reset(s: Screen) { entries.forEach { onPop(it.id) }; entries.clear(); entries.add(Entry(s, next++)) }
+    fun replace(s: Screen) { val old = entries.last(); onPop(old.id); entries[entries.lastIndex] = Entry(s, next++) }
 }
 
 open class MainActivity : ComponentActivity() {
@@ -73,6 +89,15 @@ open class MainActivity : ComponentActivity() {
         private set
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // system splash: shown only while the first frame is prepared (no artificial delay), then the logo
+        // shrinks and fades into the app
+        val splash = androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
+        splash.setOnExitAnimationListener { v ->
+            val icon = v.iconView
+            v.view.animate().alpha(0f).setDuration(260).withEndAction { v.remove() }.start()
+            icon.animate().scaleX(0.82f).scaleY(0.82f).setDuration(260)
+                .setInterpolator(android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)).start()
+        }
         Prefs.init(this)
         Z.refresh(this)
         bars()
@@ -91,7 +116,6 @@ open class MainActivity : ComponentActivity() {
                     Root(nav)
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates(nav)
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) OnboardingScreen()
-                    Splash(show = configureId == AppWidgetManager.INVALID_APPWIDGET_ID && savedInstanceState == null)
                 }
             }
         }
@@ -150,16 +174,24 @@ fun Root(nav: Nav) {
     BackHandler(enabled = nav.stack.size > 1) { nav.back() }
     AppBackdrop {
         val rtl = Prefs.isArabicUi
-        AnimatedContent(nav.top, transitionSpec = {
+        // every screen keeps its remembered state (tab, chips, filters, scroll position) while it is in the
+        // back stack, so Back returns to exactly where you were
+        val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+        nav.onPop = { holder.removeState(it) }
+        AnimatedContent(nav.topEntry, transitionSpec = {
             // new pages slide in from the reading edge; going back slides them away again
             val dir = (if (nav.forward) 1 else -1) * (if (rtl) -1 else 1)
             val ease = androidx.compose.animation.core.FastOutSlowInEasing
             (slideInHorizontally(androidx.compose.animation.core.tween(340, easing = ease)) { w -> w / 4 * dir } + fadeIn(androidx.compose.animation.core.tween(260, 40)))
                 .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(340, easing = ease)) { w -> -w / 8 * dir } +
                     fadeOut(androidx.compose.animation.core.tween(180)) + scaleOut(androidx.compose.animation.core.tween(340), targetScale = 0.97f))
-        }, label = "nav") { s ->
-            // tablets & big screens: keep the layout at phone-like width, centred, so nothing stretches
-            Box(Modifier.fillMaxSize().statusBarsPadding().imePadding().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp)) {
+        }, label = "nav", contentKey = { it.id }) { entry -> val s = entry.screen
+            holder.SaveableStateProvider(entry.id) {
+            // full window width: each screen adapts its own layout to the space (grids, split panes, reading width)
+            // forms & reading pages keep a comfortable line length on big screens; catalogue/editor/wallpapers use the full width
+            val reading = s is Screen.Settings || s is Screen.Paywall || s is Screen.Admin || s is Screen.Tutorial || s is Screen.MediaAccess || s is Screen.About
+            Box(Modifier.fillMaxSize().statusBarsPadding().imePadding().displayCutoutPadding()
+                .then(if (reading) Modifier.wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp) else Modifier)) {
                 when (s) {
                     Screen.Home -> HomeScreen(nav)
                     is Screen.Editor -> EditorScreen(nav, s)
@@ -174,6 +206,7 @@ fun Root(nav: Nav) {
                     Screen.About -> AboutScreen(nav)
                     Screen.Wallpapers -> WallpaperScreen(nav)
                 }
+            }
             }
         }
     }

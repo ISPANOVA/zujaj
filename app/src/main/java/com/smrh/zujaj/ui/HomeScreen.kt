@@ -17,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -129,7 +130,7 @@ fun HomeScreen(nav: Nav) {
                     0 -> DiscoverTab(nav)
                     1 -> FavoritesTab(nav)
                     2 -> MyWidgetsTab(nav)
-                    else -> SettingsScreen(nav, asTab = true)
+                    else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Box(Modifier.widthIn(max = 720.dp)) { SettingsScreen(nav, asTab = true) } }
                 }
             }
         }
@@ -255,8 +256,9 @@ fun tidy(list: List<WidgetStyle>): List<WidgetStyle> =
 
 /** How many cards share a row: small widgets 2 (3–4 on big screens), wide ones 2 (3 on big screens). */
 fun perRow(shape: Shape, widthDp: Int): Int = when (shape) {
-    Shape.SMALL, Shape.TALL -> if (widthDp >= 600) 4 else if (widthDp >= 480) 3 else 2
-    else -> if (widthDp >= 600) 3 else 2
+    // window-size classes: compact < 600 · medium < 840 · expanded < 1200 · large
+    Shape.SMALL, Shape.TALL -> when { widthDp >= 1200 -> 6; widthDp >= 840 -> 5; widthDp >= 600 -> 4; widthDp >= 480 -> 3; else -> 2 }
+    else -> when { widthDp >= 1200 -> 4; widthDp >= 840 -> 3; widthDp >= 600 -> 2; else -> 2 }
 }
 
 /** A widget on a soft stage that looks like a bit of a home screen; badge in the corner, name under it. */
@@ -379,7 +381,7 @@ fun DiscoverTab(nav: Nav) {
     if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
 
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
-    val screenDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.coerceAtMost(720)
+    val screenDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "home")
     val t by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
 
@@ -417,7 +419,8 @@ fun DiscoverTab(nav: Nav) {
             val pager = rememberPagerState { featured.size }
             LaunchedEffect(pager) { while (true) { delay(4500); pager.animateScrollToPage((pager.currentPage + 1) % featured.size) } }
             Column {
-                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 12.dp) { page ->
+                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 12.dp,
+                    pageSize = if (screenDp >= 600) androidx.compose.foundation.pager.PageSize.Fixed(520.dp) else androidx.compose.foundation.pager.PageSize.Fill) { page ->
                     val st = featured[page]
                     val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
                     Box(Modifier.fillMaxWidth().height(230.dp)
@@ -577,7 +580,7 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
     // small ones first, then the bigger sizes; each size under its own label, several per row;
     // free before Pro; a small ad every few rows
     val ordered = tidy(list)
-    val w = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.coerceAtMost(720)
+    val w = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val cols = 12 // every row count used (2, 3, 4) divides 12
     LazyVerticalGrid(
         columns = GridCells.Fixed(cols),
@@ -664,7 +667,7 @@ fun FavoritesTab(nav: Nav) {
 
 @Composable
 fun SearchScreen(nav: Nav) {
-    var q by remember { mutableStateOf("") }
+    var q by rememberSaveable { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     val all = Flags.visible()

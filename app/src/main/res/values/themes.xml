@@ -3,6 +3,13 @@
     <style name="Theme.Zujaj" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
     </style>
+    <!-- native launch screen (Android 12+ system splash, back-ported): logo on the brand background, then straight into the app -->
+    <style name="Theme.Zujaj.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_fg</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.Zujaj</item>
+    </style>
     <color name="bg">#FF0A0A0E</color>
     <color name="ic_bg">#FF0E0E14</color>
 </resources>

@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.animation.togetherWith
 
 import android.app.Activity
@@ -115,7 +117,8 @@ internal var editorStartTab = 0
 fun EditorScreen(nav: Nav, s: Screen.Editor) {
     val ctx = LocalContext.current
     val style = Catalog.byId(s.styleId) ?: return
-    var cfg by remember(s) {
+    // survives opening the paywall / colour pickers and coming back (kept with the screen's saved state)
+    var cfg by rememberSaveable(s, stateSaver = androidx.compose.runtime.saveable.Saver<WidgetConfig, String>({ it.toJson() }, { WidgetConfig.fromJson(it) })) {
         mutableStateOf(if (s.shared.isNotEmpty()) ShareDesign.decode(s.shared) ?: style.defaultConfig() else if (s.widgetId != -1) Prefs.widgetConfig(s.widgetId)?.takeIf { it.styleId == s.styleId } ?: style.defaultConfig() else style.defaultConfig())
     }
     var fav by remember { mutableStateOf(Prefs.favorites.contains(style.id)) }
@@ -153,7 +156,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 .lives.any { it is com.smrh.zujaj.render.LiveClock && it.sizePx >= 18f } || Feat.HUB in style.feats
         }.getOrDefault(false)
     }
-    var tab by remember(s) { mutableIntStateOf(editorStartTab) }
+    var tab by rememberSaveable(s) { mutableIntStateOf(editorStartTab) }
     var stage by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -168,6 +171,11 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     Icon(Icons.Rounded.Refresh, null, tint = Z.text)
                 }
             }
+            // phones: preview above the controls · tablets/foldables open: preview beside them
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val wide = maxWidth >= 760.dp
+                @Composable
+                fun PreviewPane() {
             // ---------------------------------------------------------------- preview
             Box(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(30.dp))
@@ -194,12 +202,16 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                 }
             }
+                }
+                @Composable
+                fun ControlsPane(mod: Modifier) {
+                    Column(mod) {
             Segmented(
                 listOf(tr("Look", "الشكل"), tr("Content", "المحتوى"), tr("Region", "اللغة"), tr("More", "المزيد")),
                 tab, Modifier.padding(horizontal = 16.dp).offset(y = (-22).dp),
             ) { tab = it }
             // ---------------------------------------------------------------- controls
-            androidx.compose.animation.AnimatedContent(tab, Modifier.weight(1f), label = "tabs", transitionSpec = {
+            androidx.compose.animation.AnimatedContent(tab, Modifier.weight(1f).fillMaxWidth(), label = "tabs", transitionSpec = {
                 val dir = (if (targetState > initialState) 1 else -1) * (if (ar) -1 else 1)
                 val ease = androidx.compose.animation.core.FastOutSlowInEasing
                 (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = ease)) { it / 5 * dir } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240, 60)))
@@ -426,6 +438,16 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 }
                 Spacer(Modifier.height(130.dp))
             }
+            }
+                    }
+                }
+                if (wide) Row(Modifier.fillMaxSize()) {
+                    Column(Modifier.weight(0.46f).fillMaxHeight().padding(top = 8.dp), verticalArrangement = Arrangement.Center) { PreviewPane() }
+                    ControlsPane(Modifier.weight(0.54f).fillMaxHeight().padding(top = 8.dp))
+                } else Column(Modifier.fillMaxSize()) {
+                    PreviewPane()
+                    ControlsPane(Modifier.weight(1f))
+                }
             }
         }
 

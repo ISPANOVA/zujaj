@@ -24,9 +24,10 @@ import java.io.FileOutputStream
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = Application::class, qualifiers = "w400dp-h860dp-xhdpi")
-class UiShotsTest {
+open class UiShotsTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
+    open val tag = ""
 
     @Test
     fun screens() {
@@ -52,7 +53,7 @@ class UiShotsTest {
                 rule.runOnUiThread {
                     Prefs.appLanguage = if (ar) "ar" else "en"
                     com.smrh.zujaj.ui.editorStartTab = if (name == "editor_font") 1 else 0
-                    nav.stack.clear(); nav.stack.add(s)
+                    nav.reset(s)
                 }
                 repeat(6) {
                     rule.mainClock.advanceTimeBy(400)
@@ -65,8 +66,21 @@ class UiShotsTest {
                     v.draw(android.graphics.Canvas(b))
                     img = b
                 }
-                FileOutputStream(File(out, "ui_${name}_${if (ar) "ar" else "en"}.png")).use { img!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                FileOutputStream(File(out, "ui${tag}_${name}_${if (ar) "ar" else "en"}.png")).use { img!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
         }
     }
 }
+
+
+/** Tablet, landscape. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w1280dp-h800dp-land-mdpi")
+class UiShotsTestTablet : UiShotsTest() { override val tag = "_tab" }
+
+/** Foldable, unfolded (near-square). */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w840dp-h900dp-mdpi")
+class UiShotsTestFold : UiShotsTest() { override val tag = "_fold" }
