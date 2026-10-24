@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Block
