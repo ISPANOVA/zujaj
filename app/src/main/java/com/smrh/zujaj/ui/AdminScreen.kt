@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.rounded.Star
@@ -547,7 +548,7 @@ private fun CodeUsersDialog(code: String, onDismiss: () -> Unit) {
     fun act(block: suspend () -> Unit) { busy = true; scope.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { block() }; busy = false
         if (r.isFailure) Toast.makeText(ctx, adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show(); reload++ } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(18.dp)) {
+        Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("Users of", "مستخدمين") + " " + code, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)

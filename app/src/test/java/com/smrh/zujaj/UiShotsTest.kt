@@ -44,6 +44,8 @@ open class UiShotsTest {
             "settings" to Screen.Settings,
             "tutorial" to Screen.Tutorial,
             "editor_font" to Screen.Editor("digital_stacked"),
+            "search" to Screen.Search,
+            "wallpapers" to Screen.Wallpapers,
         )
         rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)
@@ -84,3 +86,21 @@ class UiShotsTestTablet : UiShotsTest() { override val tag = "_tab" }
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = Application::class, qualifiers = "w840dp-h900dp-mdpi")
 class UiShotsTestFold : UiShotsTest() { override val tag = "_fold" }
+
+/** Compact phone (small 5-inch class). */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w360dp-h640dp-xhdpi")
+class UiShotsTestCompact : UiShotsTest() { override val tag = "_compact" }
+
+/** Large phone. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w430dp-h932dp-xhdpi")
+class UiShotsTestLarge : UiShotsTest() { override val tag = "_large" }
+
+/** Tablet, portrait. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w800dp-h1280dp-port-mdpi")
+class UiShotsTestTabletPort : UiShotsTest() { override val tag = "_tabp" }

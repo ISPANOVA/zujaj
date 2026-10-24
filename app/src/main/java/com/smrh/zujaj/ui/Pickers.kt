@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.widthIn
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -132,7 +133,7 @@ fun AppsPickerDialog(initial: List<AppRef>, max: Int, onDismiss: () -> Unit, onD
     var q by remember { mutableStateOf("") }
     LaunchedEffect(Unit) { apps = loadApps(ctx) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.85f).clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(16.dp)) {
+        Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(0.94f).fillMaxHeight(0.85f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp)) {
             Text(tr("Choose apps", "اختر التطبيقات") + "  (${chosen.size}/$max)", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(q, { q = it }, singleLine = true, placeholder = { Text(tr("Search", "بحث")) }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
             LazyColumn(Modifier.weight(1f)) {
@@ -164,7 +165,7 @@ fun CityPickerDialog(onDismiss: () -> Unit, onPick: (City) -> Unit) {
     var q by remember { mutableStateOf("") }
     val ar = Prefs.isArabicUi
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(26.dp)).background(Z.surface).padding(16.dp)) {
+        Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp)) {
             Text(tr("Choose a city", "اختر مدينة"), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(q, { q = it }, singleLine = true, placeholder = { Text(tr("Search", "بحث")) }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {

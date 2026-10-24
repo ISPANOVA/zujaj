@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import com.smrh.zujaj.R
 import com.smrh.zujaj.data.Prefs
 
@@ -133,3 +134,30 @@ object Haptics {
         else view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
 }
+
+// =============================================================================== design tokens
+/** Spacing scale (4-pt grid). Screens use these instead of one-off numbers. */
+object Sp {
+    val xxs = 2.dp; val xs = 4.dp; val s = 8.dp; val m = 12.dp; val l = 16.dp; val xl = 24.dp; val xxl = 32.dp
+    /** Edge gutter that grows with the window so wide screens are not crammed against the bezel. */
+    fun gutter(widthDp: Int) = when { widthDp >= 1200 -> 40.dp; widthDp >= 840 -> 32.dp; widthDp >= 600 -> 24.dp; else -> 16.dp }
+}
+
+/** Corner radii — small controls, medium fields, large surfaces, extra-large hero/sheets. */
+object Rad { val s = 12.dp; val m = 16.dp; val l = 20.dp; val xl = 28.dp }
+
+/** Window size classes from the usable width (not the device model). */
+enum class WidthClass { COMPACT, MEDIUM, EXPANDED;
+    companion object { fun of(widthDp: Int) = when { widthDp >= 840 -> EXPANDED; widthDp >= 600 -> MEDIUM; else -> COMPACT } }
+}
+
+/** One motion language: standard easing, three durations, and no bounce on UI chrome. */
+object Motion {
+    val ease = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
+    const val FAST = 140; const val MED = 240; const val SLOW = 360
+    fun <T> std(ms: Int = MED) = androidx.compose.animation.core.tween<T>(ms, easing = ease)
+    fun color() = androidx.compose.animation.core.tween<Color>(FAST + 40, easing = ease)
+}
+
+/** Width (dp) of the pane a screen is drawn in — the window minus rails/cutouts — so layouts follow the real space. */
+val LocalPaneWidth = androidx.compose.runtime.compositionLocalOf { 400 }

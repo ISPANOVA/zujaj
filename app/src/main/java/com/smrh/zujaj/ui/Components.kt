@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.widthIn
 import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.animation.animateColorAsState
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -92,9 +95,9 @@ fun AppBackdrop(content: @Composable BoxScope.() -> Unit) {
             fun glow(c: Color, a: Float, x: Float, y: Float, r: Float) =
                 drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), Color.Transparent), center = Offset(x, y), radius = r), radius = r, center = Offset(x, y))
             val k = if (Z.light) 0.45f else 1f
-            glow(Color(0xFF6C5CE7), 0.30f * k, size.width * 0.05f, -size.width * 0.1f, size.width * 1.0f)
-            glow(Color(0xFF13B5A8), 0.16f * k, size.width * 1.05f, size.width * 0.15f, size.width * 0.8f)
-            glow(accent, 0.10f * k + (if (Z.light) 0.06f else 0f), size.width * 0.6f, size.height * 1.02f, size.width * 0.9f)
+            val r = minOf(size.width, 900f * density)
+            glow(Color(0xFF6C5CE7), 0.22f * k, size.width * 0.12f, -r * 0.18f, r * 1.05f)
+            glow(accent, 0.07f * k, size.width * 0.92f, size.height * 1.04f, r * 0.9f)
         }
         content()
     }
@@ -105,19 +108,21 @@ fun Glass(modifier: Modifier = Modifier, radius: Dp = 22.dp, alpha: Float = 0.06
     Column(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = alpha + 0.03f), Color.White.copy(alpha = alpha))))
-            .border(BorderStroke(1.dp, Brush.linearGradient(listOf(Z.tint(0.16f), Z.tint(0.04f)))), RoundedCornerShape(radius)),
+            .background(Z.tint(alpha + 0.015f))
+            .border(1.dp, Z.tint(0.08f), RoundedCornerShape(radius)),
         content = content,
     )
 }
 
 @Composable
 fun TopBar(title: String, onBack: (() -> Unit)?, actions: @Composable () -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = Sp.xs), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = Z.text) }
-        } else Spacer(Modifier.width(12.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // the keyboard goes away first, so leaving never leaves it floating over the previous screen
+            IconButton(onClick = { focus.clearFocus(); onBack() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Back", "رجوع"), tint = Z.text) }
+        } else Spacer(Modifier.width(Sp.m))
+        Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         actions()
     }
 }
@@ -143,13 +148,16 @@ fun Wordmark(modifier: Modifier = Modifier) {
 fun ZChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val accent = LocalAccent.current
     val ctx = LocalContext.current
-    val bg by animateColorAsState(if (selected) accent else Z.tint(0.06f), label = "chip")
+    val bg by animateColorAsState(if (selected) accent.copy(alpha = 0.16f) else Z.tint(0.045f), Motion.color(), label = "chip")
+    val bd by animateColorAsState(if (selected) accent.copy(alpha = 0.7f) else Z.tint(0.07f), Motion.color(), label = "chipb")
+    val fg by animateColorAsState(if (selected) accent else Z.text.copy(alpha = 0.86f), Motion.color(), label = "chipf")
     Box(
-        Modifier.pressScale().clip(RoundedCornerShape(50)).background(bg)
-            .border(1.dp, if (selected) Color.Transparent else Z.line, RoundedCornerShape(50))
-            .clickable { Haptics.tick(ctx); onClick() }.padding(horizontal = 16.dp, vertical = 8.dp)
+        Modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(Rad.s)).background(bg)
+            .border(1.dp, bd, RoundedCornerShape(Rad.s))
+            .clickable { Haptics.tick(ctx); onClick() }.padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (selected) Color(0xFF14110A) else Z.text, style = MaterialTheme.typography.labelLarge)
+        Text(text, color = fg, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }
 
@@ -192,15 +200,16 @@ object Backdrops {
 fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val accent = LocalAccent.current
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xE6111118))
-            .border(1.dp, Z.line, RoundedCornerShape(18.dp)).padding(4.dp),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.m)).background(Z.surface2)
+            .border(1.dp, Z.line, RoundedCornerShape(Rad.m)).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items.forEachIndexed { i, label ->
             val sel = i == selected
+            val segBg by animateColorAsState(if (sel) accent else Color.Transparent, Motion.color(), label = "seg")
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
-                    .background(if (sel) accent else Color.Transparent)
+                Modifier.weight(1f).clip(RoundedCornerShape(Rad.m - 4.dp))
+                    .background(segBg)
                     .clickable { onSelect(i) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -213,11 +222,12 @@ fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier,
 // ------------------------------------------------------------------ setting rows
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Text(title, color = Z.sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 8.dp))
+    Text(title.uppercase(), color = Z.sub, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, letterSpacing = if (Prefs.isArabicUi) 0.sp else 1.2.sp,
+        modifier = Modifier.padding(start = Sp.l + 4.dp, end = Sp.l + 4.dp, top = Sp.l, bottom = Sp.s))
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(22.dp))
-            .background(if (Z.light) Brush.verticalGradient(listOf(Z.surface, Z.surface)) else Brush.verticalGradient(listOf(Color(0xFF18181F), Color(0xFF131319))))
-            .border(1.dp, Brush.verticalGradient(listOf(Z.tint(0.09f), Z.tint(0.03f))), RoundedCornerShape(22.dp)),
+        Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l))
+            .background(Z.surface)
+            .border(1.dp, Z.line, RoundedCornerShape(Rad.l)),
         content = content,
     )
 }
@@ -225,8 +235,8 @@ fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
 /** Coloured rounded square with an icon, used at the start of setting rows. */
 @Composable
 fun IconTile(icon: ImageVector, color: Color, size: Dp = 32.dp) {
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * 0.32f)).background(Brush.linearGradient(listOf(color, color.copy(alpha = 0.72f)))), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.56f))
+    Box(Modifier.size(size).clip(RoundedCornerShape(size * 0.3f)).background(color.copy(alpha = if (Z.light) 0.12f else 0.15f)), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(size * 0.56f))
     }
 }
 
@@ -234,13 +244,13 @@ fun IconTile(icon: ImageVector, color: Color, size: Dp = 32.dp) {
 fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), trailing: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = if (icon != null) 11.dp else 12.dp),
+            .heightIn(min = 56.dp).padding(horizontal = Sp.l, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) { IconTile(icon, iconColor); Spacer(Modifier.width(14.dp)) }
         Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = Z.text)
-            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = Z.sub)
+            Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp), color = Z.text)
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp), color = Z.sub, modifier = Modifier.padding(top = 1.dp))
         }
         trailing()
     }
@@ -259,7 +269,10 @@ fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, icon:
     var open by remember { mutableStateOf(false) }
     RowBase(label, onClick = { open = true }, icon = icon, iconColor = iconColor) {
         Box {
-            Text((options.firstOrNull { it.first == value }?.second ?: "") + "  ▾", color = LocalAccent.current, style = MaterialTheme.typography.labelLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(options.firstOrNull { it.first == value }?.second ?: "", color = LocalAccent.current, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Icon(Icons.Rounded.UnfoldMore, null, tint = LocalAccent.current.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+            }
             DropdownMenu(open, { open = false }, modifier = Modifier.background(Z.surface2)) {
                 options.forEach { (v, l) -> DropdownMenuItem(text = { Text(l) }, onClick = { onChange(v); open = false }) }
             }
@@ -292,7 +305,7 @@ fun ColorDot(color: Int, size: Dp = 26.dp, onClick: () -> Unit) {
 }
 
 @Composable
-fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Z.tint(0.06f)))
+fun Divider() = Box(Modifier.fillMaxWidth().padding(start = Sp.l + 46.dp, end = Sp.l).height(1.dp).background(Z.tint(0.055f)))
 
 @Composable
 fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
@@ -399,22 +412,19 @@ fun ZDialog(icon: ImageVector, title: String, sub: String? = null, iconColor: Co
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         var shown by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { shown = true }
-        val k by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, androidx.compose.animation.core.spring(0.62f, 330f), label = "dlg")
+        val k by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, Motion.std(Motion.MED), label = "dlg")
+        // a dialog keeps a dialog's proportions on every screen: never wider than 440dp, centred
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp).graphicsLayer { scaleX = 0.9f + 0.1f * k; scaleY = 0.9f + 0.1f * k; alpha = k.coerceIn(0f, 1f) }
-                .clip(RoundedCornerShape(30.dp)).background(Z.surface)
-                .background(Brush.verticalGradient(listOf(iconColor.copy(alpha = 0.14f), Color.Transparent), 0f, 420f))
-                .border(1.dp, Z.line, RoundedCornerShape(30.dp)).padding(horizontal = 22.dp, vertical = 24.dp),
+            Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 22.dp).graphicsLayer { scaleX = 0.96f + 0.04f * k; scaleY = 0.96f + 0.04f * k; alpha = k.coerceIn(0f, 1f) }
+                .clip(RoundedCornerShape(Rad.xl)).background(Z.surface)
+                .border(1.dp, Z.line, RoundedCornerShape(Rad.xl)).padding(horizontal = 22.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(Modifier.size(62.dp).clip(RoundedCornerShape(20.dp))
-                .background(Brush.linearGradient(listOf(iconColor, iconColor.copy(alpha = 0.7f))))
-                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.Transparent)), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Color.White, modifier = Modifier.size(32.dp))
+            Box(Modifier.size(56.dp).clip(RoundedCornerShape(Rad.l)).background(iconColor.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(28.dp))
             }
             Spacer(Modifier.height(14.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Z.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Z.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             if (sub != null) {
                 Spacer(Modifier.height(6.dp))
                 Text(sub, color = Z.sub, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)

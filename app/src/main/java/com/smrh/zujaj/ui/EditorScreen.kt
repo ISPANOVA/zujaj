@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.runtime.saveable.rememberSaveable
 
 import androidx.compose.animation.togetherWith
@@ -122,6 +123,21 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var cfg by rememberSaveable(s, stateSaver = androidx.compose.runtime.saveable.Saver<WidgetConfig, String>({ it.toJson() }, { WidgetConfig.fromJson(it) })) {
         mutableStateOf(if (s.shared.isNotEmpty()) ShareDesign.decode(s.shared) ?: style.defaultConfig() else if (s.widgetId != -1) Prefs.widgetConfig(s.widgetId)?.takeIf { it.styleId == s.styleId } ?: style.defaultConfig() else style.defaultConfig())
     }
+    // what was last saved/applied; leaving with anything else asks first so work is never lost by a stray Back
+    var cleanJson by rememberSaveable(s) { mutableStateOf(cfg.toJson()) }
+    val dirty = cfg.toJson() != cleanJson
+    var askLeave by remember { mutableStateOf(false) }
+    val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
+    val leave: () -> Unit = { focusMgr.clearFocus(); if (!nav.back()) (ctx as? Activity)?.finish() }
+    val tryLeave: () -> Unit = { focusMgr.clearFocus(); if (dirty && !s.configure) askLeave = true else leave() }
+    androidx.activity.compose.BackHandler(enabled = dirty && !s.configure) { askLeave = true }
+    if (askLeave) ZDialog(Icons.Rounded.Edit, tr("Leave without saving?", "تخرج من غير ما تحفظ؟"),
+        tr("Your changes to this widget will be lost.", "التعديلات اللي عملتها على الويدجت دي هتضيع."), onDismiss = { askLeave = false }) {
+        PrimaryButton(tr("Keep editing", "كمّل تعديل"), Modifier.fillMaxWidth()) { askLeave = false }
+        androidx.compose.material3.TextButton(onClick = { askLeave = false; cleanJson = cfg.toJson(); leave() }, modifier = Modifier.fillMaxWidth()) {
+            Text(tr("Discard changes", "تجاهل التعديلات"), color = Color(0xFFFF6B6B))
+        }
+    }
     var fav by remember { mutableStateOf(Prefs.favorites.contains(style.id)) }
     var colorTarget by remember { mutableIntStateOf(-1) }
     var showApps by remember { mutableStateOf(false) }
@@ -165,7 +181,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var stage by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(style.name(ar), { if (!nav.back()) (ctx as? Activity)?.finish() }) {
+            TopBar(style.name(ar), tryLeave) {
                 val accentArgb = LocalAccent.current.let { android.graphics.Color.argb(255, (it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
                 IconButton(onClick = { Haptics.tick(ctx); runCatching { ShareDesign.share(ctx, cfg, accentArgb) } }) { Icon(Icons.Rounded.Share, null, tint = Z.text) }
                 IconButton(onClick = {
@@ -459,7 +475,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         // ---------------------------------------------------------------- apply
         val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
         val locked = remember(unlockVer, style.id) { Flags.locked(style) }
-        val wideApply = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 760
+        val wideApply = LocalPaneWidth.current >= 760
         Column(
             // on large screens the actions sit under the controls pane, never over the preview
             (if (wideApply) Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.54f) else Modifier.align(Alignment.BottomCenter).fillMaxWidth())
@@ -476,7 +492,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     locked -> nav.go(Screen.Paywall)
                     s.widgetId != -1 -> {
                         Haptics.success(ctx)
-                        Prefs.saveWidgetConfig(s.widgetId, cfg)
+                        Prefs.saveWidgetConfig(s.widgetId, cfg); cleanJson = cfg.toJson()
                         WidgetUpdater.update(ctx, s.widgetId)
                         if (cfg.cities.isNotEmpty()) Scheduler.refreshNow(ctx)
                         if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
@@ -484,7 +500,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                     else -> {
                         Haptics.success(ctx); pin(ctx, cfg, style.shape)
-                        appliedOnce = true
+                        appliedOnce = true; cleanJson = cfg.toJson()
                         if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
                     }
                 }

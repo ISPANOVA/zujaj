@@ -928,7 +928,7 @@ private fun WallGallery(ver: Int, aspect: Float, draft: WallDesign?, draftPhoto:
     val t = rememberInfiniteTransition(label = "g")
     val sheen by t.animateFloat(-0.4f, 1.4f, infiniteRepeatable(tween(2800, easing = LinearEasing)), label = "sh")
     val bob by t.animateFloat(-3f, 3f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "b")
-    val cols = if (LocalConfiguration.current.screenWidthDp >= 600) 4 else 2
+    val cols = if (LocalPaneWidth.current >= 600) 4 else 2
     val draftImg by produceState<ImageBitmap?>(null, draft, draftPhoto) {
         val d = draft; val p = draftPhoto
         value = if (d == null || p == null) null else withContext(Dispatchers.Default) {

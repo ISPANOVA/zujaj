@@ -1,5 +1,10 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.rounded.NewReleases
@@ -118,35 +123,49 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 // =============================================================================== MY WIDGETS
+/**
+ * Widgets already placed on the phone. An adaptive grid (one column on phones, more as the window
+ * widens); each card shows the live design on a home-screen-like backdrop with a direct Edit action.
+ */
 @Composable
 fun MyWidgetsTab(nav: Nav) {
     val ctx = LocalContext.current
     val ver by Prefs.version.collectAsState()
-    val ids = remember(ver) { WidgetUpdater.allIds(ctx) }
-    if (ids.isEmpty()) {
-        Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text(tr("No widgets on your home screen yet", "لا توجد ويدجت على شاشتك بعد"), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(8.dp))
-            Text(tr("Pick any widget, customise it and tap Apply.", "اختر أي ويدجت وخصّصه ثم اضغط إضافة."), color = Z.sub, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(18.dp))
-            PrimaryButton(tr("How to add widgets", "طريقة إضافة الويدجت")) { nav.go(Screen.Tutorial) }
+    val ids = remember(ver) { WidgetUpdater.allIds(ctx).filter { Prefs.widgetConfig(it)?.let { c -> Catalog.byId(c.styleId) } != null } }
+    val pane = LocalPaneWidth.current
+    val gut = Sp.gutter(pane)
+    Column(Modifier.fillMaxSize()) {
+        TabTitle(tr("My widgets", "ويدجتاتي"), if (ids.isEmpty()) null else tr("${ids.size} on your home screen", "${ids.size} على شاشتك"))
+        if (ids.isEmpty()) {
+            EmptyState(Icons.Rounded.Dashboard, tr("Nothing on your home screen yet", "لسه مفيش ويدجت على شاشتك"),
+                tr("Pick any design, make it yours and tap Apply — it will show up here so you can edit it later.",
+                    "اختار أي تصميم وعدّله واضغط إضافة — هيظهر هنا عشان تعدّله بعدين."),
+                tr("How to add widgets", "طريقة إضافة الويدجت")) { nav.go(Screen.Tutorial) }
+            return@Column
         }
-        return
-    }
-    LazyColumn(contentPadding = pagePadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Text(tr("Widgets on your home screen", "الويدجت على شاشتك"), color = Z.sub, modifier = Modifier.padding(horizontal = 8.dp)) }
-        items(ids) { id ->
-            val cfg = Prefs.widgetConfig(id) ?: return@items
-            val st = Catalog.byId(cfg.styleId) ?: return@items
-            Glass(Modifier.fillMaxWidth(), radius = 22.dp) {
-                Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
-                    WidgetPreview(cfg, if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) Modifier.width(150.dp) else Modifier.fillMaxWidth())
-                }
-                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(st.name(Prefs.isArabicUi), modifier = Modifier.weight(1f))
-                    TextButton(onClick = { nav.go(Screen.Editor(st.id, id)) }) {
-                        Icon(Icons.Rounded.Edit, null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp)); Text(tr("Edit", "تعديل"), color = LocalAccent.current)
+        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+            columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(if (pane >= 600) 300.dp else 280.dp),
+            contentPadding = PaddingValues(start = gut, end = gut, bottom = LocalDockSpace.current),
+            horizontalArrangement = Arrangement.spacedBy(Sp.l), verticalArrangement = Arrangement.spacedBy(Sp.l),
+        ) {
+            items(ids.size, key = { ids[it] }) { i ->
+                val id = ids[i]
+                val cfg = Prefs.widgetConfig(id) ?: return@items
+                val st = Catalog.byId(cfg.styleId) ?: return@items
+                Column(Modifier.clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
+                    .clickable { nav.go(Screen.Editor(st.id, id)) }) {
+                    Box(Modifier.fillMaxWidth().height(190.dp).padding(8.dp).clip(RoundedCornerShape(Rad.m)).background(Backdrops.brush(i)), contentAlignment = Alignment.Center) {
+                        WidgetPreview(cfg, (if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) Modifier.width(140.dp) else Modifier.fillMaxWidth()).padding(14.dp))
+                    }
+                    Row(Modifier.fillMaxWidth().padding(start = Sp.l, end = Sp.s, top = 2.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(st.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            Text(sizeLabel(st.shape), color = Z.sub, fontSize = 12.sp)
+                        }
+                        TextButton(onClick = { nav.go(Screen.Editor(st.id, id)) }) {
+                            Icon(Icons.Rounded.Edit, null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp)); Text(tr("Edit", "تعديل"), color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -204,30 +223,34 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     }
     val purple = Color(0xFF8B7CFF); val teal = Color(0xFF13B5A8); val gold = Color(0xFFE0A93B); val blue = Color(0xFF4D8DFF)
     val green = Color(0xFF34C77B); val rose = Color(0xFFFF5C8A); val orange = Color(0xFFFF8A4C); val grey = Color(0xFF7A7A86)
+    // Settings is a reference page people scan, so: compact title, a quiet membership strip, then groups.
+    // From 840dp the groups flow into two columns instead of one long strip with empty margins.
+    val pane = LocalPaneWidth.current
+    val twoCols = pane >= 840
+    val gut = Sp.gutter(pane)
+    val proStrip: @Composable () -> Unit = {
+        val isPro = Prefs.isPro
+        Row(Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l))
+            .background(Z.pro.copy(alpha = if (isPro) 0.08f else 0.12f))
+            .border(1.dp, Z.pro.copy(alpha = 0.35f), RoundedCornerShape(Rad.l))
+            .clickable { nav.go(Screen.Paywall) }.padding(horizontal = Sp.l, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (isPro) tr("You're a Pro member", "إنت مشترك برو") else tr("Zujaj Pro", "زجاج برو"), color = Z.text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(if (isPro) tr("Every widget is yours — thank you!", "كل الويدجت بتاعتك — شكراً ليك!") else tr("All widgets, no ads, every new design", "كل الويدجت، من غير إعلانات، وكل تصميم جديد"),
+                    color = Z.sub, fontSize = 13.sp)
+            }
+            if (!isPro) Text(tr("See plans", "شوف الخطط"), color = Z.pro, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            else Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub)
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         if (!asTab) TopBar("", { nav.back() })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Text(tr("Settings", "الإعدادات"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = if (asTab) 18.dp else 0.dp, bottom = 12.dp))
-            // ---- Pro card
-            val isPro = Prefs.isPro
-            Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(26.dp))
-                .background(Brush.linearGradient(if (isPro) listOf(Color(0xFF3A2C12), Color(0xFF17130B)) else listOf(Color(0xFFF6D98B), Color(0xFFD6A445), Color(0xFFB07A2A))))
-                .border(1.dp, Z.tint(0.16f), RoundedCornerShape(26.dp))
-                .clickable { nav.go(Screen.Paywall) }.padding(18.dp)) {
-                val fg = if (isPro) Z.pro else Color(0xFF2A1C05)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(fg.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.WorkspacePremium, null, tint = fg, modifier = Modifier.size(30.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(if (isPro) tr("You are Pro ✓", "أنت مشترك برو ✓") else tr("Zujaj Pro", "زجاج برو"), color = fg, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(if (isPro) tr("Every widget is yours — thank you!", "كل الويدجت بتاعتك — شكراً ليك!") else tr("All widgets, no ads, every new design", "كل الويدجت، من غير إعلانات، وكل تصميم جديد"),
-                            color = fg.copy(alpha = 0.8f), fontSize = 13.sp)
-                    }
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = fg)
-                }
-            }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = (gut - Sp.l).coerceAtLeast(0.dp))) {
+            Text(tr("Settings", "الإعدادات"), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = Sp.l + 4.dp, end = Sp.l, top = if (asTab) Sp.l + 4.dp else 0.dp, bottom = Sp.m))
+            proStrip()
+            val left: @Composable ColumnScope.() -> Unit = {
             Section(tr("Appearance", "المظهر")) {
                 ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام"), "en" to "English", "ar" to "العربية"), Icons.Rounded.Language, blue) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
@@ -309,7 +332,8 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 Divider()
                 RowBase(tr("How to add widgets", "طريقة إضافة الويدجت"), onClick = { nav.go(Screen.Tutorial) }, icon = Icons.Rounded.HelpOutline, iconColor = blue) { Chevron() }
             }
-            com.smrh.zujaj.ads.AdBanner(1, Modifier.padding(top = 10.dp))
+            }
+            val right: @Composable ColumnScope.() -> Unit = {
             Section(tr("Subscription", "الاشتراك")) {
                 RowBase(tr("Redeem code", "استخدام كود"), sub = codeStatus(), onClick = { showRedeem = true }, icon = Icons.Rounded.Redeem, iconColor = gold) {
                     Text(tr("Enter", "إدخال"), color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
@@ -337,7 +361,14 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     if (taps >= 7) { taps = 0; showGate = true }
                 }, icon = Icons.Rounded.Info, iconColor = grey) {}
             }
-            Spacer(Modifier.height(130.dp))
+            // one clearly separated ad, after the settings people actually came for
+            com.smrh.zujaj.ads.AdBanner(1, Modifier.padding(top = Sp.l))
+            }
+            if (twoCols) Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), content = left)
+                Column(Modifier.weight(1f), content = right)
+            } else { left(); right() }
+            Spacer(Modifier.height(LocalDockSpace.current + 10.dp))
         }
     }
     if (showThemes) ThemesDialog { showThemes = false }
@@ -368,109 +399,141 @@ fun PaywallScreen(nav: Nav) {
         if (msg != null) Billing.consumeMessage()
     }
     val accent = LocalAccent.current
-    Box(Modifier.fillMaxSize()) {
-        // a quiet gold wash behind the header — the only decoration on the page
-        Box(Modifier.fillMaxWidth().height(320.dp).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.16f), Color.Transparent))))
-        Column(Modifier.fillMaxSize()) {
-            TopBar("", { nav.back() })
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-                // ---- header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC8902E)))), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.WorkspacePremium, null, tint = Color(0xFF2A1C05), modifier = Modifier.size(30.dp))
+    // one purchase sheet at a time: Continue locks until Play answers (or a short timeout if it never opens)
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(msg) { if (msg != null) busy = false }
+    LaunchedEffect(busy) { if (busy) { kotlinx.coroutines.delay(6000); busy = false } }
+    val pane = LocalPaneWidth.current
+    val split = pane >= 840
+    val benefits = listOf(
+        Triple(Icons.Rounded.Widgets, tr("All ${Catalog.all.size}+ widgets", "كل الويدجت (${Catalog.all.size}+)"), tr("Clocks, prayer, media, calendar", "ساعات، صلاة، ميديا، تقويم")),
+        Triple(Icons.Rounded.AutoAwesome, tr("Premium looks", "أشكال مميزة"), tr("Glass, aurora & textures", "زجاج، شفق وملمس")),
+        Triple(Icons.Rounded.Block, tr("No ads", "من غير إعلانات"), tr("Clean, uninterrupted app", "تطبيق نضيف من غير مقاطعة")),
+        Triple(Icons.Rounded.NewReleases, tr("New every month", "جديد كل شهر"), tr("Future drops included", "الإضافات الجاية معاك")),
+    )
+
+    val intro: @Composable () -> Unit = {
+        Column {
+            Box(Modifier.size(60.dp).clip(RoundedCornerShape(Rad.l)).background(Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC8902E)))), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.WorkspacePremium, null, tint = Color(0xFF2A1C05), modifier = Modifier.size(32.dp))
+            }
+            Spacer(Modifier.height(Sp.l))
+            Text(tr("Zujaj Pro", "زجاج برو"), fontSize = if (split) 34.sp else 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
+            Text(tr("Every widget, every look, no ads.", "كل الويدجت، كل الأشكال، من غير إعلانات."), color = Z.sub, fontSize = 15.sp)
+            Spacer(Modifier.height(Sp.xl))
+            // benefits as a checklist with one supporting line each: scannable, no card-in-card
+            benefits.forEach { (icon, t, sub) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(40.dp).clip(RoundedCornerShape(Rad.s)).background(Z.pro.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = Z.pro, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text(tr("Zujaj Pro", "زجاج برو"), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
-                        Text(tr("Every widget, every look, no ads", "كل الويدجت، كل الأشكال، من غير إعلانات"), color = Z.sub, fontSize = 14.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text(t, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Z.text)
+                        Text(sub, color = Z.sub, fontSize = 13.sp, lineHeight = 17.sp)
                     }
                 }
-                Spacer(Modifier.height(22.dp))
-                // ---- what you get: compact two-column list (four columns on wide screens)
-                val benefits = listOf(
-                    Triple(Icons.Rounded.Widgets, tr("All ${Catalog.all.size}+ widgets", "كل الويدجت (${Catalog.all.size}+)"), tr("Clocks, prayer, media, calendar", "ساعات، صلاة، ميديا، تقويم")),
-                    Triple(Icons.Rounded.AutoAwesome, tr("Premium looks", "أشكال مميزة"), tr("Glass, aurora & textures", "زجاج، شفق وملمس")),
-                    Triple(Icons.Rounded.Block, tr("No ads", "من غير إعلانات"), tr("Clean, uninterrupted app", "تطبيق نضيف من غير مقاطعة")),
-                    Triple(Icons.Rounded.NewReleases, tr("New every month", "جديد كل شهر"), tr("Future drops included", "الإضافات الجاية معاك")),
-                )
-                val wide = LocalConfiguration.current.screenWidthDp >= 600
-                benefits.chunked(if (wide) 4 else 2).forEach { row ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { (icon, t, sub) ->
-                            Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(18.dp)).padding(14.dp)) {
-                                Icon(icon, null, tint = Z.pro, modifier = Modifier.size(22.dp))
-                                Spacer(Modifier.height(10.dp))
-                                Text(t, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Z.text)
-                                Text(sub, color = Z.sub, fontSize = 12.sp, lineHeight = 16.sp)
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(22.dp))
-                if (pro) {
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Z.pro.copy(alpha = 0.12f)).border(1.dp, Z.pro.copy(alpha = 0.5f), RoundedCornerShape(20.dp)).padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.CheckCircle, null, tint = Z.pro, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(tr("You have Pro", "انت مشترك في برو"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(tr("Manage or cancel any time in Google Play.", "تقدر تدير أو تلغي الاشتراك من جوجل بلاي في أي وقت."), color = Z.sub, fontSize = 13.sp)
-                        }
-                    }
-                } else {
-                    Text(tr("Choose a plan", "اختار الخطة"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text, modifier = Modifier.padding(bottom = 8.dp))
-                    // plan cards: side by side on wide screens, stacked on phones
-                    @Composable
-                    fun PlanCard(plan: Plan, mod: Modifier) {
-                        val p = prices[plan]
-                        val (title, sub) = when (plan) {
-                            Plan.MONTHLY -> tr("Monthly", "شهري") to tr("Renews every month", "بيتجدد كل شهر")
-                            Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية ثم سنوي") else tr("Renews every year", "بيتجدد كل سنة"))
-                            Plan.LIFETIME -> tr("Lifetime", "مدى الحياة") to tr("One payment, yours forever", "تدفع مرة واحدة وتبقى ليك")
-                        }
-                        val on = sel == plan
-                        val ring by androidx.compose.animation.animateColorAsState(if (on) accent else Z.line, label = "ring")
-                        Box(mod) {
-                            Row(Modifier.fillMaxWidth().padding(top = if (plan == Plan.YEARLY) 10.dp else 0.dp).clip(RoundedCornerShape(20.dp))
-                                .background(if (on) accent.copy(alpha = 0.10f) else Z.tint(0.04f))
-                                .border(if (on) 2.dp else 1.dp, ring, RoundedCornerShape(20.dp))
-                                .clickable { Haptics.tick(ctx); sel = plan }.padding(horizontal = 16.dp, vertical = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                // radio
-                                Box(Modifier.size(22.dp).clip(CircleShape).border(2.dp, if (on) accent else Z.sub, CircleShape), contentAlignment = Alignment.Center) {
-                                    androidx.compose.animation.AnimatedVisibility(on, enter = androidx.compose.animation.scaleIn(), exit = androidx.compose.animation.scaleOut()) {
-                                        Box(Modifier.size(11.dp).clip(CircleShape).background(accent))
-                                    }
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
-                                    Text(sub, color = Z.sub, fontSize = 12.sp)
-                                }
-                                Text(p?.price ?: "—", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Z.text)
-                            }
-                            if (plan == Plan.YEARLY) Text(if (p?.trial == true) tr("FREE TRIAL", "تجربة مجانية") else tr("MOST POPULAR", "الأكثر اختيارًا"),
-                                color = Color(0xFF2A1C05), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp,
-                                modifier = Modifier.align(Alignment.TopCenter).clip(RoundedCornerShape(50)).background(Z.pro).padding(horizontal = 10.dp, vertical = 3.dp))
-                        }
-                    }
-                    if (wide) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Plan.values().forEach { PlanCard(it, Modifier.weight(1f)) } }
-                    else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { listOf(Plan.YEARLY, Plan.MONTHLY, Plan.LIFETIME).forEach { PlanCard(it, Modifier.fillMaxWidth()) } }
-                }
-                Spacer(Modifier.height(18.dp))
             }
-            // ---- sticky actions + disclosure
-            Column(Modifier.fillMaxWidth().background(Z.bg.copy(alpha = 0.96f)).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                if (!pro) PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
+        }
+    }
+
+    @Composable
+    fun PlanCard(plan: Plan, mod: Modifier) {
+        val p = prices[plan]
+        val (title, sub) = when (plan) {
+            Plan.MONTHLY -> tr("Monthly", "شهري") to tr("Renews every month", "بيتجدد كل شهر")
+            Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية ثم سنوي") else tr("Renews every year", "بيتجدد كل سنة"))
+            Plan.LIFETIME -> tr("Lifetime", "مدى الحياة") to tr("One payment, yours forever", "تدفع مرة واحدة وتبقى ليك")
+        }
+        val on = sel == plan
+        val ring by androidx.compose.animation.animateColorAsState(if (on) accent else Z.line, Motion.color(), label = "ring")
+        val fill by androidx.compose.animation.animateColorAsState(if (on) accent.copy(alpha = 0.09f) else Z.surface, Motion.color(), label = "fill")
+        Row(mod.heightIn(min = 72.dp).clip(RoundedCornerShape(Rad.l)).background(fill)
+            .border(if (on) 2.dp else 1.dp, ring, RoundedCornerShape(Rad.l))
+            .clickable { Haptics.tick(ctx); sel = plan }.padding(horizontal = Sp.l, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(22.dp).clip(CircleShape).border(2.dp, if (on) accent else Z.sub, CircleShape), contentAlignment = Alignment.Center) {
+                androidx.compose.animation.AnimatedVisibility(on, enter = androidx.compose.animation.fadeIn(Motion.std(Motion.FAST)) + androidx.compose.animation.scaleIn(Motion.std(Motion.FAST)),
+                    exit = androidx.compose.animation.fadeOut(Motion.std(Motion.FAST))) {
+                    Box(Modifier.size(11.dp).clip(CircleShape).background(accent))
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
+                    // the only label we show is a real one: the store says this plan has a trial
+                    if (plan == Plan.YEARLY && p?.trial == true) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Free trial", "تجربة مجانية"), color = Color(0xFF2A1C05), fontSize = 10.5.sp, fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(Z.pro).padding(horizontal = 8.dp, vertical = 2.dp))
+                    }
+                }
+                Text(sub, color = Z.sub, fontSize = 12.5.sp)
+            }
+            // price straight from Google Play (localised); a dash while the store is loading
+            Text(p?.price ?: "—", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Z.text)
+        }
+    }
+
+    val plans: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(Sp.s + 2.dp)) {
+            if (pro) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Z.pro.copy(alpha = 0.12f)).border(1.dp, Z.pro.copy(alpha = 0.5f), RoundedCornerShape(Rad.l)).padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CheckCircle, null, tint = Z.pro, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(tr("You have Pro", "انت مشترك في برو"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(tr("Manage or cancel any time in Google Play.", "تقدر تدير أو تلغي الاشتراك من جوجل بلاي في أي وقت."), color = Z.sub, fontSize = 13.sp)
+                    }
+                }
+            } else {
+                Text(tr("Choose your plan", "اختار خطتك"), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Z.text, modifier = Modifier.padding(bottom = 2.dp))
+                listOf(Plan.YEARLY, Plan.MONTHLY, Plan.LIFETIME).forEach { PlanCard(it, Modifier.fillMaxWidth()) }
+            }
+        }
+    }
+
+    val actions: @Composable () -> Unit = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (!pro) {
+                val loading = prices.isEmpty()
+                PrimaryButton(if (busy) tr("Opening Google Play…", "بنفتح جوجل بلاي…") else tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
+                    if (busy) return@PrimaryButton
+                    if (loading) { Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show(); return@PrimaryButton }
+                    busy = true
                     val ok = Billing.buy(ctx as Activity, sel)
-                    if (!ok) Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show()
+                    if (!ok) { busy = false; Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show() }
                 }
-                Row(horizontalArrangement = Arrangement.Center) {
-                    TextButton(onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking your purchases…", "بنراجع مشترياتك…"), Toast.LENGTH_SHORT).show() }) { Text(tr("Restore purchases", "استرجاع المشتريات"), color = Z.sub) }
-                    TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = accent) }
+            }
+            Row(horizontalArrangement = Arrangement.Center) {
+                TextButton(onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking your purchases…", "بنراجع مشترياتك…"), Toast.LENGTH_SHORT).show() }) { Text(tr("Restore purchases", "استرجاع المشتريات"), color = Z.sub) }
+                TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = accent) }
+            }
+            Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي. تقدر تلغي في أي وقت."),
+                color = Z.sub, fontSize = 11.5.sp, textAlign = TextAlign.Center, lineHeight = 15.sp)
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        // a quiet gold wash behind the header — the only decoration on the page
+        Box(Modifier.fillMaxWidth().height(320.dp).background(Brush.verticalGradient(listOf(Z.pro.copy(alpha = 0.14f), Color.Transparent))))
+        Column(Modifier.fillMaxSize()) {
+            TopBar("", { nav.back() })
+            if (split) {
+                // tablets / unfolded: the pitch on one side, the decision on the other — nothing to scroll past
+                Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = Sp.gutter(pane)), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = Sp.l)) { intro() }
+                    Column(Modifier.weight(1f).widthIn(max = 520.dp).verticalScroll(rememberScrollState()).navigationBarsPadding().padding(top = Sp.l, bottom = Sp.l)) {
+                        plans(); Spacer(Modifier.height(Sp.xl)); actions()
+                    }
                 }
-                Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي. تقدر تلغي في أي وقت."),
-                    color = Z.sub, fontSize = 11.sp, textAlign = TextAlign.Center)
+            } else {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+                    intro(); Spacer(Modifier.height(Sp.l)); plans(); Spacer(Modifier.height(Sp.l))
+                }
+                // sticky actions + disclosure
+                Column(Modifier.fillMaxWidth().background(Z.bg.copy(alpha = 0.97f)).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) { actions() }
             }
         }
     }
@@ -481,7 +544,7 @@ fun PaywallScreen(nav: Nav) {
 fun TutorialScreen(nav: Nav) {
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Quick start", "البدء السريع"), { nav.back() })
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 8.dp)) {
             val steps = listOf(
                 tr("Pick a widget", "اختر ويدجت") to tr("Browse the Widgets tab and tap any design you like.", "تصفح قسم الويدجت واضغط على أي تصميم يعجبك."),
                 tr("Customise it", "خصّصه") to tr("Change colours, background (solid, gradient, glass, aurora), texture, sizes, language and numerals.", "غيّر الألوان والخلفية (سادة، متدرج، زجاجي، شفق) والملمس والأحجام واللغة والأرقام."),
@@ -492,12 +555,20 @@ fun TutorialScreen(nav: Nav) {
                 tr("Media widgets", "ويدجت الميديا") to tr("Allow music access once so widgets show what's playing in any app.", "اسمح بالوصول للميديا مرة واحدة لتعرض الويدجت ما يُشغَّل في أي تطبيق."),
                 tr("Keep widgets fresh", "حافظ على التحديث") to tr("If your phone kills background apps, allow Zujaj in battery settings.", "إذا كان هاتفك يغلق التطبيقات في الخلفية، اسمح لزجاج في إعدادات البطارية."),
             )
+            // a numbered path with a thin connecting line — reads as steps, not as eight identical cards
             steps.forEachIndexed { i, (t, d) ->
-                Glass(Modifier.fillMaxWidth().padding(vertical = 6.dp), radius = 20.dp) {
-                    Row(Modifier.padding(16.dp)) {
-                        Box(Modifier.size(30.dp).clip(CircleShape).background(LocalAccent.current), contentAlignment = Alignment.Center) { Text("${i + 1}", color = Color.Black, fontWeight = FontWeight.Bold) }
-                        Spacer(Modifier.width(12.dp))
-                        Column { Text(t, style = MaterialTheme.typography.titleMedium); Text(d, color = Z.sub) }
+                Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).padding(horizontal = 6.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(30.dp).clip(CircleShape).background(if (i < 3) LocalAccent.current else Z.tint(0.08f)), contentAlignment = Alignment.Center) {
+                            Text("${i + 1}", color = if (i < 3) Color(0xFF14110A) else Z.text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        if (i < steps.lastIndex) Box(Modifier.width(2.dp).weight(1f).background(Z.tint(0.08f)))
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.padding(bottom = 22.dp, top = 3.dp)) {
+                        Text(t, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
+                        Spacer(Modifier.height(3.dp))
+                        Text(d, color = Z.sub, fontSize = 14.sp, lineHeight = 20.sp)
                     }
                 }
             }

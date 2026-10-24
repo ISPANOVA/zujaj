@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.FilterAltOff
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.shadow
@@ -109,76 +113,128 @@ import kotlinx.coroutines.delay
 import java.time.LocalTime
 
 // =============================================================================== shell
+private data class Dest(val icon: ImageVector, val en: String, val ar: String)
+private val dests = listOf(
+    Dest(Icons.Rounded.Home, "Discover", "اكتشف"),
+    Dest(Icons.Rounded.Favorite, "Saved", "المفضلة"),
+    Dest(Icons.Rounded.Dashboard, "Mine", "ويدجتاتي"),
+    Dest(Icons.Rounded.Settings, "Settings", "الإعدادات"),
+)
+
+/**
+ * The app shell. Phones get a floating dock at the bottom; from 840dp (tablets, unfolded foldables,
+ * landscape large phones) the destinations move to a side rail so the content gets the full height and
+ * the grid gets the full remaining width. The selected tab is saved, so folding/unfolding keeps it.
+ */
 @Composable
 fun HomeScreen(nav: Nav) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize()) {
-            // tabs glide sideways in the direction of the tab you picked
-            androidx.compose.animation.AnimatedContent(
-                targetState = tab,
-                transitionSpec = {
-                    val dir = if (targetState > initialState) 1 else -1
-                    (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260, 60)) +
-                        androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 6 * dir })
-                        .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)) +
-                            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(320)) { -it / 10 * dir })
-                },
-                label = "tabs",
-            ) { t ->
-                when (t) {
-                    0 -> DiscoverTab(nav)
-                    1 -> FavoritesTab(nav)
-                    2 -> MyWidgetsTab(nav)
-                    else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Box(Modifier.widthIn(max = 720.dp)) { SettingsScreen(nav, asTab = true) } }
-                }
+    val pane = LocalPaneWidth.current
+    val rail = WidthClass.of(pane) == WidthClass.EXPANDED
+    val ver by Prefs.version.collectAsState()
+    val content: @Composable () -> Unit = {
+        androidx.compose.animation.AnimatedContent(
+            targetState = tab,
+            transitionSpec = {
+                val dir = if (targetState > initialState) 1 else -1
+                (androidx.compose.animation.fadeIn(Motion.std(Motion.MED)) +
+                    androidx.compose.animation.slideInHorizontally(Motion.std(Motion.SLOW)) { minOf(it / 8, 96) * dir })
+                    .togetherWith(androidx.compose.animation.fadeOut(Motion.std(Motion.FAST)))
+            },
+            label = "tabs",
+        ) { t ->
+            when (t) {
+                0 -> DiscoverTab(nav)
+                1 -> FavoritesTab(nav) { tab = 0 }
+                2 -> MyWidgetsTab(nav)
+                else -> SettingsScreen(nav, asTab = true)
             }
         }
-        // labels follow the app language even when it changes while this screen is open
-        val ver by Prefs.version.collectAsState()
-        key(ver, Prefs.isArabicUi) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
+    }
+    if (rail) {
+        Row(Modifier.fillMaxSize()) {
+            key(ver, Prefs.isArabicUi) { NavRail(tab) { tab = it } }
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                // the content pane is narrower than the window by the rail: grids size themselves to this
+                androidx.compose.runtime.CompositionLocalProvider(LocalPaneWidth provides (pane - 88), LocalDockSpace provides 24.dp) { content() }
+            }
+        }
+    } else {
+        Box(Modifier.fillMaxSize()) {
+            content()
+            // labels follow the app language even when it changes while this screen is open
+            key(ver, Prefs.isArabicUi) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
+        }
+    }
+}
+
+/** Bottom space a tab leaves free for the floating dock (none beside a rail). */
+val LocalDockSpace = androidx.compose.runtime.compositionLocalOf { 120.dp }
+
+@Composable
+private fun NavRail(tab: Int, onTab: (Int) -> Unit) {
+    val accent = LocalAccent.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    Column(
+        Modifier.width(88.dp).fillMaxHeight().navigationBarsPadding().padding(vertical = Sp.l),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Sp.s),
+    ) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(androidx.compose.ui.res.colorResource(com.smrh.zujaj.R.color.ic_bg))) {
+            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.smrh.zujaj.R.drawable.ic_fg), null, Modifier.fillMaxSize())
+        }
+        Spacer(Modifier.height(Sp.xl))
+        dests.forEachIndexed { i, d ->
+            val sel = i == tab
+            val pill by androidx.compose.animation.animateColorAsState(if (sel) accent.copy(alpha = 0.18f) else Color.Transparent, Motion.color(), label = "rp")
+            val fg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.sub, Motion.color(), label = "rf")
+            Column(
+                Modifier.width(72.dp).clip(RoundedCornerShape(Rad.m)).clickable { Haptics.tick(ctx); onTab(i) }.padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.width(56.dp).height(32.dp).clip(RoundedCornerShape(50)).background(pill), contentAlignment = Alignment.Center) {
+                    Icon(d.icon, null, tint = fg, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(tr(d.en, d.ar), color = fg, fontSize = 12.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+            }
+        }
     }
 }
 
 @Composable
 private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
     val accent = LocalAccent.current
-    val items = listOf(
-        Icons.Rounded.Home to tr("Discover", "اكتشف"),
-        Icons.Rounded.Favorite to tr("Saved", "المفضلة"),
-        Icons.Rounded.Dashboard to tr("Mine", "ويدجتاتي"),
-        Icons.Rounded.Settings to tr("Settings", "الإعدادات"),
-    )
-    // floating glass capsule; the selected tab grows into a lit pill with its label
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // floating capsule; the selected destination opens into a pill with its label
     Box(
         modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.8f), Z.bg.copy(alpha = 0.95f))))
-            .navigationBarsPadding().padding(top = 26.dp, bottom = 12.dp),
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.85f), Z.bg)))
+            .navigationBarsPadding().padding(top = 22.dp, bottom = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier.shadow(if (Z.light) 12.dp else 24.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
+            Modifier.shadow(if (Z.light) 10.dp else 18.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(50))
-                .background(Brush.verticalGradient(listOf(Z.surface.copy(alpha = 0.96f), Z.surface2.copy(alpha = 0.96f))))
-                .border(1.dp, Brush.verticalGradient(listOf(Z.tint(0.16f), Z.tint(0.04f))), RoundedCornerShape(50))
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .background(Z.surface.copy(alpha = 0.97f))
+                .border(1.dp, Z.tint(0.09f), RoundedCornerShape(50))
+                .padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            items.forEachIndexed { i, (icon, label) ->
+            dests.forEachIndexed { i, d ->
                 val sel = i == tab
+                val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color.Transparent, Motion.color(), label = "db")
                 Row(
-                    Modifier.animateContentSize(androidx.compose.animation.core.spring(dampingRatio = 0.62f, stiffness = 420f)).clip(RoundedCornerShape(50))
-                        .background(if (sel) Brush.linearGradient(listOf(accent, accent.copy(alpha = 0.78f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
-                        .clickable { onTab(i) }
-                        .padding(horizontal = if (sel) 18.dp else 16.dp, vertical = 13.dp),
+                    Modifier.animateContentSize(Motion.std(Motion.MED)).clip(RoundedCornerShape(50)).background(bg)
+                        .clickable { Haptics.tick(ctx); onTab(i) }
+                        .padding(horizontal = if (sel) 18.dp else 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val bounce by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.12f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 500f), label = "b")
-                    Icon(icon, label, tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp).graphicsLayer { scaleX = bounce; scaleY = bounce })
+                    Icon(d.icon, tr(d.en, d.ar), tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp))
                     if (sel) {
                         Spacer(Modifier.width(8.dp))
-                        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14110A), maxLines = 1)
+                        Text(tr(d.en, d.ar), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14110A), maxLines = 1)
                     }
                 }
             }
@@ -382,111 +438,100 @@ fun DiscoverTab(nav: Nav) {
 
     val ctxHome = androidx.compose.ui.platform.LocalContext.current
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
-    val screenDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-    val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "home")
+    val screenDp = LocalPaneWidth.current
     val still = remember { Z.reducedMotion(ctxHome) }
-    val tAnim by drift.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "t")
-    val t = if (still) 0.35f else tAnim
+    val wide = WidthClass.of(screenDp) != WidthClass.COMPACT
+    val gut = Sp.gutter(screenDp)
 
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 130.dp)) {
-        // ---- header over a slowly drifting aurora
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = LocalDockSpace.current + 10.dp)) {
+        // ---- header: greeting + wordmark on a still light wash (no looping motion on the home page —
+        // it cost battery and pulled the eye away from the widgets), then a real search entry
         item(key = "head") {
-            Box(Modifier.fillMaxWidth().drawBehind {
-                val w = size.width; val h = size.height
-                val c1 = androidx.compose.ui.geometry.Offset(w * (0.12f + 0.55f * t), h * 0.25f)
-                val c2 = androidx.compose.ui.geometry.Offset(w * (0.95f - 0.45f * t), h * 0.75f)
-                drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.26f), Color.Transparent), center = c1, radius = w * 0.6f), radius = w * 0.6f, center = c1)
-                drawCircle(Brush.radialGradient(listOf(Color(0xFF7C6CF2).copy(alpha = 0.22f), Color.Transparent), center = c2, radius = w * 0.55f), radius = w * 0.55f, center = c2)
-            }) {
-                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 18.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.fillMaxWidth().drawBehind {
+                val r = minOf(size.width, 1100f) * 0.75f
+                drawCircle(Brush.radialGradient(listOf(Color(0xFF7C6CF2).copy(alpha = if (Z.light) 0.10f else 0.20f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(r * 0.25f, 0f), radius = r), radius = r, center = androidx.compose.ui.geometry.Offset(r * 0.25f, 0f))
+            }.padding(start = gut, end = gut, top = Sp.l, bottom = Sp.s)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(greet, color = Z.sub, fontSize = 13.sp)
-                        Text(tr("Zujaj", "زجاج"), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1,
-                            style = androidx.compose.ui.text.TextStyle(brush = Brush.linearGradient(listOf(Color.White, accent.copy(alpha = 0.9f)))))
+                        Text(greet, color = Z.sub, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(tr("Zujaj", "زجاج"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, color = Z.text)
                     }
-                    RoundAction(Icons.Rounded.Search, Z.tint(0.08f), Z.text) { nav.go(Screen.Search) }
-                    Spacer(Modifier.width(8.dp))
-                    val pulse by drift.animateFloat(1f, 1.08f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
-                    Box(Modifier.graphicsLayer { if (!pro) { scaleX = pulse; scaleY = pulse } }) {
-                        RoundAction(Icons.Rounded.WorkspacePremium, if (pro) Z.tint(0.08f) else Z.pro, if (pro) Z.pro else Color(0xFF2A1C05)) { nav.go(Screen.Paywall) }
+                    if (pro) RoundAction(Icons.Rounded.WorkspacePremium, Z.tint(0.06f), Z.pro, tr("Zujaj Pro", "زجاج برو")) { nav.go(Screen.Paywall) }
+                    else Row(Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(Z.pro.copy(alpha = 0.14f)).border(1.dp, Z.pro.copy(alpha = 0.45f), RoundedCornerShape(50))
+                        .clickable { nav.go(Screen.Paywall) }.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Pro", color = Z.pro, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
+                }
+                Spacer(Modifier.height(Sp.l))
+                // search as a field, not a lone icon: the first thing most people want is "find me a prayer clock"
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(Rad.m)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.m))
+                    .clickable { nav.go(Screen.Search) }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Search, null, tint = Z.sub, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(tr("Search widgets — clock, prayer, calendar…", "ابحث — ساعة، صلاة، تقويم…"), color = Z.sub, fontSize = 14.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
         }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
-            Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+            Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 6.dp)
                 .clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f)).padding(14.dp))
         }
-        // ---- showcase: auto-sliding, the side cards shrink and fade (parallax)
-        if (featured.isNotEmpty()) item(key = "show") {
-            val pager = rememberPagerState { featured.size }
-            LaunchedEffect(pager) { while (true) { delay(4500); pager.animateScrollToPage((pager.currentPage + 1) % featured.size) } }
-            Column {
-                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 12.dp,
-                    pageSize = if (screenDp >= 600) androidx.compose.foundation.pager.PageSize.Fixed(520.dp) else androidx.compose.foundation.pager.PageSize.Fill) { page ->
-                    val st = featured[page]
-                    val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                    Box(Modifier.fillMaxWidth().height(230.dp)
-                        .graphicsLayer { val k = 1f - 0.08f * kotlin.math.abs(off); scaleX = k; scaleY = k; alpha = 1f - 0.4f * kotlin.math.abs(off) }
-                        .clip(RoundedCornerShape(30.dp)).background(Backdrops.brush(page + 1))
-                        .border(1.dp, Z.tint(0.10f), RoundedCornerShape(30.dp))
-                        .clickable { nav.go(Screen.Editor(st.id)) }) {
-                        Box(Modifier.fillMaxWidth().padding(start = if (st.shape == Shape.SMALL) 80.dp else 22.dp, end = if (st.shape == Shape.SMALL) 80.dp else 22.dp, top = 20.dp)
-                            .graphicsLayer { translationX = off * 60.dp.toPx() }, contentAlignment = Alignment.TopCenter) {
-                            WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 2.3f)
-                        }
-                        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC0000000))))
-                            .padding(start = 20.dp, end = 14.dp, top = 20.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(tr("FEATURED", "مختارات"), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                                Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        // ---- showcase and the Wallpapers entry. Phones stack them; wide windows put them side by side so the
+        // first screen shows both without a tall empty band.
+        item(key = "show") {
+            val showcase: @Composable (Modifier) -> Unit = { m ->
+                if (featured.isNotEmpty()) {
+                    val pager = rememberPagerState { featured.size }
+                    if (!still) LaunchedEffect(pager) { while (true) { delay(5000); pager.animateScrollToPage((pager.currentPage + 1) % featured.size, animationSpec = Motion.std(Motion.SLOW * 2)) } }
+                    Column(m) {
+                        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = if (wide) 0.dp else gut), pageSpacing = 12.dp) { page ->
+                            val st = featured[page]
+                            val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                            Box(Modifier.fillMaxWidth().height(if (wide) 260.dp else 220.dp)
+                                .graphicsLayer { alpha = 1f - 0.35f * kotlin.math.abs(off) }
+                                .clip(RoundedCornerShape(Rad.xl)).background(Backdrops.brush(page + 1))
+                                .border(1.dp, Z.tint(0.08f), RoundedCornerShape(Rad.xl))
+                                .clickable { nav.go(Screen.Editor(st.id)) }) {
+                                Box(Modifier.fillMaxWidth().padding(start = if (st.shape == Shape.SMALL) 80.dp else 22.dp, end = if (st.shape == Shape.SMALL) 80.dp else 22.dp, top = 20.dp)
+                                    .graphicsLayer { translationX = off * 40.dp.toPx() }, contentAlignment = Alignment.TopCenter) {
+                                    WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth().widthIn(max = 460.dp), density = 2.3f)
+                                }
+                                Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB8000000))))
+                                    .padding(start = 18.dp, end = 14.dp, top = 22.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(tr("Editor's pick", "اختيارنا"), color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(st.name(Prefs.isArabicUi), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
                             }
-                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                        }
+                        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
+                            repeat(featured.size) { i ->
+                                val sel = i == pager.currentPage
+                                val w by androidx.compose.animation.core.animateDpAsState(if (sel) 18.dp else 6.dp, Motion.std(), label = "dot")
+                                Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(RoundedCornerShape(50)).background(if (sel) accent else Z.tint(0.18f)))
                             }
                         }
-                    }
-                }
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
-                    repeat(featured.size) { i ->
-                        val sel = i == pager.currentPage
-                        val w by androidx.compose.animation.core.animateDpAsState(if (sel) 20.dp else 6.dp, label = "dot")
-                        Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(RoundedCornerShape(50)).background(if (sel) accent else Z.tint(0.2f)))
                     }
                 }
             }
-        }
-        // ---- wallpapers card with a moving sheen
-        item(key = "wall") {
-            val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            val pressed by src.collectIsPressedAsState()
-            val sc by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "wp")
-            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(RoundedCornerShape(24.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFFEE9B62), Color(0xFF9B59B6), Color(0xFF3B3A8F))))
-                .drawBehind {
-                    val x = size.width * (t * 1.6f - 0.3f)
-                    drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.22f), Color.Transparent),
-                        start = androidx.compose.ui.geometry.Offset(x - 120f, 0f), end = androidx.compose.ui.geometry.Offset(x + 120f, size.height)))
-                }
-                .clickable(interactionSource = src, indication = androidx.compose.material3.ripple()) { nav.go(Screen.Wallpapers) }.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val bob by drift.animateFloat(-3f, 3f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600), androidx.compose.animation.core.RepeatMode.Reverse), label = "bob")
-                    Box(Modifier.size(48.dp).graphicsLayer { translationY = bob * density }.clip(RoundedCornerShape(15.dp)).background(Color.White.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Wallpaper, null, tint = Color.White, modifier = Modifier.size(25.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("Wallpapers", "الخلفيات"), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                        Text(tr("Put the clock behind your photo", "حط الساعة ورا صورتك"), color = Color.White.copy(alpha = 0.88f), fontSize = 13.sp, maxLines = 1)
-                    }
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White)
+            if (wide) Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s), horizontalArrangement = Arrangement.spacedBy(Sp.l)) {
+                showcase(Modifier.weight(1.6f))
+                WallpapersEntry(Modifier.weight(1f).height(260.dp), tall = true) { nav.go(Screen.Wallpapers) }
+            } else {
+                Column {
+                    showcase(Modifier.padding(top = Sp.s))
+                    WallpapersEntry(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.l), tall = false) { nav.go(Screen.Wallpapers) }
                 }
             }
         }
         // ---- collection tabs (stay on top while scrolling)
         stickyHeader(key = "tabs") {
             LazyRow(Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                contentPadding = PaddingValues(horizontal = gut, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val keys = listOf("popular", "new", "free") + cats.map { it.name }
                 items(keys, key = { it }) { k -> TabPill(collectionTitle(k), chip == k, accent) { chip = k } }
             }
@@ -505,10 +550,11 @@ fun DiscoverTab(nav: Nav) {
             rows.forEach { row ->
                 val order = idx++
                 item(key = "r_${chip}_${row.joinToString { it.id }}") {
-                    val shown = remember { androidx.compose.animation.core.Animatable(0f) }
-                    LaunchedEffect(Unit) { delay((order.coerceAtMost(6) * 55L)); shown.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 220f)) }
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp)
-                        .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 46.dp.toPx(); val k = 0.94f + 0.06f * shown.value; scaleX = k; scaleY = k },
+                    // rows rise in once, lightly staggered; scrolling back up doesn't replay it
+                    val shown = remember { androidx.compose.animation.core.Animatable(if (still) 1f else 0f) }
+                    LaunchedEffect(Unit) { if (shown.value < 1f) { delay((order.coerceAtMost(5) * 40L)); shown.animateTo(1f, Motion.std(Motion.SLOW)) } }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 7.dp)
+                        .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 18.dp.toPx() },
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         row.forEach { st -> PreviewTile(st, Modifier.weight(1f), compact = shape != Shape.SMALL) { nav.go(Screen.Editor(st.id)) } }
                         repeat(per - row.size) { Spacer(Modifier.weight(1f)) }
@@ -531,22 +577,77 @@ fun DiscoverTab(nav: Nav) {
 @Composable
 private fun TabPill(text: String, sel: Boolean, accent: Color, onClick: () -> Unit) {
     // tabs float over the page (no bar behind them), so each pill carries its own frosted fill
-    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.surface2.copy(alpha = 0.92f), androidx.compose.animation.core.tween(260), label = "tbg")
-    val fg by androidx.compose.animation.animateColorAsState(if (sel) Color(0xFF14110A) else Z.text, androidx.compose.animation.core.tween(260), label = "tfg")
-    val k by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.06f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f), label = "tk")
-    Box(Modifier.graphicsLayer { scaleX = k; scaleY = k }.clip(RoundedCornerShape(50)).background(bg)
-        .border(1.dp, if (sel) Color.Transparent else Z.tint(0.12f), RoundedCornerShape(50))
-        .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp)) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.surface2.copy(alpha = 0.96f), Motion.color(), label = "tbg")
+    val fg by androidx.compose.animation.animateColorAsState(if (sel) Color(0xFF14110A) else Z.text.copy(alpha = 0.88f), Motion.color(), label = "tfg")
+    Box(Modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(50)).background(bg)
+        .border(1.dp, if (sel) Color.Transparent else Z.tint(0.09f), RoundedCornerShape(50))
+        .clickable { Haptics.tick(ctx); onClick() }.padding(horizontal = 16.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
         Text(text, color = fg, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
 }
 
 @Composable
-private fun EmptyNote() {
-    Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.Rounded.GridView, null, tint = Z.sub, modifier = Modifier.size(34.dp))
-        Spacer(Modifier.height(10.dp))
-        Text(tr("Nothing matches these filters", "مفيش ويدجت بالفلاتر دي"), color = Z.sub, textAlign = TextAlign.Center)
+private fun EmptyNote() = EmptyState(Icons.Rounded.GridView, tr("Nothing here yet", "مفيش حاجة هنا لسه"), tr("Try another collection above.", "جرّب مجموعة تانية من فوق."))
+
+/** One empty-state pattern for the whole app: a quiet icon, a line that says what's missing, and a way forward. */
+@Composable
+fun EmptyState(icon: ImageVector, title: String, body: String, action: String? = null, onAction: (() -> Unit)? = null) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = Sp.xxl, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(64.dp).clip(RoundedCornerShape(Rad.l)).background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(Rad.l)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Z.sub, modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.height(Sp.l))
+        Text(title, color = Z.text, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text(body, color = Z.sub, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 360.dp))
+        if (action != null && onAction != null) {
+            Spacer(Modifier.height(Sp.xl))
+            PrimaryButton(action, Modifier.widthIn(min = 200.dp)) { onAction() }
+        }
+    }
+}
+
+/** Page title used by the top-level tabs — compact, so content starts high on the screen. */
+@Composable
+fun TabTitle(title: String, sub: String? = null, trailing: @Composable () -> Unit = {}) {
+    val gut = Sp.gutter(LocalPaneWidth.current)
+    Row(Modifier.fillMaxWidth().padding(start = gut, end = gut, top = Sp.l + 4.dp, bottom = Sp.m), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Z.text, maxLines = 1)
+            if (sub != null) Text(sub, fontSize = 13.sp, color = Z.sub, maxLines = 2)
+        }
+        trailing()
+    }
+}
+
+/** Entry to the wallpaper studio: a calm dark card with a small art swatch instead of a full rainbow slab. */
+@Composable
+private fun WallpapersEntry(modifier: Modifier, tall: Boolean, onClick: () -> Unit) {
+    val swatch = Brush.linearGradient(listOf(Color(0xFFEE9B62), Color(0xFF9B59B6), Color(0xFF3B3A8F)))
+    Box(modifier.pressScale(0.98f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.xl)).clickable(onClick = onClick)) {
+        if (tall) {
+            Column(Modifier.fillMaxSize().padding(Sp.l + 2.dp)) {
+                Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(Rad.l)).background(swatch), contentAlignment = Alignment.Center) {
+                    Text("09:41", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(Sp.m))
+                Text(tr("Wallpapers", "الخلفيات"), color = Z.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(tr("Put the clock behind your photo", "حط الساعة ورا صورتك"), color = Z.sub, fontSize = 13.sp, maxLines = 2)
+            }
+        } else {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(Rad.s + 2.dp)).background(swatch), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Wallpaper, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Wallpapers", "الخلفيات"), color = Z.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(tr("Put the clock behind your photo", "حط الساعة ورا صورتك"), color = Z.sub, fontSize = 13.sp, maxLines = 1)
+                }
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub)
+            }
+        }
     }
 }
 
@@ -584,11 +685,11 @@ fun StyleGrid(list: List<WidgetStyle>, header: (@Composable () -> Unit)? = null,
     // small ones first, then the bigger sizes; each size under its own label, several per row;
     // free before Pro; a small ad every few rows
     val ordered = tidy(list)
-    val w = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val w = LocalPaneWidth.current
     val cols = 60 // every row count used (2, 3, 4, 5, 6) divides 60
     LazyVerticalGrid(
         columns = GridCells.Fixed(cols),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = Sp.gutter(w), end = Sp.gutter(w), top = 4.dp, bottom = LocalDockSpace.current),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
@@ -640,35 +741,26 @@ fun CategoryScreen(nav: Nav, s: Screen.Category) {
             val opts = listOf("" to tr("All sizes", "كل المقاسات")) + shapes.map { it.name to shapeGroupTitle(it) }
             items(opts) { (k, l) -> FilterPill(l, size == k, null, LocalAccent.current) { size = k } }
         }
-        if (list.isEmpty()) {
-            Text(
-                if (s.key == "saved") tr("Tap ♥ in the editor to save widgets here", "اضغط ♥ داخل المحرر لحفظ الويدجت هنا") else tr("Nothing matches these filters", "مفيش ويدجت بالفلاتر دي"),
-                color = Z.sub, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(40.dp),
-            )
-        }
+        if (list.isEmpty()) EmptyState(Icons.Rounded.FilterAltOff, tr("Nothing matches these filters", "مفيش ويدجت بالفلاتر دي"),
+            tr("Show every size and tier again.", "رجّع كل المقاسات والأنواع."), tr("Clear filters", "امسح الفلاتر")) { size = ""; tier = 0 }
         StyleGrid(list) { nav.go(Screen.Editor(it.id)) }
     }
 }
 
 @Composable
-fun FavoritesTab(nav: Nav) {
+fun FavoritesTab(nav: Nav, onDiscover: () -> Unit = {}) {
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val list = collection("saved")
     Column(Modifier.fillMaxSize()) {
-        Text(tr("Saved", "المفضلة"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 10.dp))
-        if (list.isEmpty()) {
-            Column(Modifier.fillMaxWidth().padding(36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(72.dp).clip(CircleShape).background(Z.tint(0.06f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Favorite, null, tint = LocalAccent.current, modifier = Modifier.size(32.dp))
-                }
-                Spacer(Modifier.height(14.dp))
-                Text(tr("Tap ♥ on any widget to keep it here", "اضغط ♥ على أي ويدجت لتحفظه هنا"), color = Z.sub, textAlign = TextAlign.Center)
-            }
-        } else StyleGrid(list, adEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.FAVORITES, list.size)) { nav.go(Screen.Editor(it.id)) }
+        TabTitle(tr("Saved", "المفضلة"), if (list.isEmpty()) null else tr("${list.size} widgets you kept", "${list.size} ويدجت محفوظة"))
+        if (list.isEmpty()) EmptyState(Icons.Rounded.FavoriteBorder, tr("No saved widgets yet", "لسه مفيش ويدجت محفوظة"),
+            tr("Tap ♥ in any widget's editor and it will wait for you here.", "اضغط ♥ جوه أي ويدجت وهتلاقيها مستنياك هنا."), tr("Discover widgets", "اكتشف الويدجت"), onDiscover)
+        else StyleGrid(list, adEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.FAVORITES, list.size)) { nav.go(Screen.Editor(it.id)) }
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(nav: Nav) {
     var q by rememberSaveable { mutableStateOf("") }
@@ -682,11 +774,17 @@ fun SearchScreen(nav: Nav) {
             q, { q = it }, singleLine = true,
             placeholder = { Text(tr("Clock, prayer, calendar…", "ساعة، صلاة، تقويم…")) },
             leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(Rad.m),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = LocalAccent.current, unfocusedBorderColor = Z.line),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).focusRequester(focus),
         )
-        if (q.isNotBlank() && res.isEmpty()) Text(tr("No widgets match", "لا توجد نتائج"), color = Z.sub, modifier = Modifier.padding(24.dp))
+        if (q.isNotBlank() && res.isEmpty()) EmptyState(Icons.Rounded.SearchOff, tr("No widgets match “$q”", "مفيش نتايج لـ «$q»"), tr("Try a simpler word like clock, prayer or date.", "جرّب كلمة أبسط زي ساعة أو صلاة أو تاريخ."))
+        else if (q.isBlank()) {
+            // suggestions instead of a blank page
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(tr("Clock", "ساعة"), tr("Prayer", "صلاة"), tr("Calendar", "تقويم"), tr("Weather", "طقس"), tr("Quran", "قرآن"), tr("Battery", "بطارية"), tr("Photo", "صورة")).forEach { w -> ZChip(w, false) { q = w } }
+            }
+        }
         StyleGrid(res, adEvery = com.smrh.zujaj.ads.AdPolicy.every(com.smrh.zujaj.ads.AdPolicy.Place.SEARCH, res.size)) { nav.go(Screen.Editor(it.id)) }
     }
 }
@@ -720,11 +818,11 @@ fun PickScreen(nav: Nav, s: Screen.Pick) {
 }
 
 @Composable
-private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, onClick: () -> Unit) {
+private fun RoundAction(icon: ImageVector, bg: Color, tint: Color, label: String? = null, onClick: () -> Unit) {
     Box(
         Modifier.size(44.dp).clip(CircleShape).background(bg).border(1.dp, Z.line, CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
+    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(21.dp)) }
 }
 
 
