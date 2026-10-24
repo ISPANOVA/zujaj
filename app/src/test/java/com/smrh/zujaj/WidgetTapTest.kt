@@ -47,4 +47,20 @@ class WidgetTapTest {
         c.newIntent(editIntent(6)); settle()
         c.recreate(); settle()
     }
+
+    /** Android closed the app in the background; a widget tap brings it back with the old saved state. */
+    @Test fun reopenAfterProcessDeathWithSavedState() {
+        Prefs.init(ctx())
+        Prefs.saveWidgetConfig(7, Catalog.byId("clock_dots")!!.defaultConfig())
+        val first = Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java)).setup()
+        settle()
+        first.newIntent(Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")); settle()
+        val bundle = android.os.Bundle()
+        first.saveInstanceState(bundle).pause().stop().destroy()
+        // fresh activity, as after process death, opened by the widget's edit intent with the old bundle
+        Robolectric.buildActivity(MainActivity::class.java, editIntent(7)).setup(bundle)
+        settle()
+        Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")).setup(bundle)
+        settle()
+    }
 }

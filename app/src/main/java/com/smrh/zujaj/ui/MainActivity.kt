@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.displayCutoutPadding
 
@@ -58,8 +60,11 @@ sealed class Screen {
 data class Entry(val screen: Screen, val id: Long)
 
 class Nav(start: Screen) {
-    private var next = 1L
-    val entries = mutableStateListOf(Entry(start, 0L))
+    // ids are unique across app restarts: the saved UI state of an old page can never be handed to a
+    // different page that happens to reuse its id (that mix-up crashed the app when it was reopened
+    // from a widget after Android had closed it in the background)
+    private var next = System.currentTimeMillis() * 1000
+    val entries = mutableStateListOf(Entry(start, next++))
     val stack: List<Screen> get() = entries.map { it.screen }
     val top get() = entries.last().screen
     val topEntry get() = entries.last()
@@ -94,7 +99,10 @@ class Nav(start: Screen) {
         is Screen.Editor -> listOf("E", s.styleId, s.widgetId, s.configure, s.shared).joinToString("\u0002")
         is Screen.Pick -> listOf("P", s.shape.name, s.widgetId).joinToString("\u0002")
         is Screen.Category -> "C\u0002" + s.key
-        else -> s::class.simpleName ?: "Home"
+        // fixed names (class names are renamed in release builds, so they can't be stored)
+        Screen.Search -> "Search"; Screen.Paywall -> "Paywall"; Screen.Settings -> "Settings"; Screen.Admin -> "Admin"
+        Screen.Tutorial -> "Tutorial"; Screen.MediaAccess -> "MediaAccess"; Screen.About -> "About"; Screen.Wallpapers -> "Wallpapers"
+        Screen.Home -> "Home"
     }
     private fun dec(t: String): Screen? = runCatching {
         val p = t.split('\u0002')
@@ -139,7 +147,9 @@ open class MainActivity : ComponentActivity() {
         bars()
         super.onCreate(savedInstanceState)
         runCatching { com.smrh.zujaj.ads.Ads.start(this) }
-        nav = Nav(startScreen(intent))
+        com.smrh.zujaj.CrashLog.lastIntent = "${intent?.action} ${intent?.extras?.keySet()?.joinToString()}"
+        // a bad or stale widget intent must never stop the app from opening: fall back to Home
+        nav = Nav(runCatching { startScreen(intent) }.getOrDefault(Screen.Home))
         // back from the background after the system reclaimed memory: same pages, same order, same state
         if (savedInstanceState != null) nav.restore(savedInstanceState.getStringArrayList("nav"))
         if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) {
@@ -152,6 +162,7 @@ open class MainActivity : ComponentActivity() {
                     val light = Z.light
                     LaunchedEffect(light) { bars() }
                     Root(nav)
+                    CrashReportDialog()
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates(nav)
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) OnboardingScreen()
                 }
@@ -176,7 +187,8 @@ open class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val s = startScreen(intent)
+        com.smrh.zujaj.CrashLog.lastIntent = "new: ${intent.action} ${intent.extras?.keySet()?.joinToString()}"
+        val s = runCatching { startScreen(intent) }.getOrDefault(Screen.Home)
         if (s != Screen.Home) nav.go(s)
     }
 
@@ -263,5 +275,27 @@ fun Root(nav: Nav) {
             }
             }
         }
+    }
+}
+
+/** After a crash: say so plainly and let the user send the details (they decide; nothing is sent automatically). */
+@Composable
+private fun CrashReportDialog() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var report by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.smrh.zujaj.CrashLog.take(ctx)) }
+    val r = report ?: return
+    ZDialog(androidx.compose.material.icons.Icons.Rounded.BugReport, tr("Sorry — Zujaj closed last time", "معلش — التطبيق قفل المرة اللي فاتت"),
+        tr("Send us the technical details so we can fix it. They contain no personal data.", "ابعتلنا التفاصيل التقنية عشان نصلحها. مفيهاش أي بيانات شخصية."),
+        iconColor = androidx.compose.ui.graphics.Color(0xFFFF8A4C), onDismiss = { report = null }) {
+        PrimaryButton(tr("Send report", "ابعت التقرير"), androidx.compose.ui.Modifier.fillMaxWidth()) {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Zujaj crash").putExtra(Intent.EXTRA_TEXT, r)
+            runCatching { ctx.startActivity(Intent.createChooser(send, null)) }
+            report = null
+        }
+        androidx.compose.material3.TextButton(onClick = {
+            (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("crash", r))
+            android.widget.Toast.makeText(ctx, tr("Copied", "اتنسخ"), android.widget.Toast.LENGTH_SHORT).show()
+            report = null
+        }) { androidx.compose.material3.Text(tr("Copy", "انسخ"), color = Z.sub) }
     }
 }

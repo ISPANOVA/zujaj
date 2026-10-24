@@ -114,6 +114,15 @@ jobs:
             اشتراك برو (شهري/سنوي/مدى الحياة)، أكواد تفعيل، لوحة تحكم، وحماية من التهكير.
           files: official/*
 
+      - name: Keep the R8 mapping (to read crash reports from release builds)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-${{ github.sha }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: ignore
+          retention-days: 90
+
       - name: Publish outputs to the "builds" branch
         if: always()
         run: |
