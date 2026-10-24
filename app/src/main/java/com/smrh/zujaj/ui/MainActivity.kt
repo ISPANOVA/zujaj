@@ -235,7 +235,9 @@ fun Root(nav: Nav) {
             // (Settings & Paywall split into panes on wide screens, the admin form gets two columns)
             val reading = s is Screen.Tutorial || s is Screen.MediaAccess || s is Screen.About
             androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().imePadding().displayCutoutPadding()
-                .then(if (reading) Modifier.wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp) else Modifier)) {
+                .then(if (reading) Modifier.wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp)
+                    // the control panel is a dense form: a wide-but-bounded column keeps label and field together
+                    else if (s is Screen.Admin) Modifier.wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 960.dp) else Modifier)) {
               androidx.compose.runtime.CompositionLocalProvider(LocalPaneWidth provides maxWidth.value.toInt()) {
                 when (s) {
                     Screen.Home -> HomeScreen(nav)

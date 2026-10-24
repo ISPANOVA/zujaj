@@ -413,13 +413,13 @@ fun PaywallScreen(nav: Nav) {
     )
 
     val intro: @Composable () -> Unit = {
-        Column {
+        Column(Modifier.fillMaxWidth()) {
             Box(Modifier.size(60.dp).clip(RoundedCornerShape(Rad.l)).background(Brush.linearGradient(listOf(Color(0xFFF6D98B), Color(0xFFC8902E)))), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.WorkspacePremium, null, tint = Color(0xFF2A1C05), modifier = Modifier.size(32.dp))
             }
             Spacer(Modifier.height(Sp.l))
             Text(tr("Zujaj Pro", "زجاج برو"), fontSize = if (split) 34.sp else 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
-            Text(tr("Every widget, every look, no ads.", "كل الويدجت، كل الأشكال، من غير إعلانات."), color = Z.sub, fontSize = 15.sp)
+            Text(tr("Every widget, every look, no ads.", "كل الويدجت، كل الأشكال، من غير إعلانات."), color = Z.sub, fontSize = 15.sp, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(Sp.xl))
             // benefits as a checklist with one supporting line each: scannable, no card-in-card
             benefits.forEach { (icon, t, sub) ->
@@ -526,6 +526,14 @@ fun PaywallScreen(nav: Nav) {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = Sp.l)) { intro() }
                     Column(Modifier.weight(1f).widthIn(max = 520.dp).verticalScroll(rememberScrollState()).navigationBarsPadding().padding(top = Sp.l, bottom = Sp.l)) {
                         plans(); Spacer(Modifier.height(Sp.xl)); actions()
+                    }
+                }
+            } else if (pane >= 600) {
+                // medium windows (tablet portrait, folded-open book posture): one centred column, actions right
+                // under the plans instead of pinned to a far-away bottom edge
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.widthIn(max = 600.dp).fillMaxWidth().padding(horizontal = Sp.xl)) {
+                        intro(); Spacer(Modifier.height(Sp.xl)); plans(); Spacer(Modifier.height(Sp.xl)); actions(); Spacer(Modifier.height(Sp.l))
                     }
                 }
             } else {

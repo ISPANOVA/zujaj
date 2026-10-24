@@ -135,8 +135,8 @@ fun AdminScreen(nav: Nav) {
         var tab by remember { mutableIntStateOf(0) }
         // header: who is signed in, and that changes go live
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF2A1F4D), Color(0xFF15151B))))
-            .border(1.dp, Z.tint(0.1f), RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            .background(Z.surface).background(Color(0xFF8B7CFF).copy(alpha = 0.08f))
+            .border(1.dp, Z.line, RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             IconTile(Icons.Rounded.AdminPanelSettings, Color(0xFF8B7CFF), 44.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
