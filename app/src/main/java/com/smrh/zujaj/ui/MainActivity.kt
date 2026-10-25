@@ -138,10 +138,14 @@ open class MainActivity : ComponentActivity() {
         // shrinks and fades into the app
         val splash = installSplashScreen()
         splash.setOnExitAnimationListener { v: androidx.core.splashscreen.SplashScreenViewProvider ->
-            val icon = v.iconView
-            v.view.animate().alpha(0f).setDuration(260).withEndAction { v.remove() }.start()
-            icon.animate().scaleX(0.82f).scaleY(0.82f).setDuration(260)
-                .setInterpolator(android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)).start()
+            // When the app is opened from a widget (or a warm start), Android shows the splash WITHOUT an
+            // icon, and asking for the icon then throws. Everything here is optional polish, so it must
+            // never be able to crash: animate what exists, and always remove the splash.
+            runCatching {
+                v.view.animate().alpha(0f).setDuration(260).withEndAction { runCatching { v.remove() } }.start()
+                runCatching { v.iconView }.getOrNull()?.animate()?.scaleX(0.82f)?.scaleY(0.82f)?.setDuration(260)
+                    ?.setInterpolator(android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f))?.start()
+            }.onFailure { runCatching { v.remove() } }
         }
         Prefs.init(this)
         Z.refresh(this)
