@@ -81,14 +81,18 @@ object Z {
 
 val LocalAccent = androidx.compose.runtime.compositionLocalOf { Z.accents[0].color }
 
-fun tr(en: String, ar: String) = if (Prefs.isArabicUi) ar else en
+fun tr(en: String, ar: String) = when (val l = Prefs.uiLang) {
+    "ar" -> ar
+    "en" -> en
+    else -> com.smrh.zujaj.data.I18n.t(l, en)
+}
 
 @Composable
 fun ZujajTheme(content: @Composable () -> Unit) {
     val ar = Prefs.isArabicUi
     val idx = if (Z.accentIdx >= 0) Z.accentIdx else Prefs.accentIndex
     val accent by androidx.compose.animation.animateColorAsState(Z.accents.getOrElse(idx) { Z.accents[0] }.color, androidx.compose.animation.core.tween(500), label = "accent")
-    val family = if (ar) Z.cairo else Z.manrope
+    val family = if (Prefs.isRtlUi) Z.cairo else Z.manrope
     val base = Typography()
     fun TextStyle.f() = copy(fontFamily = family)
     val typo = Typography(
@@ -109,7 +113,7 @@ fun ZujajTheme(content: @Composable () -> Unit) {
         onSurfaceVariant = Z.sub, outline = Z.line, surfaceContainer = Z.surface, surfaceContainerHigh = Z.surface2,
     )
     CompositionLocalProvider(
-        LocalLayoutDirection provides if (ar) LayoutDirection.Rtl else LayoutDirection.Ltr,
+        LocalLayoutDirection provides if (Prefs.isRtlUi) LayoutDirection.Rtl else LayoutDirection.Ltr,
         LocalAccent provides accent,
     ) {
         MaterialTheme(colorScheme = scheme, typography = typo) {

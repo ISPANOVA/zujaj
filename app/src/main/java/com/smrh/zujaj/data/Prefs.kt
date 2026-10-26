@@ -19,6 +19,7 @@ object Prefs {
 
     fun init(ctx: Context) {
         Guard.init(ctx)
+        I18n.init(ctx)
         sp = ctx.getSharedPreferences("zujaj_settings", Context.MODE_PRIVATE)
         wp = ctx.getSharedPreferences("zujaj_widgets", Context.MODE_PRIVATE)
     }
@@ -48,12 +49,12 @@ object Prefs {
         get() = str("app_lang", "system")
         set(v) = put("app_lang", v)
 
-    val isArabicUi: Boolean
-        get() = when (appLanguage) {
-            "ar" -> true
-            "en" -> false
-            else -> Locale.getDefault().language == "ar"
-        }
+    /** The language the app shows: the chosen one, or the phone's if supported, else English. */
+    val uiLang: String
+        get() = appLanguage.takeIf { it != "system" } ?: Locale.getDefault().language.let { l -> if (I18n.all.any { it.code == l }) l else "en" }
+    val isArabicUi: Boolean get() = uiLang == "ar"
+    /** Arabic and Urdu read right to left. */
+    val isRtlUi: Boolean get() = uiLang == "ar" || uiLang == "ur"
 
     var accentIndex: Int
         get() = sp.getInt("accent", 0)

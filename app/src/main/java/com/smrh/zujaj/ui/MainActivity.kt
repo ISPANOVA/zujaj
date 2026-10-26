@@ -168,7 +168,7 @@ open class MainActivity : ComponentActivity() {
         }
         setContent {
             val ver by Prefs.version.collectAsState()
-            key(ver.coerceAtMost(0), Prefs.isArabicUi) {
+            key(ver.coerceAtMost(0), Prefs.uiLang) {
                 ZujajTheme {
                     val light = Z.light
                     LaunchedEffect(light) { bars() }
@@ -240,7 +240,7 @@ class ConfigureActivity : MainActivity()
 fun Root(nav: Nav) {
     BackHandler(enabled = nav.stack.size > 1) { nav.back() }
     AppBackdrop {
-        val rtl = Prefs.isArabicUi
+        val rtl = Prefs.isRtlUi
         // every screen keeps its remembered state (tab, chips, filters, scroll position) while it is in the
         // back stack, so Back returns to exactly where you were
         val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()

@@ -157,7 +157,7 @@ fun HomeScreen(nav: Nav) {
     }
     if (rail) {
         Row(Modifier.fillMaxSize()) {
-            key(ver, Prefs.isArabicUi) { NavRail(tab) { tab = it } }
+            key(ver, Prefs.uiLang) { NavRail(tab) { tab = it } }
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 // the content pane is narrower than the window by the rail: grids size themselves to this
                 androidx.compose.runtime.CompositionLocalProvider(LocalPaneWidth provides (pane - 88), LocalDockSpace provides 24.dp) { content() }
@@ -167,7 +167,7 @@ fun HomeScreen(nav: Nav) {
         Box(Modifier.fillMaxSize()) {
             content()
             // labels follow the app language even when it changes while this screen is open
-            key(ver, Prefs.isArabicUi) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
+            key(ver, Prefs.uiLang) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
         }
     }
 }

@@ -175,6 +175,7 @@ private fun WelcomePage(phase: Float) {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun LookPage() {
     val ctx = LocalContext.current
@@ -184,6 +185,13 @@ private fun LookPage() {
         Spacer(Modifier.height(8.dp))
         Text(tr("You can change this any time in Settings.", "تقدر تغيّر ده في أي وقت من الإعدادات."), fontSize = 14.sp, color = Z.sub)
         Spacer(Modifier.height(26.dp))
+        // language first: everything on screen switches as soon as one is tapped
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.smrh.zujaj.data.I18n.all.forEach { l ->
+                ZChip(l.native, Prefs.uiLang == l.code) { Prefs.appLanguage = l.code; com.smrh.zujaj.widget.WidgetUpdater.updateAll(ctx) }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             listOf(Triple(1, tr("Dark", "غامق"), Icons.Rounded.DarkMode), Triple(2, tr("Light", "فاتح"), Icons.Rounded.LightMode), Triple(0, tr("Auto", "تلقائي"), Icons.Rounded.PhoneAndroid))
                 .forEach { (m, label, icon) ->

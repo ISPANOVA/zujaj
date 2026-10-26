@@ -253,7 +253,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             // ("More prayer options", "Keep widgets up to date") instead of filling the page.
             val left: @Composable ColumnScope.() -> Unit = {
             Section(tr("General", "عام")) {
-                ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام"), "en" to "English", "ar" to "العربية"), Icons.Rounded.Language, blue) {
+                ChoiceRow(tr("Language", "اللغة"), Prefs.appLanguage, listOf("system" to tr("System", "النظام")) + com.smrh.zujaj.data.I18n.all.map { it.code to it.native }, Icons.Rounded.Language, blue) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
                 }
                 Divider()
