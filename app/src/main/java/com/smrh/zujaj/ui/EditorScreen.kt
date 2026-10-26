@@ -160,6 +160,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var cleanJson by rememberSaveable(s) { mutableStateOf(cfg.toJson()) }
     val dirty = cfg.toJson() != cleanJson
     var askLeave by remember { mutableStateOf(false) }
+    var showPublish by remember { mutableStateOf(false) }
+    if (showPublish) PublishDialog(cfg) { showPublish = false }
     val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
     val leave: () -> Unit = { focusMgr.clearFocus(); if (!nav.back()) (ctx as? Activity)?.finish() }
     val tryLeave: () -> Unit = { focusMgr.clearFocus(); if (dirty && !s.configure) askLeave = true else leave() }
@@ -254,7 +256,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         Column(Modifier.fillMaxSize()) {
             TopBar(style.name(ar), tryLeave) {
                 val accentArgb = LocalAccent.current.let { android.graphics.Color.argb(255, (it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
-                IconButton(onClick = { Haptics.tick(ctx); runCatching { ShareDesign.share(ctx, cfg, accentArgb) } }) { Icon(Icons.Rounded.Share, tr("Share design", "شارك التصميم"), tint = Z.text) }
+                Box {
+                    var shareMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { Haptics.tick(ctx); shareMenu = true }) { Icon(Icons.Rounded.Share, tr("Share design", "شارك التصميم"), tint = Z.text) }
+                    androidx.compose.material3.DropdownMenu(shareMenu, { shareMenu = false }, modifier = Modifier.background(Z.surface2)) {
+                        androidx.compose.material3.DropdownMenuItem(text = { Text(tr("Send as a link", "ابعته لينك")) }, onClick = { shareMenu = false; runCatching { ShareDesign.share(ctx, cfg, accentArgb) } })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text(tr("Publish to the gallery", "انشر في معرض الناس")) }, onClick = { shareMenu = false; showPublish = true })
+                    }
+                }
                 IconButton(onClick = {
                     fav = !fav
                     Prefs.favorites = if (fav) Prefs.favorites + style.id else Prefs.favorites - style.id

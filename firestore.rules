@@ -31,6 +31,23 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/codes/$(code)).data.uses == get(/databases/$(database)/documents/codes/$(code)).data.uses + 1;
       }
     }
+    // Community gallery: anyone may submit a pending design; only approved ones are public;
+    // a like may only add exactly 1; the admin approves and deletes.
+    match /gallery/{id} {
+      allow get, list: if resource.data.status == 'approved' || isAdmin();
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.likes == 0
+        && request.resource.data.keys().hasOnly(['code', 'styleId', 'title', 'status', 'likes', 'createdAt'])
+        && request.resource.data.code is string && request.resource.data.code.size() < 6000
+        && request.resource.data.title is string && request.resource.data.title.size() <= 40
+        && request.resource.data.styleId is string && request.resource.data.styleId.size() < 60;
+      allow update: if isAdmin() || (
+        resource.data.status == 'approved'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+        && request.resource.data.likes == resource.data.likes + 1
+      );
+      allow delete: if isAdmin();
+    }
     // Deny everything else
     match /{document=**} {
       allow read, write: if false;

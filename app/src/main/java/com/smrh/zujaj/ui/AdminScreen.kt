@@ -160,6 +160,7 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.Campaign to tr("Messages", "الرسائل"),
             Icons.Rounded.MonetizationOn to tr("Ads", "الإعلانات"),
             Icons.Rounded.Security to tr("Security", "الحماية"),
+            Icons.Rounded.Groups to tr("Gallery", "المعرض"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -184,6 +185,7 @@ fun AdminScreen(nav: Nav) {
                 2 -> CodesAdmin()
                 3 -> GeneralAdmin(user?.email ?: "", 0)
                 4 -> GeneralAdmin(user?.email ?: "", 1)
+                6 -> GalleryAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -831,3 +833,35 @@ fun adminError(e: Throwable?): String {
 }
 
 
+
+// =============================================================================== gallery moderation
+@Composable
+private fun GalleryAdmin() {
+    val ctx = LocalContext.current
+    var list by remember { mutableStateOf<List<com.smrh.zujaj.remote.Gallery.Item>?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reload) { runCatching { com.smrh.zujaj.remote.Gallery.pending() }.onSuccess { list = it; err = null }.onFailure { err = it.message } }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text(tr("Waiting for review", "مستني المراجعة") + (list?.let { " · ${it.size}" } ?: ""), color = Z.sub, fontSize = 13.sp) }
+        if (err != null) item { Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err + tr("\nPublish the gallery rules in Firebase first.", "\nلازم تنشر قواعد المعرض في Firebase الأول."), color = Color(0xFFE5484D), fontSize = 13.sp) }
+        if (list?.isEmpty() == true) item { Text(tr("Nothing to review ✓", "مفيش حاجة تتراجع ✓"), color = Z.sub) }
+        items(list.orEmpty(), key = { it.id }) { g ->
+            val cfg = remember(g.code) { ShareDesign.decode(g.code) } ?: return@items
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l)).padding(12.dp)) {
+                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.m)).background(Backdrops.brush(1)).padding(12.dp), contentAlignment = Alignment.Center) {
+                    WidgetPreview(cfg, Modifier.fillMaxWidth(0.7f), density = 1.6f)
+                }
+                Text(g.title.ifBlank { "—" }, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    SmallAction(tr("Approve", "موافقة"), Color(0xFF34C77B)) {
+                        AdminWork.launch { val r = runCatching { com.smrh.zujaj.remote.Gallery.approve(g.id) }; Toast.makeText(ctx, if (r.isSuccess) tr("Approved ✓", "اتوافق ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
+                    }
+                    SmallAction(tr("Delete", "حذف"), Color(0xFFE5484D)) {
+                        AdminWork.launch { val r = runCatching { com.smrh.zujaj.remote.Gallery.remove(g.id) }; Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتحذف") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
+                    }
+                }
+            }
+        }
+    }
+}
