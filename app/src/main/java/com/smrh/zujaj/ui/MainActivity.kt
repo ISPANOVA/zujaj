@@ -57,6 +57,7 @@ sealed class Screen {
     data object MediaAccess : Screen()
     data object About : Screen()
     data object Wallpapers : Screen()
+    data class SetDetail(val id: String) : Screen()
 }
 
 /** One back-stack entry; [id] is unique so each entry keeps its own saved UI state (tab, filters, scroll…). */
@@ -102,6 +103,7 @@ class Nav(start: Screen) {
         is Screen.Editor -> listOf("E", s.styleId, s.widgetId, s.configure, s.shared).joinToString("\u0002")
         is Screen.Pick -> listOf("P", s.shape.name, s.widgetId).joinToString("\u0002")
         is Screen.Category -> "C\u0002" + s.key
+        is Screen.SetDetail -> "S\u0002" + s.id
         // fixed names (class names are renamed in release builds, so they can't be stored)
         Screen.Search -> "Search"; Screen.Paywall -> "Paywall"; Screen.Settings -> "Settings"; Screen.Admin -> "Admin"
         Screen.Tutorial -> "Tutorial"; Screen.MediaAccess -> "MediaAccess"; Screen.About -> "About"; Screen.Wallpapers -> "Wallpapers"
@@ -113,6 +115,7 @@ class Nav(start: Screen) {
             "E" -> Screen.Editor(p[1], p[2].toInt(), p[3].toBoolean(), p.getOrElse(4) { "" })
             "P" -> Screen.Pick(Shape.valueOf(p[1]), p[2].toInt())
             "C" -> Screen.Category(p[1])
+            "S" -> Screen.SetDetail(p[1])
             "Home" -> Screen.Home; "Search" -> Screen.Search; "Paywall" -> Screen.Paywall; "Settings" -> Screen.Settings
             "Admin" -> Screen.Admin; "Tutorial" -> Screen.Tutorial; "MediaAccess" -> Screen.MediaAccess
             "About" -> Screen.About; "Wallpapers" -> Screen.Wallpapers
@@ -278,6 +281,7 @@ fun Root(nav: Nav) {
                     Screen.MediaAccess -> MediaAccessScreen(nav)
                     Screen.About -> AboutScreen(nav)
                     Screen.Wallpapers -> WallpaperScreen(nav)
+                    is Screen.SetDetail -> SetDetailScreen(nav, s.id)
                 }
               }
             }

@@ -539,6 +539,8 @@ fun DiscoverTab(nav: Nav) {
                 }
             }
         }
+        // ---- ready-made sets: wallpaper + matching widgets
+        item(key = "sets") { SetsRow(nav, gut) }
         // ---- collection tabs (stay on top while scrolling)
         stickyHeader(key = "tabs") {
             LazyRow(Modifier.fillMaxWidth(),
@@ -583,7 +585,7 @@ fun DiscoverTab(nav: Nav) {
     LaunchedEffect(chip) {
         if (chip == shownChip) return@LaunchedEffect
         shownChip = chip
-        val tabs = 2 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
+        val tabs = 3 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
         if (listState.firstVisibleItemIndex > tabs) listState.scrollToItem(tabs)
     }
 }

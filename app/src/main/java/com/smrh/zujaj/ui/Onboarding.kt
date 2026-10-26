@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -52,6 +56,9 @@ object Onboarding {
     /** survives the theme rebuilding the screen while the user picks a colour */
     var page by mutableIntStateOf(0)
     var visible by mutableStateOf(true)
+    /** Quick start: the kind and the design picked on the last page. */
+    var kind by mutableStateOf("")
+    var pick by mutableStateOf("")
     fun done() = Prefs.getString("onboarded") == "1" || Prefs.getString("wall_intro") == "1"
     fun finish() { Prefs.setString("onboarded", "1"); visible = false }
 }
@@ -102,10 +109,20 @@ fun OnboardingScreen() {
                         Box(Modifier.padding(horizontal = 4.dp).height(8.dp).width(w).clip(RoundedCornerShape(50)).background(c))
                     }
                 }
-                PrimaryButton(if (pager.currentPage < 2) tr("Next", "التالي") else tr("Let's start", "يلا نبدأ"),
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 22.dp)) {
-                    if (pager.currentPage < 2) scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
-                    else { Haptics.success(ctx); Onboarding.finish() }
+                val last = pager.currentPage == 2
+                val chosen = Onboarding.pick.takeIf { last }?.let { Catalog.byId(it) }
+                PrimaryButton(when { !last -> tr("Next", "التالي"); chosen != null -> tr("Add to my home screen", "حطها على شاشتي"); else -> tr("Explore first", "هتفرج الأول") },
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = if (chosen != null) 4.dp else 22.dp)) {
+                    if (!last) scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+                    else {
+                        Haptics.success(ctx)
+                        // the launcher shows its own "add widget" sheet; the app opens behind it, ready to explore
+                        if (chosen != null) pin(ctx, chosen.defaultConfig(), chosen.shape)
+                        Onboarding.finish()
+                    }
+                }
+                if (chosen != null) androidx.compose.material3.TextButton(onClick = { Onboarding.finish() }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp)) {
+                    Text(tr("Explore first", "هتفرج الأول"), color = Z.sub)
                 }
             }
         }
@@ -214,34 +231,75 @@ private fun LookPage() {
     }
 }
 
+/** Last page: "What do you want on your screen?" → three free picks of that kind → one tap puts it on the home screen. */
+private val quickKinds = listOf(
+    Triple("prayer", Icons.Rounded.Mosque, listOf("prayer_journey", "prayer_next_small", "rose_next")),
+    Triple("clock", Icons.Rounded.Schedule, listOf("clock_neon", "digital_stacked", "clock_dots")),
+    Triple("calli", Icons.Rounded.Brush, listOf("calli_lawn", "days_thuluth_small", "days_thuluth")),
+    Triple("athkar", Icons.Rounded.AutoAwesome, listOf("athkar_card", "athkar_small", "tasbih_ring")),
+)
+private fun kindName(k: String) = when (k) { "prayer" -> tr("Prayer times", "مواقيت الصلاة"); "clock" -> tr("A clock", "ساعة"); "calli" -> tr("Arabic calligraphy", "خط عربي"); else -> tr("Athkar", "أذكار") }
+
 @Composable
 private fun StepsPage(active: Boolean) {
-    val accent = LocalAccent.current
-    val steps = listOf(
-        Triple(Icons.Rounded.TouchApp, tr("Pick a design", "اختار تصميم"), tr("Hundreds of clocks, prayer times, dates and photos.", "مئات الساعات ومواقيت الصلاة والتواريخ والصور.")),
-        Triple(Icons.Rounded.Brush, tr("Make it yours", "ظبطه على ذوقك"), tr("Colours, fonts, glass — every detail.", "الألوان والخطوط والزجاج — كل تفصيلة.")),
-        Triple(Icons.Rounded.AddToHomeScreen, tr("Add it to your screen", "حطه على شاشتك"), tr("One tap and it's on your home screen.", "ضغطة واحدة وتبقى على الشاشة الرئيسية.")),
-    )
+    val ctx = LocalContext.current
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.Center) {
-        Text(tr("Three steps, that's it", "تلات خطوات وبس"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        Spacer(Modifier.height(28.dp))
-        steps.forEachIndexed { i, (icon, title, sub) ->
-            var shown by remember { mutableStateOf(false) }
-            LaunchedEffect(active) { if (active) { kotlinx.coroutines.delay(150L + i * 220L); shown = true } }
-            val a by animateFloatAsState(if (shown) 1f else 0f, spring(0.7f, 260f), label = "a")
-            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp).graphicsLayer { alpha = a; translationX = (1 - a) * 80f }
-                .clip(RoundedCornerShape(22.dp)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(22.dp)).padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp))
-                    .background(Brush.linearGradient(listOf(accent, accent.copy(alpha = 0.7f)))), contentAlignment = Alignment.Center) {
-                    Icon(icon, null, tint = Color(0xFF14110A), modifier = Modifier.size(26.dp))
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("${i + 1}. $title", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
-                    Text(sub, fontSize = 13.sp, color = Z.sub)
+        Text(tr("What do you want on your screen?", "عايز إيه على شاشتك؟"), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Z.text, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text(tr("Pick one — we'll put it on your home screen now.", "اختار واحدة — وهنحطهالك على الشاشة دلوقتي."), fontSize = 14.sp, color = Z.sub, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        Spacer(Modifier.height(20.dp))
+        // the kinds, as a 2×2 of big tappable tiles
+        quickKinds.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (k, icon, ids) ->
+                    val on = Onboarding.kind == k
+                    val accent = LocalAccent.current
+                    val bg by animateColorAsState(if (on) accent.copy(alpha = 0.16f) else Z.surface, tween(180), label = "kb")
+                    Row(Modifier.weight(1f).heightIn(min = 60.dp).clip(RoundedCornerShape(18.dp)).background(bg)
+                        .border(if (on) 2.dp else 1.dp, if (on) accent else Z.line, RoundedCornerShape(18.dp))
+                        .clickable { Haptics.tick(ctx); Onboarding.kind = k; Onboarding.pick = ids.first() }.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(icon, null, tint = if (on) accent else Z.sub, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(kindName(k), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Z.text, maxLines = 2)
+                    }
                 }
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        // three free designs of that kind, live; the chosen one is ringed
+        val ids = quickKinds.firstOrNull { it.first == Onboarding.kind }?.third.orEmpty()
+        androidx.compose.animation.AnimatedContent(Onboarding.kind, label = "qk", transitionSpec = {
+            fadeIn(tween(220, 60)).togetherWith(fadeOut(tween(90)))
+        }) { _ ->
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (ids.isEmpty()) Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(22.dp)).border(1.dp, Z.line, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                    Text(tr("Choose above to see designs", "اختار من فوق عشان تشوف التصميمات"), color = Z.sub, fontSize = 13.sp)
+                }
+                val styles = ids.mapNotNull { Catalog.byId(it) }
+                val small = styles.filter { it.shape == com.smrh.zujaj.catalog.Shape.SMALL }
+                val big = styles - small.toSet()
+                big.forEach { st -> QuickTile(st, Modifier.fillMaxWidth()) }
+                if (small.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    small.forEach { st -> QuickTile(st, Modifier.weight(1f)) }
+                    if (small.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickTile(st: com.smrh.zujaj.catalog.WidgetStyle, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val on = Onboarding.pick == st.id
+    val accent = LocalAccent.current
+    Box(modifier.clip(RoundedCornerShape(22.dp)).background(Backdrops.brush(1))
+        .border(if (on) 2.5.dp else 1.dp, if (on) accent else Z.line, RoundedCornerShape(22.dp))
+        .clickable { Haptics.tick(ctx); Onboarding.pick = st.id }.padding(10.dp), contentAlignment = Alignment.Center) {
+        WidgetPreview(st.defaultConfig(), if (st.shape == com.smrh.zujaj.catalog.Shape.SMALL) Modifier.fillMaxWidth(0.8f) else Modifier.fillMaxWidth(), density = 1.8f)
+        if (on) Box(Modifier.align(Alignment.TopEnd).size(24.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Check, null, tint = Color(0xFF14110A), modifier = Modifier.size(16.dp))
         }
     }
 }

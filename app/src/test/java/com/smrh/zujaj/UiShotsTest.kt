@@ -46,6 +46,8 @@ open class UiShotsTest {
             "editor_font" to Screen.Editor("digital_stacked"),
             "search" to Screen.Search,
             "wallpapers" to Screen.Wallpapers,
+            "set_desert" to Screen.SetDetail("desert"),
+            "set_midnight" to Screen.SetDetail("midnight"),
         )
         rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)

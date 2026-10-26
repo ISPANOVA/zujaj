@@ -96,6 +96,13 @@ class ActionReceiver : BroadcastReceiver() {
                 }
                 if (id != -1) runCatching { WidgetUpdater.update(context, id) }
             }
+            "athkar" -> {
+                val cfg = Prefs.widgetConfig(id) ?: return
+                val (next, finishedOne) = com.smrh.zujaj.render.Athkar.tap(cfg)
+                Prefs.saveWidgetConfig(id, next)
+                if (finishedOne) vibrate(context)
+                WidgetUpdater.update(context, id)
+            }
             "counter", "tasbeeh" -> {
                 val cfg = Prefs.widgetConfig(id) ?: return
                 val next = when (arg) {

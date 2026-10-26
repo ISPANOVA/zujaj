@@ -405,6 +405,9 @@ object Catalog {
         WidgetStyle("w_hours_days", Cat.WEATHER, "Hours & Days", "ساعات وأيام", W, isNew = true, upd = wU) { Weather2R.hoursDays(it) },
         WidgetStyle("w_now_ahead", Cat.WEATHER, "Now & Days Ahead", "الآن والأيام الجاية", W, pro = true, isNew = true, upd = wU) { Weather2R.nowAhead(it) },
         WidgetStyle("w_horizon", Cat.WEATHER, "Horizon", "الأفق", W, isNew = true, feats = setOf(Feat.ACCENT), upd = wU + pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.horizon(it) },
+        // ------------------------------------------------------------------ ISLAMIC (athkar — switch morning/evening by themselves)
+        WidgetStyle("athkar_card", Cat.ISLAMIC, "Morning & Evening Athkar", "أذكار الصباح والمساء", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { AthkarR.card(it) },
+        WidgetStyle("athkar_small", Cat.ISLAMIC, "Athkar Ring", "حلقة الأذكار", S, isNew = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt()) }) { AthkarR.small(it) },
         // ------------------------------------------------------------------ ISLAMIC (tasbih)
         WidgetStyle("tasbih_beads", Cat.ISLAMIC, "Tasbih Beads", "سبحة الخرز", S, isNew = true, popular = true, feats = tF, upd = none, defaults = { it.copy(goal = 33, text = "سبحان الله", accent = 0xFFE58A3C.toInt(), calli = 3) }) { Tasbih2R.beads(it) },
         WidgetStyle("tasbih_ring", Cat.ISLAMIC, "Tasbih Ring", "حلقة التسبيح", S, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 99, text = "سبحان الله", accent = 0xFF2FC4A5.toInt(), calli = 3) }) { Tasbih2R.ring(it) },
