@@ -6,6 +6,7 @@ import com.smrh.zujaj.model.WidgetConfig
 import com.smrh.zujaj.render.Moments2R
 import com.smrh.zujaj.render.Moments3R
 import com.smrh.zujaj.render.AppsR
+import com.smrh.zujaj.render.AthkarR
 import com.smrh.zujaj.render.CalliR
 import com.smrh.zujaj.render.Prayer2R
 import com.smrh.zujaj.render.Cal2R

@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
@@ -234,10 +235,10 @@ fun SetDetailScreen(nav: Nav, id: String) {
     val scope = rememberCoroutineScope()
     val ar = Prefs.isArabicUi
     val locked = set.pro && !Prefs.isPro
-    var wallDone by rememberSaveable(id) { mutableStateOf(false) }
+    var wallDone by rememberSaveable(id) { mutableStateOf<Boolean>(false) }
     var busy by remember { mutableStateOf(false) }
     // a widget counts as added when one more of that design appears on the home screen than when we opened
-    val startCounts = rememberSaveable(id) { set.items.map { st -> WidgetUpdater.allIds(ctx).count { Prefs.widgetConfig(it)?.styleId == st } }.toIntArray() }
+    val startCounts: IntArray = rememberSaveable(id) { set.items.map { st -> WidgetUpdater.allIds(ctx).count { Prefs.widgetConfig(it)?.styleId == st } }.toIntArray() }
     var counts by remember { mutableStateOf(startCounts.toList()) }
     LaunchedEffect(id) { while (true) { delay(900)
         counts = set.items.map { st -> WidgetUpdater.allIds(ctx).count { Prefs.widgetConfig(it)?.styleId == st } } } }

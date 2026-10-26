@@ -55,7 +55,7 @@ object Athkar {
         return key to evening
     }
 
-    fun list(evening: Boolean) = if (evening) evening else morning
+    fun list(ev: Boolean): List<Dhikr> = if (ev) evening else morning
 
     /** (step, count) for the current period — a new period starts from the beginning. */
     fun state(cfg: WidgetConfig, key: Long): Pair<Int, Int> =
