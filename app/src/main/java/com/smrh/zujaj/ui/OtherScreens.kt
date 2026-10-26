@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.foundation.layout.widthIn
@@ -218,6 +219,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             Toast.makeText(ctx, if (ok) tr("Location updated ✓", "تم تحديث الموقع ✓") else tr("Turn on location and try again", "شغّل الموقع وحاول مرة أخرى"), Toast.LENGTH_SHORT).show()
         }
     }
+    val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val purple = Color(0xFF8B7CFF); val teal = Color(0xFF13B5A8); val gold = Color(0xFFE0A93B); val blue = Color(0xFF4D8DFF)
     val green = Color(0xFF34C77B); val rose = Color(0xFFFF5C8A); val orange = Color(0xFFFF8A4C); val grey = Color(0xFF7A7A86)
     // Settings is a reference page people scan, so: compact title, a quiet membership strip, then groups.
@@ -303,6 +305,18 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                         SwitchRow(tr("Hanafi Asr", "العصر حنفي"), Prefs.hanafi, sub = tr("Later Asr time (Hanafi school)", "وقت عصر متأخر (المذهب الحنفي)"), icon = Icons.Rounded.WbTwilight, iconColor = orange) { Prefs.hanafi = it; WidgetUpdater.updateAll(ctx) }
                         Divider()
                         StepperRow(tr("Hijri date ± days", "تعديل الهجري ± يوم"), Prefs.hijriOffset, -2..2, 1, icon = Icons.Rounded.DarkMode, iconColor = purple) { Prefs.hijriOffset = it; WidgetUpdater.updateAll(ctx) }
+                    }
+                }
+            }
+            Section(tr("Fasting reminders", "تذكير الصيام")) {
+                // sent the evening before; Android 13+ asks for notification permission the first time one is switched on
+                com.smrh.zujaj.data.Reminders.Kind.values().forEachIndexed { i, k ->
+                    if (i > 0) Divider()
+                    SwitchRow(tr(k.en, k.ar), com.smrh.zujaj.data.Reminders.on(k), sub = if (i == 0) tr("A notification the evening before", "إشعار بالليل قبلها") else null,
+                        icon = Icons.Rounded.NotificationsActive, iconColor = if (i % 2 == 0) gold else purple) { v ->
+                        com.smrh.zujaj.data.Reminders.set(k, v)
+                        if (v && android.os.Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                            notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
             }

@@ -96,6 +96,14 @@ class ActionReceiver : BroadcastReceiver() {
                 }
                 if (id != -1) runCatching { WidgetUpdater.update(context, id) }
             }
+            "quran" -> {
+                val cfg = Prefs.widgetConfig(id) ?: return
+                val (next, khatma) = com.smrh.zujaj.render.Quran.tap(cfg)
+                Prefs.saveWidgetConfig(id, next)
+                vibrate(context)
+                if (khatma) android.widget.Toast.makeText(context, if (Prefs.isArabicUi) "ختمة مباركة ✓" else "Khatma complete ✓", android.widget.Toast.LENGTH_LONG).show()
+                WidgetUpdater.update(context, id)
+            }
             "athkar" -> {
                 val cfg = Prefs.widgetConfig(id) ?: return
                 val (next, finishedOne) = com.smrh.zujaj.render.Athkar.tap(cfg)
@@ -198,6 +206,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             Scheduler.scheduleAlarms(applicationContext); Scheduler.refreshWeatherIfNeeded(applicationContext, force = true)
         }
         Scheduler.refreshWeatherIfNeeded(applicationContext)
+        runCatching { com.smrh.zujaj.data.Reminders.check(applicationContext) }
         // Pro: re-check the code and the Play subscription every few hours (without opening the app)
         val now = System.currentTimeMillis()
         if (now - Prefs.getString("pro_check").toLongOrNull().let { it ?: 0L } > 3 * 3600_000L) {

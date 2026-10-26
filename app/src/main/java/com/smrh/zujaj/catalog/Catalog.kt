@@ -7,6 +7,9 @@ import com.smrh.zujaj.render.Moments2R
 import com.smrh.zujaj.render.Moments3R
 import com.smrh.zujaj.render.AppsR
 import com.smrh.zujaj.render.AthkarR
+import com.smrh.zujaj.render.RamadanR
+import com.smrh.zujaj.render.QuranR
+import com.smrh.zujaj.render.SmartR
 import com.smrh.zujaj.render.CalliR
 import com.smrh.zujaj.render.Prayer2R
 import com.smrh.zujaj.render.Cal2R
@@ -409,6 +412,12 @@ object Catalog {
         // ------------------------------------------------------------------ ISLAMIC (athkar — switch morning/evening by themselves)
         WidgetStyle("athkar_card", Cat.ISLAMIC, "Morning & Evening Athkar", "أذكار الصباح والمساء", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { AthkarR.card(it) },
         WidgetStyle("athkar_small", Cat.ISLAMIC, "Athkar Ring", "حلقة الأذكار", S, isNew = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt()) }) { AthkarR.small(it) },
+        // ------------------------------------------------------------------ ISLAMIC (Ramadan, Quran, smart)
+        WidgetStyle("ramadan_iftar", Cat.ISLAMIC, "Iftar & Suhoor", "الفطار والسحور", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = pU, defaults = { it.copy(accent = 0xFFF2C14E.toInt()) }) { RamadanR.wide(it) },
+        WidgetStyle("ramadan_iftar_small", Cat.ISLAMIC, "Iftar Countdown", "عداد الفطار", S, isNew = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFF2C14E.toInt()) }) { RamadanR.small(it) },
+        WidgetStyle("quran_khatma", Cat.ISLAMIC, "Quran Khatma", "ختمة القرآن", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.GOAL), upd = setOf(Upd.DAILY), defaults = { it.copy(goal = 20, counter = 0, accent = 0xFF3DDC97.toInt()) }) { QuranR.wide(it) },
+        WidgetStyle("quran_wird", Cat.ISLAMIC, "Daily Wird", "الورد اليومي", S, isNew = true, feats = setOf(Feat.ACCENT, Feat.GOAL), upd = setOf(Upd.DAILY), defaults = { it.copy(goal = 20, counter = 0, accent = 0xFF3DDC97.toInt()) }) { QuranR.small(it) },
+        WidgetStyle("smart_now", Cat.ISLAMIC, "Smart · Right Now", "ذكي · حسب الوقت", W, pro = true, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { SmartR.wide(it) },
         // ------------------------------------------------------------------ ISLAMIC (tasbih)
         WidgetStyle("tasbih_beads", Cat.ISLAMIC, "Tasbih Beads", "سبحة الخرز", S, isNew = true, popular = true, feats = tF, upd = none, defaults = { it.copy(goal = 33, text = "سبحان الله", accent = 0xFFE58A3C.toInt(), calli = 3) }) { Tasbih2R.beads(it) },
         WidgetStyle("tasbih_ring", Cat.ISLAMIC, "Tasbih Ring", "حلقة التسبيح", S, isNew = true, feats = tF, upd = none, defaults = { it.copy(goal = 99, text = "سبحان الله", accent = 0xFF2FC4A5.toInt(), calli = 3) }) { Tasbih2R.ring(it) },

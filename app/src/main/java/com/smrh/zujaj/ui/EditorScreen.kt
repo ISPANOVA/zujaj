@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.asImageBitmap
@@ -406,8 +407,19 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     if (Feat.TEXT in f && Feat.ROTATE !in f && Feat.VERSE !in f) TextInput(tr("Text", "النص"), cfg.text, single = false) { cfg = cfg.copy(text = it) }
                     if (Feat.AUTHOR in f) TextInput(tr("Author", "الكاتب"), cfg.author) { cfg = cfg.copy(author = it) }
                     if (Feat.GOAL in f) {
+                        if (style.id.startsWith("quran")) {
+                            // daily wird: pages or juz' a day; the widget shows how many days are left to finish
+                            ChoiceRow(tr("Daily wird", "الورد اليومي"), cfg.goal, listOf(
+                                5 to tr("5 pages", "5 صفحات"), 10 to tr("10 pages", "10 صفحات"), 20 to tr("1 juz' (30 days)", "جزء (ختمة في شهر)"),
+                                40 to tr("2 juz' (15 days)", "جزئين (نص شهر)"), 60 to tr("3 juz' (10 days)", "3 أجزاء (10 أيام)"),
+                            )) { cfg = cfg.copy(goal = it) }
+                            Divider()
+                            StepperRow(tr("I'm at juz'", "أنا في الجزء"), com.smrh.zujaj.render.Quran.juz(cfg.counter), 1..30, 1) { cfg = cfg.copy(counter = (it - 1) * 20) }
+                            Divider(); RowBase(tr("Start a new khatma", "ابدأ ختمة جديدة"), onClick = { cfg = cfg.copy(counter = 0) }) {}
+                        } else {
                         ChoiceRow(tr("Goal", "الهدف"), cfg.goal, listOf(33 to "33", 99 to "99", 100 to "100", 1000 to "1000")) { cfg = cfg.copy(goal = it) }
                         Divider(); RowBase(tr("Reset counter", "تصفير العداد"), sub = cfg.counter.toString(), onClick = { cfg = cfg.copy(counter = 0) }) {}
+                        }
                     }
                     if (Feat.TARGET_DATE in f) {
                         Divider()
@@ -423,6 +435,16 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 }
                 }
                 "colors" -> {
+                Section(tr("Automatic", "تلقائي")) {
+                    RowBase(tr("Match my wallpaper", "ألوان من خلفيتي"), sub = tr("Colours taken from your home-screen wallpaper", "ألوان من خلفية الشاشة الرئيسية"),
+                        onClick = {
+                            val cols = WallMatch.colours(ctx)
+                            if (cols == null) Toast.makeText(ctx, tr("Your phone doesn't share wallpaper colours", "تليفونك مش بيدّي ألوان الخلفية"), Toast.LENGTH_SHORT).show()
+                            else { Haptics.success(ctx); cfg = WallMatch.apply(cfg, cols) }
+                        }, icon = Icons.Rounded.Wallpaper, iconColor = LocalAccent.current) {
+                        WallMatch.colours(ctx)?.let { cs -> Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { cs.forEach { c -> Box(Modifier.size(20.dp).clip(CircleShape).background(Color(c)).border(1.5.dp, Z.surface, CircleShape)) } } }
+                    }
+                }
                 Section(tr("Ready-made looks", "أشكال جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
@@ -456,7 +478,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     Divider(); RowBase(tr("Secondary", "التاني")) { ColorDot(cfg.color2) { colorTarget = 2 } }
                     if (Feat.ACCENT in f) { Divider(); RowBase(tr("Accent", "لون مميز")) { ColorDot(cfg.accent) { colorTarget = 3 } } }
                 }
-                if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) Section(tr("Automatic", "تلقائي")) {
+                if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) Section(tr("Time of day", "حسب الوقت")) {
                     SwitchRow(tr("Colours follow the time of day", "الألوان تتغير مع الوقت"), cfg.dayTint,
                         tr("Dawn, day, sunset and night colours on their own", "ألوان الفجر والنهار والمغرب والليل لوحدها")) { cfg = cfg.copy(dayTint = it) }
                 }
