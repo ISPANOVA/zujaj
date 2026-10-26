@@ -55,6 +55,8 @@ data class CatalogFlags(
     val adCatalogEvery: Int = 6,
     /** Interstitial unit (empty = interstitials off), minimum minutes between two, and the most per session. */
     val adInterstitial: String = "",
+    /** Rewarded interstitial (offered after adding a widget, with a skippable intro). "" = built-in unit, "off" = disabled. */
+    val adRewardInter: String = "",
     val adInterGapMin: Int = 4,
     val adInterPerSession: Int = 2,
     /** …for this many days. */
@@ -128,6 +130,7 @@ object Flags {
                 adHomeEvery = snap.getLong("adHomeEvery")?.toInt() ?: 5,
                 adCatalogEvery = snap.getLong("adCatalogEvery")?.toInt() ?: 6,
                 adInterstitial = snap.getString("adInterstitial") ?: "",
+                adRewardInter = snap.getString("adRewardInter") ?: "",
                 adInterGapMin = snap.getLong("adInterGapMin")?.toInt() ?: 4,
                 adInterPerSession = snap.getLong("adInterPerSession")?.toInt() ?: 2,
                 adUnlockDays = snap.getLong("adUnlockDays")?.toInt() ?: 3,
@@ -177,6 +180,7 @@ object Flags {
             "adHomeEvery" to f.adHomeEvery,
             "adCatalogEvery" to f.adCatalogEvery,
             "adInterstitial" to f.adInterstitial,
+            "adRewardInter" to f.adRewardInter,
             "adInterGapMin" to f.adInterGapMin,
             "adInterPerSession" to f.adInterPerSession,
             "adUnlockDays" to f.adUnlockDays,

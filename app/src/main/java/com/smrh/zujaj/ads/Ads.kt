@@ -62,7 +62,7 @@ object Ads {
     private fun boot(a: Activity) {
         if (booted) return
         booted = true
-        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext); AdPolicy.preload(a.applicationContext); Banners.ensure(a, 0); Banners.ensure(a, 1) } }
+        runCatching { MobileAds.initialize(a.applicationContext) { preload(a.applicationContext); AdPolicy.preload(a.applicationContext); AdPolicy.preloadRewarded(a.applicationContext); Banners.ensure(a, 0); Banners.ensure(a, 1) } }
             .onFailure { Log.w("Zujaj", "ads init", it) }
     }
 
@@ -82,6 +82,12 @@ object Ads {
     /** Uses left in the current 24-hour window. */
     fun left(): Int = if (windowStart() == 0L) perDay() else (perDay() - sp.getInt("w_used", 0)).coerceAtLeast(0)
     /** Milliseconds until the window resets (0 if uses are left). */
+    /** One extra wallpaper use for the current 24-hour window (a reward). */
+    fun grantWallUse() {
+        if (windowStart() == 0L) sp.edit().putLong("w_start", System.currentTimeMillis()).putInt("w_used", -1).apply()
+        else sp.edit().putInt("w_used", sp.getInt("w_used", 0) - 1).apply()
+        _ver.value++
+    }
     fun waitMs(): Long = if (left() > 0) 0 else (windowStart() + DAY - System.currentTimeMillis()).coerceAtLeast(0)
     private fun consume() {
         if (windowStart() == 0L) sp.edit().putLong("w_start", System.currentTimeMillis()).putInt("w_used", 1).apply()
@@ -160,13 +166,69 @@ object AdPolicy {
         }.onFailure { loading = false }
     }
 
+    // ---------------------------------------------------------------- rewarded interstitial
+    // Offered at the same natural break as the interstitial and counted against the same caps. Google requires an
+    // intro screen that names the reward and lets people skip — see RewardedInterIntro (shown from MainActivity).
+    const val REAL_REWARD_INTER = "ca-app-pub-6729977170206961/8398462161"
+    private fun rUnit(): String = when {
+        com.smrh.zujaj.BuildConfig.DEBUG -> "ca-app-pub-3940256099942544/5354046379"   // Google's test unit
+        f().adRewardInter.trim().equals("off", true) -> ""
+        else -> f().adRewardInter.trim().ifBlank { REAL_REWARD_INTER }
+    }
+    private var rInter: com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd? = null
+    private var rLoading = false
+    /** What the next rewarded interstitial gives: a step towards this Pro widget, or (null) one extra wallpaper use today. */
+    var rewardTarget: String? = null
+    /** The intro waiting to be shown (non-null = show it). */
+    val offer = MutableStateFlow<String?>(null)
+
+    fun preloadRewarded(ctx: Context) {
+        if (rInter != null || rLoading || !Ads.on() || rUnit().isBlank() || Billing.pro.value || Billing.wall.value) return
+        rLoading = true
+        runCatching {
+            com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd.load(ctx, rUnit(), AdRequest.Builder().build(),
+                object : com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd) { rInter = ad; rLoading = false }
+                    override fun onAdFailedToLoad(e: LoadAdError) { rInter = null; rLoading = false; Log.w("Zujaj", "rinter: ${e.code}") }
+                })
+        }.onFailure { rLoading = false }
+    }
+
+    /** The user let the intro run (or tapped Watch): play the ad; the reward is granted only from the SDK's reward callback. */
+    fun playRewarded(a: Activity) {
+        offer.value = null
+        val ad = rInter ?: return
+        rInter = null
+        val target = rewardTarget
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() { preloadRewarded(a) }
+            override fun onAdFailedToShowFullScreenContent(e: com.google.android.gms.ads.AdError) { preloadRewarded(a) }
+        }
+        var granted = false   // the SDK may call back more than once on some devices — grant once
+        ad.show(a) {
+            if (granted) return@show
+            granted = true
+            if (target != null && AdUnlock.enabled() && !AdUnlock.open(target)) AdUnlock.add(a, target) else Ads.grantWallUse()
+        }
+    }
+    /** "No thanks" on the intro: nothing is shown, nothing is granted. */
+    fun declineRewarded() { offer.value = null }
+
     /** Call at a natural break (after a widget was added, after saving). Shows only if every rule allows it. */
     fun atBreak(a: Activity) {
         val now = System.currentTimeMillis()
-        val ok = Ads.on() && unit().isNotBlank() && !Billing.pro.value && !Billing.wall.value &&
+        val capsOk = Ads.on() && !Billing.pro.value && !Billing.wall.value &&
             now - sessionStart > 90_000L &&                                   // not in the first minute and a half
             shownThisSession < f().adInterPerSession.coerceIn(0, 10) &&
             now - lastShown > f().adInterGapMin.coerceIn(1, 120) * 60_000L
+        // prefer the rewarded kind: people get something for their time
+        if (capsOk && rInter != null) {
+            shownThisSession++; lastShown = now
+            offer.value = rewardTarget?.takeIf { AdUnlock.enabled() && !AdUnlock.open(it) } ?: ""
+            return
+        }
+        preloadRewarded(a)
+        val ok = capsOk && unit().isNotBlank()
         val ad = inter
         if (!ok || ad == null) { preload(a); return }
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {

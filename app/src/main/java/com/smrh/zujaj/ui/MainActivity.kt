@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.remember
+import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -168,6 +170,7 @@ open class MainActivity : ComponentActivity() {
                     LaunchedEffect(light) { bars() }
                     Root(nav)
                     CrashReportDialog()
+                    RewardedInterIntro()
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates(nav)
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) OnboardingScreen()
                 }
@@ -302,5 +305,33 @@ private fun CrashReportDialog() {
             android.widget.Toast.makeText(ctx, tr("Copied", "اتنسخ"), android.widget.Toast.LENGTH_SHORT).show()
             report = null
         }) { androidx.compose.material3.Text(tr("Copy", "انسخ"), color = Z.sub) }
+    }
+}
+
+/**
+ * The intro Google requires before a rewarded interstitial: it names the reward, counts down, and can be
+ * skipped. Skipping shows nothing; letting it run (or tapping Watch) plays the ad.
+ */
+@Composable
+private fun RewardedInterIntro() {
+    val target by com.smrh.zujaj.ads.AdPolicy.offer.collectAsState()
+    val t = target ?: return
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val act = ctx as? android.app.Activity ?: return
+    val name = remember(t) { if (t.isEmpty()) null else com.smrh.zujaj.catalog.Catalog.byId(t)?.name(Prefs.isArabicUi) }
+    var left by androidx.compose.runtime.remember(t) { androidx.compose.runtime.mutableIntStateOf(5) }
+    LaunchedEffect(t) {
+        while (left > 0) { kotlinx.coroutines.delay(1000); left-- }
+        com.smrh.zujaj.ads.AdPolicy.playRewarded(act)
+    }
+    val reward = if (name != null) tr("one step towards unlocking “$name”", "خطوة من فتح «$name»")
+        else tr("one extra free wallpaper today", "خلفية مجانية زيادة النهارده")
+    ZDialog(androidx.compose.material.icons.Icons.Rounded.CardGiftcard, tr("A short ad — with a gift", "إعلان قصير — وليك هدية"),
+        tr("Watch it to the end and get $reward.", "كمّله للآخر وخد $reward."),
+        onDismiss = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
+        PrimaryButton(tr("Watch now ($left)", "شوف دلوقتي ($left)"), androidx.compose.ui.Modifier.fillMaxWidth()) { com.smrh.zujaj.ads.AdPolicy.playRewarded(act) }
+        androidx.compose.material3.TextButton(onClick = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
+            androidx.compose.material3.Text(tr("No thanks", "لا شكراً"), color = Z.sub)
+        }
     }
 }

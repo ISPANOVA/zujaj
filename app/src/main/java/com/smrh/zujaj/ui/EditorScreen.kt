@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.produceState
@@ -212,6 +213,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         // ---------------------------------------------------------------- apply
         val unlockVer by com.smrh.zujaj.ads.AdUnlock.changes.collectAsState()
         val locked = remember(unlockVer, style.id) { Flags.locked(style) }
+        // remember the last Pro widget the user looked at: the rewarded interstitial's reward goes towards it
+        LaunchedEffect(locked, style.id) { if (locked) com.smrh.zujaj.ads.AdPolicy.rewardTarget = style.id }
         // the action bar is part of the layout (not floating over it), so it never hides a control;
         // on wide screens it sits at the foot of the controls pane, never over the preview
         Column(

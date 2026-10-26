@@ -636,6 +636,7 @@ private fun GeneralAdmin(email: String, page: Int) {
     var homeEvery by remember(flags) { mutableStateOf(flags.adHomeEvery.toString()) }
     var catEvery by remember(flags) { mutableStateOf(flags.adCatalogEvery.toString()) }
     var interUnit by remember(flags) { mutableStateOf(flags.adInterstitial) }
+    var rInterUnit by remember(flags) { mutableStateOf(flags.adRewardInter) }
     var interGap by remember(flags) { mutableStateOf(flags.adInterGapMin.toString()) }
     var interMax by remember(flags) { mutableStateOf(flags.adInterPerSession.toString()) }
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
@@ -706,11 +707,13 @@ private fun GeneralAdmin(email: String, page: Int) {
         // the unit IDs are set once, so they sit folded at the end instead of between everyday settings
         if (page == 1) Section(tr("Ad unit IDs", "أكواد الإعلانات")) {
             val set = listOf(adBanner, adReward, interUnit).count { it.isNotBlank() }
-            Text(tr("$set of 3 set · from AdMob → Apps → Ad units", "$set من 3 متحطين · من AdMob ← Apps ← Ad units"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
+            Text(tr("$set of 3 set · banner, rewarded & rewarded-interstitial have built-in units · AdMob → Apps → Ad units", "$set من 3 متحطين · البانر والمكافأة والمكافأة بملء الشاشة ليهم أكواد جوه التطبيق · AdMob ← Apps ← Ad units"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp))
             Expander(tr("Edit ad unit IDs", "تعديل الأكواد")) {
                 OutlinedTextField(adBanner, { adBanner = it.trim() }, singleLine = true, label = { Text(tr("Banner", "البانر")) }, placeholder = { Text("ca-app-pub-…/…") },
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
                 OutlinedTextField(adReward, { adReward = it.trim() }, singleLine = true, label = { Text(tr("Rewarded", "المكافأة (Rewarded)")) }, placeholder = { Text("ca-app-pub-…/…") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+                OutlinedTextField(rInterUnit, { rInterUnit = it.trim() }, singleLine = true, label = { Text(tr("Rewarded interstitial (empty = built-in, off = disabled)", "مكافأة بملء الشاشة (فاضي = الكود الأصلي، off = مقفول)")) }, placeholder = { Text("ca-app-pub-…/…") },
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
                 OutlinedTextField(interUnit, { interUnit = it.trim() }, singleLine = true, label = { Text(tr("Interstitial (empty = off)", "ملء الشاشة (فاضي = مقفول)")) }, placeholder = { Text("ca-app-pub-…/…") },
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
@@ -737,7 +740,7 @@ private fun GeneralAdmin(email: String, page: Int) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch(kotlinx.coroutines.NonCancellable) {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1), adHomeEvery = homeEvery.toIntOrNull() ?: 5, adCatalogEvery = catEvery.toIntOrNull() ?: 6, adInterstitial = interUnit, adInterGapMin = (interGap.toIntOrNull() ?: 4).coerceAtLeast(1), adInterPerSession = interMax.toIntOrNull() ?: 2)) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1), adHomeEvery = homeEvery.toIntOrNull() ?: 5, adCatalogEvery = catEvery.toIntOrNull() ?: 6, adInterstitial = interUnit, adRewardInter = rInterUnit, adInterGapMin = (interGap.toIntOrNull() ?: 4).coerceAtLeast(1), adInterPerSession = interMax.toIntOrNull() ?: 2)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
             }
         }
