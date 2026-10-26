@@ -176,16 +176,8 @@ fun MyWidgetsTab(nav: Nav) {
 }
 
 // =============================================================================== SETTINGS
-@SuppressLint("MissingPermission")
 private suspend fun locate(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-    val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    val loc = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER, LocationManager.GPS_PROVIDER)
-        .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
-        .maxByOrNull { it.time } ?: return@withContext false
-    Prefs.lat = loc.latitude; Prefs.lng = loc.longitude; Prefs.hasLocation = true
-    @Suppress("DEPRECATION")
-    val name = runCatching { Geocoder(ctx).getFromLocation(loc.latitude, loc.longitude, 1)?.firstOrNull()?.let { it.locality ?: it.subAdminArea ?: it.adminArea } }.getOrNull()
-    Prefs.cityName = name ?: ""
+    if (!com.smrh.zujaj.data.LocationRepo.detect(ctx)) return@withContext false
     Scheduler.refreshWeatherIfNeeded(ctx, force = true)
     WidgetUpdater.updateAll(ctx)
     true
@@ -413,7 +405,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     if (showGate) AdminGateDialog({ showGate = false }) { showGate = false; nav.go(Screen.Admin) }
     if (showRedeem) RedeemDialog { showRedeem = false }
     if (showCity) CityPickerDialog({ showCity = false }) { c ->
-        Prefs.lat = c.lat; Prefs.lng = c.lng; Prefs.cityName = c.name; Prefs.hasLocation = true
+        Prefs.saveLocation(c.lat, c.lng, c.name, auto = false)
         scope.launch(Dispatchers.IO) { Scheduler.refreshWeatherIfNeeded(ctx, true); WidgetUpdater.updateAll(ctx) }
     }
 }

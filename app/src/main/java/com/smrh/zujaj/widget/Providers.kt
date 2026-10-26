@@ -185,12 +185,18 @@ class SystemEventsReceiver : BroadcastReceiver() {
             else -> WidgetUpdater.updateAll(context)
         }
         Scheduler.ensure(context)
+        // after a restart / update: refresh location & weather right away instead of waiting for the next cycle
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) Scheduler.refreshNow(context)
     }
 }
 
 class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Prefs.init(applicationContext)
+        // auto location: back after a restart, and follows the user when they travel
+        if (runCatching { com.smrh.zujaj.data.LocationRepo.refreshQuietly(applicationContext) }.getOrDefault(false)) {
+            Scheduler.scheduleAlarms(applicationContext); Scheduler.refreshWeatherIfNeeded(applicationContext, force = true)
+        }
         Scheduler.refreshWeatherIfNeeded(applicationContext)
         // Pro: re-check the code and the Play subscription every few hours (without opening the app)
         val now = System.currentTimeMillis()

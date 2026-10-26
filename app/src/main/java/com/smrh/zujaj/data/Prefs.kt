@@ -80,6 +80,16 @@ object Prefs {
     var hasLocation: Boolean
         get() = sp.getBoolean("has_loc", false)
         set(v) = put("has_loc", v)
+    /** Location follows the phone (set by Detect; off after choosing a city by hand). */
+    var autoLocation: Boolean
+        get() = sp.getBoolean("auto_loc", false)
+        set(v) = put("auto_loc", v)
+    /** All location fields in ONE synchronous write, so a restart right after can never lose half of it. */
+    fun saveLocation(lat: Double, lng: Double, city: String, auto: Boolean) {
+        sp.edit().putString("lat", lat.toString()).putString("lng", lng.toString()).putString("city", city)
+            .putBoolean("has_loc", true).putBoolean("auto_loc", auto).commit()
+        bump()
+    }
 
     // ---------- Prayer ----------
     /** Adhan CalculationMethod enum name. */
