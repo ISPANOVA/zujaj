@@ -155,6 +155,7 @@ open class MainActivity : ComponentActivity() {
             }.onFailure { runCatching { v.remove() } }
         }
         Prefs.init(this)
+        appCtx = applicationContext
         Z.refresh(this)
         bars()
         super.onCreate(savedInstanceState)

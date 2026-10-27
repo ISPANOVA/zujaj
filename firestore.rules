@@ -9,6 +9,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    // Pop-up announcement written in the control panel
+    match /app/popup {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     // Redeem codes: anyone can look up one code by name; only the admin can list/create/delete.
     // A phone may only add 1 to "uses" while creating its own redemption record in the same transaction.
     match /codes/{code} {

@@ -422,26 +422,8 @@ fun DiscoverTab(nav: Nav) {
     }
     val hour = LocalTime.now().hour
     val greet = when (hour) { in 5..11 -> tr("Good morning", "صباح الخير"); in 12..16 -> tr("Good afternoon", "طاب يومك"); else -> tr("Good evening", "مساء الخير") }
-    // Wallpapers intro: right after the battery guide is done (or straight away if it isn't needed)
-    var showNew by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (Prefs.getString("wall_intro") == "1") return@LaunchedEffect
-        delay(900)
-        while (Prefs.getString("bat_intro") != "1") delay(400)
-        delay(500)
-        showNew = Prefs.getString("wall_intro") != "1"
-    }
-    // one-time: "watch ads to open a Pro widget" — after the wallpapers intro
-    var showUnlock by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (Prefs.getString("unlock_intro") == "1") return@LaunchedEffect
-        delay(1500)
-        while (Prefs.getString("wall_intro") != "1" || Prefs.getString("bat_intro") != "1") delay(500)
-        delay(700)
-        if (com.smrh.zujaj.ads.AdUnlock.enabled() && !Prefs.isPro) showUnlock = true
-    }
-    if (showUnlock) AdUnlockIntro { Prefs.setString("unlock_intro", "1"); showUnlock = false }
-    if (showNew) WallIntroDialog(onTry = { Prefs.setString("wall_intro", "1"); showNew = false; nav.go(Screen.Wallpapers) }) { Prefs.setString("wall_intro", "1"); showNew = false }
+    // the built-in announcement pop-ups are gone; announcements now come from the control panel (Popup)
+    AnnouncementHost(nav)
 
     val ctxHome = androidx.compose.ui.platform.LocalContext.current
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }

@@ -31,6 +31,9 @@ object Gallery {
     /** Admin only (rules enforce it). */
     suspend fun pending(): List<Item> =
         col().whereEqualTo("status", "pending").limit(100).get().await().documents.mapNotNull { item(it) }.sortedByDescending { it.createdAt }
+    /** Admin: everything already public, newest first, so anything can be taken down. */
+    suspend fun published(): List<Item> =
+        col().whereEqualTo("status", "approved").limit(300).get().await().documents.mapNotNull { item(it) }.sortedByDescending { it.createdAt }
     suspend fun approve(id: String) { col().document(id).update("status", "approved").await() }
     suspend fun remove(id: String) { col().document(id).delete().await() }
 

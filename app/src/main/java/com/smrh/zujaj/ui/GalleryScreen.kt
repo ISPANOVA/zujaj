@@ -57,15 +57,17 @@ fun GalleryScreen(nav: Nav) {
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Community designs", "تصاميم الناس"), { nav.back() })
         Segmented(listOf(tr("Most loved", "الأكتر حبًا"), tr("Newest", "الأحدث")), if (byLikes) 0 else 1, Modifier.padding(horizontal = gut, vertical = 4.dp)) { byLikes = it == 0 }
+        // one snapshot per frame: switching tabs clears the list while the grid may still be drawing the old one
+        val shown = items
         when {
             failed -> EmptyState(Icons.Rounded.CloudOff, tr("Couldn't load the gallery", "معرفناش نحمّل التصاميم"), tr("Check your connection and try again.", "اتأكد من النت وجرّب تاني."), tr("Try again", "جرّب تاني")) { reload++ }
-            items == null -> Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAccent.current) }
-            items!!.isEmpty() -> EmptyState(Icons.Rounded.Groups, tr("No designs yet", "لسه مفيش تصاميم"),
+            shown == null -> Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAccent.current) }
+            shown.isEmpty() -> EmptyState(Icons.Rounded.Groups, tr("No designs yet", "لسه مفيش تصاميم"),
                 tr("Be the first: open any widget, make it yours, then Share → Publish to gallery.", "كن الأول: افتح أي ويدجت، ظبطها، وبعدين مشاركة ← انشر في المعرض."))
             else -> LazyVerticalGrid(GridCells.Adaptive(if (pane >= 600) 300.dp else 160.dp),
                 contentPadding = PaddingValues(start = gut, end = gut, top = 8.dp, bottom = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(items!!, key = { it.id }, span = { val sh = Catalog.byId(it.styleId)?.shape; GridItemSpan(if (sh == Shape.SMALL) 1 else maxLineSpan) }) { g ->
+                items(shown, key = { it.id }, span = { val sh = Catalog.byId(it.styleId)?.shape; GridItemSpan(if (sh == Shape.SMALL) 1 else maxLineSpan) }) { g ->
                     val cfg = remember(g.code) { ShareDesign.decode(g.code) } ?: return@items
                     var liked by remember(g.id) { mutableStateOf(Gallery.liked(g.id)) }
                     var likes by remember(g.id) { mutableLongStateOf(g.likes) }
@@ -102,10 +104,13 @@ fun PublishDialog(cfg: WidgetConfig, onDone: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     ZDialog(Icons.Rounded.Publish, tr("Publish to the gallery", "انشر في المعرض"),
         tr("Your design (no photos, contacts or apps) is reviewed, then everyone can use it.", "تصميمك (من غير صور أو جهات اتصال أو تطبيقات) بيتراجع، وبعدها الكل يقدر يستخدمه."), onDismiss = onDone) {
-        ZField(title, { title = it.take(40) }, tr("Name it (optional)", "سمّيه (اختياري)"), Icons.Rounded.Publish)
+        var missing by remember { mutableStateOf(false) }
+        ZField(title, { title = it.take(40); missing = false }, tr("Your name or the design's name", "اسمك أو اسم التصميم"), Icons.Rounded.Publish, error = missing)
+        if (missing) Text(tr("Write a name first", "اكتب اسم الأول"), color = Color(0xFFE5484D), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(16.dp))
         PrimaryButton(if (busy) tr("Sending…", "بنبعت…") else tr("Publish", "انشر"), Modifier.fillMaxWidth()) {
             if (busy) return@PrimaryButton
+            if (title.trim().length < 2) { missing = true; return@PrimaryButton }
             if (!Gallery.canSubmit()) { Toast.makeText(ctx, tr("That's 3 today — try again tomorrow", "كده 3 النهارده — جرّب بكرة"), Toast.LENGTH_LONG).show(); return@PrimaryButton }
             busy = true
             scope.launch {

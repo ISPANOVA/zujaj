@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
@@ -161,6 +162,7 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.MonetizationOn to tr("Ads", "الإعلانات"),
             Icons.Rounded.Security to tr("Security", "الحماية"),
             Icons.Rounded.Groups to tr("Gallery", "المعرض"),
+            Icons.Rounded.Campaign to tr("Pop-up", "الإعلان المنبثق"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -186,6 +188,7 @@ fun AdminScreen(nav: Nav) {
                 3 -> GeneralAdmin(user?.email ?: "", 0)
                 4 -> GeneralAdmin(user?.email ?: "", 1)
                 6 -> GalleryAdmin()
+                7 -> PopupAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -838,30 +841,106 @@ fun adminError(e: Throwable?): String {
 @Composable
 private fun GalleryAdmin() {
     val ctx = LocalContext.current
+    var showPublished by rememberSaveable { mutableStateOf(false) }
     var list by remember { mutableStateOf<List<com.smrh.zujaj.remote.Gallery.Item>?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
-    LaunchedEffect(reload) { runCatching { com.smrh.zujaj.remote.Gallery.pending() }.onSuccess { list = it; err = null }.onFailure { err = it.message } }
+    var confirm by remember { mutableStateOf<com.smrh.zujaj.remote.Gallery.Item?>(null) }
+    LaunchedEffect(reload, showPublished) {
+        list = null
+        runCatching { if (showPublished) com.smrh.zujaj.remote.Gallery.published() else com.smrh.zujaj.remote.Gallery.pending() }
+            .onSuccess { list = it; err = null }.onFailure { err = it.message }
+    }
+    confirm?.let { g ->
+        ZDialog(Icons.Rounded.Delete, tr("Delete this design?", "تمسح التصميم ده؟"), tr("It disappears from the gallery for everyone.", "هيختفي من المعرض عند الكل."), iconColor = Color(0xFFE5484D), onDismiss = { confirm = null }) {
+            PrimaryButton(tr("Delete", "امسح"), Modifier.fillMaxWidth()) {
+                confirm = null
+                AdminWork.launch { val r = runCatching { com.smrh.zujaj.remote.Gallery.remove(g.id) }; Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتمسح") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
+            }
+            TextButton(onClick = { confirm = null }) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+        }
+    }
+    val shown = list
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text(tr("Waiting for review", "مستني المراجعة") + (list?.let { " · ${it.size}" } ?: ""), color = Z.sub, fontSize = 13.sp) }
-        if (err != null) item { Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err + tr("\nPublish the gallery rules in Firebase first.", "\nلازم تنشر قواعد المعرض في Firebase الأول."), color = Color(0xFFE5484D), fontSize = 13.sp) }
-        if (list?.isEmpty() == true) item { Text(tr("Nothing to review ✓", "مفيش حاجة تتراجع ✓"), color = Z.sub) }
-        items(list.orEmpty(), key = { it.id }) { g ->
+        item { Segmented(listOf(tr("Waiting", "مستني المراجعة"), tr("Published", "المنشور")), if (showPublished) 1 else 0) { showPublished = it == 1 } }
+        item { Text((if (showPublished) tr("Live in the gallery", "ظاهر في المعرض") else tr("Waiting for review", "مستني المراجعة")) + (shown?.let { " · ${it.size}" } ?: ""), color = Z.sub, fontSize = 13.sp) }
+        if (err != null) item { Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err, color = Color(0xFFE5484D), fontSize = 13.sp) }
+        if (shown?.isEmpty() == true) item { Text(if (showPublished) tr("Nothing published yet", "مفيش حاجة منشورة") else tr("Nothing to review ✓", "مفيش حاجة تتراجع ✓"), color = Z.sub) }
+        items(shown.orEmpty(), key = { it.id }) { g ->
             val cfg = remember(g.code) { ShareDesign.decode(g.code) } ?: return@items
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l)).padding(12.dp)) {
                 Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.m)).background(Backdrops.brush(1)).padding(12.dp), contentAlignment = Alignment.Center) {
                     WidgetPreview(cfg, Modifier.fillMaxWidth(0.7f), density = 1.6f)
                 }
-                Text(g.title.ifBlank { "—" }, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                Text(g.title.ifBlank { "—" } + if (showPublished) "  ·  ♥ ${g.likes}" else "", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    SmallAction(tr("Approve", "موافقة"), Color(0xFF34C77B)) {
+                    if (!showPublished) SmallAction(tr("Approve", "موافقة"), Color(0xFF34C77B)) {
                         AdminWork.launch { val r = runCatching { com.smrh.zujaj.remote.Gallery.approve(g.id) }; Toast.makeText(ctx, if (r.isSuccess) tr("Approved ✓", "اتوافق ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
                     }
-                    SmallAction(tr("Delete", "حذف"), Color(0xFFE5484D)) {
-                        AdminWork.launch { val r = runCatching { com.smrh.zujaj.remote.Gallery.remove(g.id) }; Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتحذف") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
-                    }
+                    SmallAction(tr("Delete", "امسح"), Color(0xFFE5484D)) { confirm = g }
                 }
             }
+        }
+    }
+}
+
+// =============================================================================== pop-up builder
+@Composable
+private fun PopupAdmin() {
+    val ctx = LocalContext.current
+    var p by remember { mutableStateOf<com.smrh.zujaj.remote.Announce.Popup?>(null) }
+    var preview by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { p = com.smrh.zujaj.remote.Announce.load() ?: com.smrh.zujaj.remote.Announce.Popup() }
+    val cur = p ?: run { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current) }; return }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            // shrink to 720 px and JPEG, so the whole pop-up stays a small document
+            val b64 = runCatching {
+                val src = ctx.contentResolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+                val k = minOf(1f, 720f / maxOf(src.width, src.height))
+                val bmp = android.graphics.Bitmap.createScaledBitmap(src, (src.width * k).toInt(), (src.height * k).toInt(), true)
+                val out = java.io.ByteArrayOutputStream(); bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 78, out)
+                android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+            }.getOrNull()
+            if (b64 == null || b64.length > 700_000) Toast.makeText(ctx, tr("Couldn't use this picture", "الصورة دي مش نافعة"), Toast.LENGTH_SHORT).show()
+            else p = cur.copy(image = b64)
+        }
+    }
+    if (preview) com.smrh.zujaj.ui.AnnouncementDialog(cur, onAction = { preview = false }) { preview = false }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 40.dp)) {
+        Section(tr("Pop-up", "الإعلان المنبثق")) {
+            SwitchRow(tr("Show it", "شغّال"), cur.on, sub = tr("Appears once the app opens (after onboarding)", "بيظهر بعد فتح التطبيق (بعد صفحات البداية)")) { p = cur.copy(on = it) }
+            Divider()
+            ChoiceRow(tr("How often", "كل قد إيه"), cur.freq, listOf("once" to tr("Once per person", "مرة واحدة لكل شخص"), "daily" to tr("Once a day", "مرة في اليوم"), "always" to tr("Every launch", "كل ما يفتح"))) { p = cur.copy(freq = it) }
+            Divider()
+            ChoiceRow(tr("Who sees it", "مين يشوفه"), cur.audience, listOf("all" to tr("Everyone", "الكل"), "free" to tr("Free users", "المجانيين"), "pro" to tr("Pro users", "مشتركين برو"))) { p = cur.copy(audience = it) }
+        }
+        Section(tr("Content", "المحتوى")) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ZField(cur.title, { p = cur.copy(title = it.take(80)) }, tr("Title", "العنوان"))
+                ZField(cur.body, { p = cur.copy(body = it.take(600)) }, tr("Text", "الكلام"), singleLine = false)
+            }
+            Divider()
+            RowBase(if (cur.image.isBlank()) tr("Add a picture", "ضيف صورة") else tr("Change picture", "غيّر الصورة"), sub = if (cur.image.isBlank()) tr("Optional", "اختياري") else "${cur.image.length / 1365} KB",
+                onClick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {}
+            if (cur.image.isNotBlank()) { Divider(); RowBase(tr("Remove picture", "شيل الصورة"), onClick = { p = cur.copy(image = "") }) {} }
+        }
+        Section(tr("Button", "الزرار")) {
+            ChoiceRow(tr("Opens", "بيفتح"), cur.action, com.smrh.zujaj.ui.popupActions.map { (k, v) -> k to tr(v.first, v.second) }) { p = cur.copy(action = it) }
+            if (cur.action != "none") Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ZField(cur.button, { p = cur.copy(button = it.take(30)) }, tr("Button text", "كلام الزرار"))
+                if (cur.action == "url") ZField(cur.url, { p = cur.copy(url = it.trim()) }, "https://…")
+            }
+        }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.OutlinedButton(onClick = { preview = true }, modifier = Modifier.fillMaxWidth()) { Text(tr("Preview", "معاينة"), color = Z.text) }
+            PrimaryButton(tr("Save & publish", "احفظ وانشر"), Modifier.fillMaxWidth()) {
+                AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                    val r = runCatching { com.smrh.zujaj.remote.Announce.save(cur) }
+                    Toast.makeText(ctx, if (r.isSuccess) (if (cur.on) tr("Published ✓ — people will see it", "اتنشر ✓ — الناس هتشوفه") else tr("Saved ✓ (switched off)", "اتحفظ ✓ (مقفول)")) else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                }
+            }
+            Text(tr("Saving shows it again to everyone it applies to.", "كل حفظ بيخليه يظهر تاني للناس المحددين."), color = Z.sub, fontSize = 12.sp)
         }
     }
 }
