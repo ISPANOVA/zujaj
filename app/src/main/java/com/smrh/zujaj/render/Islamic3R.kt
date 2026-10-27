@@ -133,7 +133,7 @@ object QuranR {
         r.text(chip, end, r.h * 0.48f, 10 * r.u, if (done) r.accent else r.c1, r.sansBold, alE, maxW = (rt - l) * 0.5f)
         r.text(r.n(Quran.daysLeft(cfg)) + r.t(" days to finish", " يوم وتختم"), end, r.h * 0.62f, 9 * r.u, r.c2, r.sans, alE, maxW = (rt - l) * 0.5f)
         val frac = cfg.counter / Quran.PAGES.toFloat()
-        Kit.slider(r, l, r.h * 0.82f, rt - l, if (ar) 1f - frac else frac, r.accent, withAlpha(r.c1, 34), 3.5f * r.u, 0f)
+        Kit.slider(r, l, r.h * 0.82f, rt - l, frac, r.accent, withAlpha(r.c1, 34), 3.5f * r.u, 0f)
         tapAll(r)
     }
 
