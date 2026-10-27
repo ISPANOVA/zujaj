@@ -49,7 +49,6 @@ open class UiShotsTest {
             "set_desert" to Screen.SetDetail("desert"),
             "set_midnight" to Screen.SetDetail("midnight"),
             "gallery" to Screen.Gallery,
-            "icons" to Screen.Icons,
         )
         rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)

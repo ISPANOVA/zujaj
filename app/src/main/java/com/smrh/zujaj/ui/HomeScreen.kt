@@ -524,18 +524,6 @@ fun DiscoverTab(nav: Nav) {
         }
         // ---- ready-made sets: wallpaper + matching widgets
         item(key = "sets") { SetsRow(nav, gut) }
-        item(key = "icons") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s).clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
-                .clickable { nav.go(Screen.Icons) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconTile(Icons.Rounded.Apps, Color(0xFFA78BFA), 44.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(tr("Glass icons", "أيقونات زجاج"), color = Z.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(tr("Give any app a glass icon on your home screen", "حط أيقونة زجاج لأي تطبيق على شاشتك"), color = Z.sub, fontSize = 13.sp, maxLines = 1)
-                }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub)
-            }
-        }
         item(key = "gallery") {
             Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s).clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
                 .clickable { nav.go(Screen.Gallery) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -592,7 +580,7 @@ fun DiscoverTab(nav: Nav) {
     LaunchedEffect(chip) {
         if (chip == shownChip) return@LaunchedEffect
         shownChip = chip
-        val tabs = 5 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
+        val tabs = 4 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
         if (listState.firstVisibleItemIndex > tabs) listState.scrollToItem(tabs)
     }
 }

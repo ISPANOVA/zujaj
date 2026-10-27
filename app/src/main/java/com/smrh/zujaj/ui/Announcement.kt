@@ -63,7 +63,7 @@ fun AnnouncementDialog(p: Announce.Popup, onAction: () -> Unit, onDismiss: () ->
 /** Where the pop-up's button goes. */
 val popupActions = listOf(
     "none" to ("No button" to "من غير زرار"), "wallpapers" to ("Wallpapers" to "الخلفيات"), "paywall" to ("Zujaj Pro" to "زجاج برو"),
-    "gallery" to ("Community designs" to "تصاميم الناس"), "icons" to ("Glass icons" to "أيقونات زجاج"), "search" to ("Search" to "البحث"),
+    "gallery" to ("Community designs" to "تصاميم الناس"), "search" to ("Search" to "البحث"),
     "settings" to ("Settings" to "الإعدادات"), "url" to ("A link" to "لينك"),
 )
 
@@ -72,7 +72,6 @@ private fun runAction(nav: Nav, p: Announce.Popup) {
         "wallpapers" -> nav.go(Screen.Wallpapers)
         "paywall" -> nav.go(Screen.Paywall)
         "gallery" -> nav.go(Screen.Gallery)
-        "icons" -> nav.go(Screen.Icons)
         "search" -> nav.go(Screen.Search)
         "settings" -> nav.go(Screen.Settings)
         "url" -> runCatching { appCtx?.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(p.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

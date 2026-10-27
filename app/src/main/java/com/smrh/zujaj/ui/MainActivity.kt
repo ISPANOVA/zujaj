@@ -59,7 +59,6 @@ sealed class Screen {
     data object Wallpapers : Screen()
     data class SetDetail(val id: String) : Screen()
     data object Gallery : Screen()
-    data object Icons : Screen()
 }
 
 /** One back-stack entry; [id] is unique so each entry keeps its own saved UI state (tab, filters, scroll…). */
@@ -108,7 +107,7 @@ class Nav(start: Screen) {
         is Screen.SetDetail -> "S\u0002" + s.id
         // fixed names (class names are renamed in release builds, so they can't be stored)
         Screen.Search -> "Search"; Screen.Paywall -> "Paywall"; Screen.Settings -> "Settings"; Screen.Admin -> "Admin"
-        Screen.Tutorial -> "Tutorial"; Screen.MediaAccess -> "MediaAccess"; Screen.About -> "About"; Screen.Wallpapers -> "Wallpapers"; Screen.Gallery -> "Gallery"; Screen.Icons -> "Icons"
+        Screen.Tutorial -> "Tutorial"; Screen.MediaAccess -> "MediaAccess"; Screen.About -> "About"; Screen.Wallpapers -> "Wallpapers"; Screen.Gallery -> "Gallery"
         Screen.Home -> "Home"
     }
     private fun dec(t: String): Screen? = runCatching {
@@ -120,7 +119,7 @@ class Nav(start: Screen) {
             "S" -> Screen.SetDetail(p[1])
             "Home" -> Screen.Home; "Search" -> Screen.Search; "Paywall" -> Screen.Paywall; "Settings" -> Screen.Settings
             "Admin" -> Screen.Admin; "Tutorial" -> Screen.Tutorial; "MediaAccess" -> Screen.MediaAccess
-            "About" -> Screen.About; "Wallpapers" -> Screen.Wallpapers; "Gallery" -> Screen.Gallery; "Icons" -> Screen.Icons
+            "About" -> Screen.About; "Wallpapers" -> Screen.Wallpapers; "Gallery" -> Screen.Gallery
             else -> null
         }
     }.getOrNull()
@@ -286,7 +285,6 @@ fun Root(nav: Nav) {
                     Screen.Wallpapers -> WallpaperScreen(nav)
                     is Screen.SetDetail -> SetDetailScreen(nav, s.id)
                     Screen.Gallery -> GalleryScreen(nav)
-                    Screen.Icons -> IconsScreen(nav)
                 }
               }
             }
