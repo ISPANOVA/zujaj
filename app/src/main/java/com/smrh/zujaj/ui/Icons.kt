@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon as MIcon
 import androidx.compose.material3.Text
@@ -159,7 +160,7 @@ fun IconsScreen(nav: Nav) {
                     Box(Modifier.size(32.dp).clip(CircleShape).background(Color(c)).border(2.dp, if (c == tint) Z.text else Color.Transparent, CircleShape).clickable { tint = c }) }
             }
         }
-        ZField(q, { q = it }, tr("Search apps", "ابحث عن تطبيق"), androidx.compose.material.icons.Icons.Rounded.Search, modifier = Modifier.padding(horizontal = gut, vertical = 8.dp))
+        ZField(q, { q = it }, tr("Search apps", "ابحث عن تطبيق"), Icons.Rounded.Search, modifier = Modifier.padding(horizontal = gut, vertical = 8.dp))
         if (!GlassIcons.supported(ctx)) Text(tr("Your launcher doesn't allow adding shortcuts.", "اللانشر بتاعك مش بيسمح بإضافة اختصارات."), color = Color(0xFFFF8A4C), fontSize = 13.sp, modifier = Modifier.padding(horizontal = gut))
         val list = apps?.filter { q.isBlank() || it.ref.label.contains(q, true) }
         if (list == null) Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAccent.current) }
