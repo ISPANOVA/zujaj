@@ -90,16 +90,14 @@
         tools:targetApi="34">
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
 
+        <!-- the real screen; the launcher icon is one of the aliases below (the user picks its colour).
+             The default alias keeps the old name ".ui.MainActivity", so existing home-screen icons stay. -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.AppActivity"
             android:exported="true"
             android:theme="@style/Theme.Zujaj.Starting"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -113,6 +111,31 @@
                 <data android:scheme="https" android:host="zujaj.pages.dev" android:pathPrefix="/w" />
             </intent-filter>
         </activity>
+
+        <activity-alias android:name=".ui.MainActivity" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="true"
+            android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ui.IconViolet" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="false"
+            android:icon="@mipmap/ic_launcher_violet" android:roundIcon="@mipmap/ic_launcher_violet">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ui.IconGold" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="false"
+            android:icon="@mipmap/ic_launcher_gold" android:roundIcon="@mipmap/ic_launcher_gold">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ui.IconLight" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="false"
+            android:icon="@mipmap/ic_launcher_light" android:roundIcon="@mipmap/ic_launcher_light">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ui.IconMint" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="false"
+            android:icon="@mipmap/ic_launcher_mint" android:roundIcon="@mipmap/ic_launcher_mint">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ui.IconRose" android:targetActivity=".ui.AppActivity" android:exported="true" android:enabled="false"
+            android:icon="@mipmap/ic_launcher_rose" android:roundIcon="@mipmap/ic_launcher_rose">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
 
         <activity
             android:name=".ui.ConfigureActivity"

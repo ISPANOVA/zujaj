@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.widthIn
 import android.graphics.Bitmap
 import android.util.LruCache
@@ -91,7 +92,7 @@ import kotlinx.coroutines.withContext
 fun AppBackdrop(content: @Composable BoxScope.() -> Unit) {
     val accent = LocalAccent.current
     Box(Modifier.fillMaxSize().background(Z.bg)) {
-        Canvas(Modifier.fillMaxSize()) {
+        if (!Z.black) Canvas(Modifier.fillMaxSize()) {
             fun glow(c: Color, a: Float, x: Float, y: Float, r: Float) =
                 drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), Color.Transparent), center = Offset(x, y), radius = r), radius = r, center = Offset(x, y))
             val k = if (Z.light) 0.45f else 1f
@@ -221,16 +222,31 @@ fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier,
 }
 
 // ------------------------------------------------------------------ setting rows
+/** Search index for the settings page: every row registers its label under its section. */
+class SettingsIndex {
+    val labels = androidx.compose.runtime.snapshots.SnapshotStateMap<String, Set<String>>()
+    val requesters = mutableMapOf<String, androidx.compose.foundation.relocation.BringIntoViewRequester>()
+    fun add(section: String, label: String) { val cur = labels[section].orEmpty(); if (label !in cur) labels[section] = cur + label }
+}
+val LocalSettingsIndex = androidx.compose.runtime.compositionLocalOf<SettingsIndex?> { null }
+private val LocalSectionTitle = androidx.compose.runtime.compositionLocalOf<String?> { null }
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Text(title.uppercase(), color = Z.sub, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, letterSpacing = if (Prefs.isArabicUi) 0.sp else 1.2.sp,
-        modifier = Modifier.padding(start = Sp.l + 4.dp, end = Sp.l + 4.dp, top = Sp.l, bottom = Sp.s))
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l))
-            .background(Z.surface)
-            .border(1.dp, Z.line, RoundedCornerShape(Rad.l)),
-        content = content,
-    )
+    val index = LocalSettingsIndex.current
+    val req = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    if (index != null) index.requesters[title] = req
+    Text(title.uppercase(), modifier = Modifier.then(if (index != null) Modifier.bringIntoViewRequester(req) else Modifier)
+        .padding(start = Sp.l + 4.dp, end = Sp.l + 4.dp, top = Sp.l, bottom = Sp.s), color = Z.sub, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, letterSpacing = if (Prefs.isArabicUi) 0.sp else 1.2.sp)
+    androidx.compose.runtime.CompositionLocalProvider(LocalSectionTitle provides title) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l))
+                .background(Z.surface)
+                .border(1.dp, Z.line, RoundedCornerShape(Rad.l)),
+            content = content,
+        )
+    }
 }
 
 /** Coloured rounded square with an icon, used at the start of setting rows. */
@@ -243,6 +259,8 @@ fun IconTile(icon: ImageVector, color: Color, size: Dp = 32.dp) {
 
 @Composable
 fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), trailing: @Composable () -> Unit) {
+    val index = LocalSettingsIndex.current; val sec = LocalSectionTitle.current
+    if (index != null && sec != null) androidx.compose.runtime.SideEffect { index.add(sec, label) }
     Row(
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .heightIn(min = 56.dp).padding(horizontal = Sp.l, vertical = 10.dp),

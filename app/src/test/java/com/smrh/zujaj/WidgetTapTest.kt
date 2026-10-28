@@ -5,6 +5,7 @@ import android.content.Intent
 import com.smrh.zujaj.data.Prefs
 import com.smrh.zujaj.catalog.Catalog
 import com.smrh.zujaj.ui.MainActivity
+import com.smrh.zujaj.ui.AppActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -18,7 +19,7 @@ import org.robolectric.shadows.ShadowLooper
 class WidgetTapTest {
     private fun ctx() = org.robolectric.RuntimeEnvironment.getApplication()
 
-    private fun editIntent(id: Int) = Intent(ctx(), MainActivity::class.java)
+    private fun editIntent(id: Int) = Intent(ctx(), AppActivity::class.java)
         .setAction("zujaj.EDIT_$id").putExtra(MainActivity.EXTRA_EDIT_WIDGET, id)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
@@ -27,22 +28,22 @@ class WidgetTapTest {
     @Test fun coldStartFromWidgetEdit() {
         Prefs.init(ctx())
         Prefs.saveWidgetConfig(5, Catalog.byId("clock_dots")!!.defaultConfig())
-        val c = Robolectric.buildActivity(MainActivity::class.java, editIntent(5)).setup()
+        val c = Robolectric.buildActivity(AppActivity::class.java, editIntent(5)).setup()
         settle()
         c.pause().stop().destroy()
     }
 
     @Test fun coldStartFromWidgetOpen() {
         Prefs.init(ctx())
-        val i = Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "tutorial").setAction("zujaj.OPEN.tutorial")
-        Robolectric.buildActivity(MainActivity::class.java, i).setup(); settle()
-        Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java)).setup(); settle()
+        val i = Intent(ctx(), AppActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "tutorial").setAction("zujaj.OPEN.tutorial")
+        Robolectric.buildActivity(AppActivity::class.java, i).setup(); settle()
+        Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java)).setup(); settle()
     }
 
     @Test fun warmStartAndRecreate() {
         Prefs.init(ctx())
         Prefs.saveWidgetConfig(6, Catalog.byId("prayer_grid")!!.defaultConfig())
-        val c = Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java)).setup()
+        val c = Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java)).setup()
         settle()
         c.newIntent(editIntent(6)); settle()
         c.recreate(); settle()
@@ -52,20 +53,20 @@ class WidgetTapTest {
     @Test fun reopenAfterProcessDeathWithSavedState() {
         Prefs.init(ctx())
         Prefs.saveWidgetConfig(7, Catalog.byId("clock_dots")!!.defaultConfig())
-        val first = Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java)).setup()
+        val first = Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java)).setup()
         settle()
-        first.newIntent(Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")); settle()
+        first.newIntent(Intent(ctx(), AppActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")); settle()
         val bundle = android.os.Bundle()
         first.saveInstanceState(bundle).pause().stop().destroy()
         // fresh activity, as after process death, opened by the widget's edit intent with the old bundle
-        Robolectric.buildActivity(MainActivity::class.java, editIntent(7)).setup(bundle)
+        Robolectric.buildActivity(AppActivity::class.java, editIntent(7)).setup(bundle)
         settle()
-        Robolectric.buildActivity(MainActivity::class.java, Intent(ctx(), MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")).setup(bundle)
+        Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java).putExtra(MainActivity.EXTRA_OPEN, "settings")).setup(bundle)
         settle()
         // as in release builds before the fix: the page list could not be read back, but the pages' saved
         // UI state still was — new pages must not pick up an old page's state
         val noHistory = android.os.Bundle(bundle).apply { remove("nav") }
-        Robolectric.buildActivity(MainActivity::class.java, editIntent(7)).setup(noHistory)
+        Robolectric.buildActivity(AppActivity::class.java, editIntent(7)).setup(noHistory)
         settle()
     }
 }

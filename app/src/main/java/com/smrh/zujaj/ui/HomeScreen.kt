@@ -1,5 +1,11 @@
 package com.smrh.zujaj.ui
 
+import com.smrh.zujaj.widget.WidgetUpdater
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.Groups
@@ -145,11 +151,12 @@ fun HomeScreen(nav: Nav) {
         androidx.compose.animation.AnimatedContent(
             targetState = tab,
             transitionSpec = {
-                val dir = if (targetState > initialState) 1 else -1
-                // fade-through: old tab fades out fast, new one fades in with a 24dp drift
-                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(210, 90)) +
-                    androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(280, 60, Motion.ease)) { (24 * density).toInt() * dir })
-                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
+                val dir = (if (targetState > initialState) 1 else -1) * (if (Prefs.isRtlUi) -1 else 1)
+                if (Motion.reduced) androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(90)).togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(60)))
+                // fade-through: old tab fades out fast, new one fades in with a short 16dp drift
+                else (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(170, 60)) +
+                    androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(220, 40, Motion.ease)) { (16 * density).toInt() * dir })
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(70)))
             },
             label = "tabs",
         ) { t ->
@@ -157,7 +164,7 @@ fun HomeScreen(nav: Nav) {
                 0 -> DiscoverTab(nav)
                 1 -> WallLibraryTab(nav)
                 2 -> FavoritesTab(nav) { tab = 0 }
-                3 -> MyWidgetsTab(nav)
+                3 -> MyWidgetsTab(nav) { tab = 0 }
                 else -> SettingsScreen(nav, asTab = true)
             }
         }
@@ -330,23 +337,34 @@ fun perRow(shape: Shape, widthDp: Int): Int = when (shape) {
 }
 
 /** A widget on a soft stage that looks like a bit of a home screen; badge in the corner, name under it. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, compact: Boolean = false, share: Boolean = false, onClick: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val small = st.shape == Shape.SMALL
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f), label = "press")
-    val tint = catColor(st.cat)
-    Column(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
-        .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)) {
+    var menu by remember { mutableStateOf(false) }
+    // each design sits on one of our calm dark wallpapers, so it looks like it would on a real home screen
+    val wall = remember(st.id) { stageWalls[(st.id.hashCode() and 0x7fffffff) % stageWalls.size] }
+    val wallImg by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, wall) { value = WallLibrary.thumb(WallLibrary.all[wall]) }
+    val accent = LocalAccent.current
+    Box(modifier) {
+    Column(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
+        .combinedClickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick,
+            onLongClick = { Haptics.click(ctx); menu = true })) {
         Box(
             Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).then(if (share) Modifier.sharedWidget(st.id) else Modifier).clip(RoundedCornerShape(24.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF101015))))
-                .border(1.dp, Z.tint(0.07f), RoundedCornerShape(24.dp))
-                .padding(if (compact) 8.dp else if (small) 16.dp else 14.dp),
+                .border(1.dp, Z.tint(0.07f), RoundedCornerShape(24.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            WidgetPreview(st.defaultConfig(), if (stage != null) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), density = 2f)
+            wallImg?.let { androidx.compose.foundation.Image(it, null, Modifier.matchParentSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop, alpha = 0.85f) }
+            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.18f)))
+            Box(Modifier.padding(if (compact) 8.dp else if (small) 16.dp else 14.dp), contentAlignment = Alignment.Center) {
+                WidgetPreview(st.defaultConfig(), if (stage != null) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), density = 2f)
+            }
         }
         if (showName) {
             Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 9.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -357,7 +375,31 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
             }
         }
     }
+    // long press: quick actions without opening the editor
+    androidx.compose.material3.DropdownMenu(menu, { menu = false }, modifier = Modifier.background(Z.surface2)) {
+        val fav = st.id in Prefs.favorites
+        androidx.compose.material3.DropdownMenuItem(text = { Text(tr("Add to home screen now", "ضيفها على طول")) },
+            leadingIcon = { Icon(Icons.Rounded.AddCircle, null, tint = accent) }, onClick = {
+                menu = false
+                if (Flags.locked(st)) android.widget.Toast.makeText(ctx, tr("This one is Pro — open it to unlock", "دي برو — افتحها عشان تفتحها"), android.widget.Toast.LENGTH_SHORT).show()
+                else { Haptics.success(ctx); pin(ctx, st.defaultConfig(), st.shape) }
+            })
+        androidx.compose.material3.DropdownMenuItem(text = { Text(if (fav) tr("Remove from saved", "شيلها من المفضلة") else tr("Save to favourites", "ضيفها للمفضلة")) },
+            leadingIcon = { Icon(if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null, tint = accent) }, onClick = {
+                menu = false; Haptics.tick(ctx)
+                Prefs.favorites = if (fav) Prefs.favorites - st.id else Prefs.favorites + st.id
+            })
+        androidx.compose.material3.DropdownMenuItem(text = { Text(tr("Share", "شارك")) },
+            leadingIcon = { Icon(Icons.Rounded.Share, null, tint = accent) }, onClick = {
+                menu = false
+                runCatching { ShareDesign.share(ctx, st.defaultConfig(), android.graphics.Color.argb(255, (accent.red * 255).toInt(), (accent.green * 255).toInt(), (accent.blue * 255).toInt())) }
+            })
+    }
+    }
 }
+
+/** Dark, calm built-in wallpapers used behind widget previews (aurora, bokeh, night). */
+private val stageWalls = listOf(5, 6, 7, 8, 25, 26, 27, 30, 31, 32, 33, 0)
 
 fun sizeLabel(s: Shape) = when (s) {
     Shape.SMALL -> tr("Small · 2×2", "صغير · ٢×٢")
@@ -415,6 +457,7 @@ val DEFAULT_PICKS = listOf("prayer_hub", "calli_lawn", "photo_verse", "event_car
 fun DiscoverTab(nav: Nav) {
     val pro by Billing.pro.collectAsState()
     val flags by Flags.flags.collectAsState()
+    val ctxStarter = androidx.compose.ui.platform.LocalContext.current
     val ver by Prefs.version.collectAsState()
     touch(ver)
     val accent = LocalAccent.current
@@ -422,6 +465,14 @@ fun DiscoverTab(nav: Nav) {
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
     var chip by rememberSaveable { mutableStateOf("popular") }
     var jumpToTabs by remember { mutableStateOf(false) }
+    // first visit: three easy picks to start with, until a widget is on the home screen
+    var starterOff by remember { mutableStateOf(Prefs.getString("starter_done") == "1") }
+    val starter = remember(starterOff, flags) {
+        if (starterOff || WidgetUpdater.allIds(ctxStarter).isNotEmpty()) emptyList()
+        else listOf(listOf(Cat.DIGITAL, Cat.CLOCK), listOf(Cat.PRAYER), listOf(Cat.DATE)).mapNotNull { cs ->
+            all.filter { it.cat in cs && !Flags.isPro(it) && it.shape != Shape.XL && it.shape != Shape.TALL }.sortedByDescending { it.popular }.firstOrNull()
+        }
+    }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     // rows animate in once per visit to Discover; returning from a widget shows them in place at once
     var entered by rememberSaveable { mutableStateOf(false) }
@@ -473,6 +524,7 @@ fun DiscoverTab(nav: Nav) {
             }
         }
         if (com.smrh.zujaj.remote.Flags.freeNow(flags)) item(key = "free") { FreeBanner(flags.freeUntil, gut) }
+        if (starter.isNotEmpty()) item(key = "starter") { StarterCard(starter, gut, nav) { starterOff = true } }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
             Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 6.dp)
                 .clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f)).padding(14.dp))
@@ -620,7 +672,7 @@ fun DiscoverTab(nav: Nav) {
         }
     }
     // index of the sticky collection tabs in the list (items above it)
-    fun tabsIndex() = 1 + (if (com.smrh.zujaj.remote.Flags.freeNow(flags)) 1 else 0) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0) +
+    fun tabsIndex() = 1 + (if (com.smrh.zujaj.remote.Flags.freeNow(flags)) 1 else 0) + (if (starter.isNotEmpty()) 1 else 0) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0) +
         1 + 1 + (if (Prefs.getString("recent").split(",").any { id -> all.any { it.id == id } }) 1 else 0) +
         (if (flags.top.any { id -> all.any { it.id == id } }) 1 else 0) + 1
     LaunchedEffect(jumpToTabs) { if (jumpToTabs) { delay(60); listState.animateScrollToItem(tabsIndex()); jumpToTabs = false } }
@@ -952,6 +1004,37 @@ fun FeatureCard(title: String, sub: String, tint: Color, modifier: Modifier, onC
         Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp)) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Z.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(sub, fontSize = 12.sp, color = Z.sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** "Start here": three easy widgets for a first-time user, added one after another with one button. */
+@Composable
+private fun StarterCard(list: List<WidgetStyle>, gut: androidx.compose.ui.unit.Dp, nav: Nav, onClose: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val accent = LocalAccent.current
+    Column(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s).clip(RoundedCornerShape(Rad.xl))
+        .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.2f), Z.surface))).border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(Rad.xl)).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(tr("Start here", "ابدأ من هنا"), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
+                Text(tr("A clock, prayer times and the date — the three most people start with", "ساعة ومواقيت الصلاة والتاريخ — التلاتة اللي أغلب الناس بتبدأ بيهم"), fontSize = 13.sp, color = Z.sub)
+            }
+            IconButton(onClick = { Prefs.setString("starter_done", "1"); onClose() }) { Icon(Icons.Rounded.Close, tr("Hide", "إخفاء"), tint = Z.sub) }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            list.forEach { st ->
+                Box(Modifier.weight(1f).height(92.dp).clip(RoundedCornerShape(Rad.m)).background(Backdrops.brush(1)).clickable { nav.go(Screen.Editor(st.id)) }.padding(6.dp),
+                    contentAlignment = Alignment.Center) { WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1.6f) }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        PrimaryButton(tr("Add all ${list.size}", "ضيفهم مرة واحدة"), Modifier.fillMaxWidth(), icon = Icons.Rounded.AddCircle) {
+            // Android asks once per widget, so they go one after another (the next one is offered after each)
+            com.smrh.zujaj.widget.WidgetEvents.queue.clear()
+            com.smrh.zujaj.widget.WidgetEvents.queue.addAll(list.drop(1).map { it.id })
+            pin(ctx, list.first().defaultConfig(), list.first().shape)
         }
     }
 }

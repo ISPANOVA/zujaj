@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.rounded.Upload
@@ -361,6 +362,25 @@ fun WallLibraryTab(nav: Nav) {
                         }
                     }
                 }
+                if (page == 0 && fam == 0) {
+                    val dw = remember(hidden) { DailyWall.today(hidden) }
+                    var auto by remember { mutableStateOf(DailyWall.auto()) }
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
+                        .clickable { open = WallSrc.Built(dw) }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        WallThumb(WallSrc.Built(dw), Modifier.width(54.dp).aspectRatio(270f / 585f))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Wallpaper of the day", "خلفية اليوم"), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Z.text)
+                            Text(dw.name(ar), fontSize = 13.sp, color = Z.sub, maxLines = 1)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Switch(auto, { auto = it; DailyWall.setAuto(it); Haptics.tick(ctx)
+                                    if (it) { Toast.makeText(ctx, tr("Every morning your wallpaper changes to the day's one", "كل يوم الصبح خلفيتك هتتغير لخلفية اليوم"), Toast.LENGTH_LONG).show(); scope.launch { DailyWall.runIfDue(ctx) } } },
+                                    modifier = Modifier.scale(0.75f), colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
+                                Text(tr("Set it every morning", "حطها كل يوم الصبح"), fontSize = 13.sp, color = Z.text)
+                            }
+                        }
+                    }
+                }
                 if (page == 1) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Wallpapers shared by people, after review.", "خلفيات شاركها الناس، بعد المراجعة."), fontSize = 13.sp, color = Z.sub, modifier = Modifier.weight(1f))
                     PrimaryButton(tr("Share yours", "شارك خلفيتك"), icon = Icons.Rounded.Upload) {
@@ -435,9 +455,20 @@ private fun WallSheet(src: WallSrc, nav: Nav, onClose: () -> Unit) {
     Dialog(onClose, DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().padding(20.dp).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
+            // preview it as a real screen: lock screen (big clock) or home screen (app icons and a dock)
+            var mock by remember { mutableIntStateOf(0) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                listOf(tr("Lock screen", "شاشة القفل"), tr("Home screen", "الرئيسية")).forEachIndexed { i, l ->
+                    val sel = i == mock
+                    Text(l, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = if (sel) Z.text else Z.sub,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (sel) LocalAccent.current.copy(alpha = 0.2f) else Color.Transparent)
+                            .border(1.dp, if (sel) LocalAccent.current else Z.line, RoundedCornerShape(50)).clickable { mock = i }.padding(horizontal = 14.dp, vertical = 6.dp))
+                }
+            }
             Box(Modifier.fillMaxHeight(0.5f).aspectRatio(540f / 1170f).clip(RoundedCornerShape(Rad.l)).background(Z.surface2), contentAlignment = Alignment.Center) {
                 if (preview != null) Image(preview, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current)
+                if (preview != null) PhoneMock(mock == 0)
             }
             Spacer(Modifier.height(10.dp))
             Text(tr("By ", "من ") + src.by, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Z.text)
@@ -482,5 +513,49 @@ private fun OptionBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Z.text, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
         Text(label, color = Z.text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
+    }
+}
+
+/** Pretend phone screen over a wallpaper preview: the lock-screen clock, or app icons and a dock. */
+@Composable
+private fun PhoneMock(lock: Boolean) {
+    val now = remember { java.time.LocalDateTime.now() }
+    val ar = Prefs.isArabicUi
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val w = maxWidth
+        if (lock) Column(Modifier.fillMaxSize().padding(top = w * 0.16f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(com.smrh.zujaj.data.Calendars.dayName(now.toLocalDate(), ar) + " " + now.dayOfMonth, color = Color.White.copy(alpha = 0.9f), fontSize = (w.value * 0.055f).sp, fontWeight = FontWeight.SemiBold)
+            Text("%d:%02d".format(now.hour.let { if (it % 12 == 0) 12 else it % 12 }, now.minute), color = Color.White, fontSize = (w.value * 0.24f).sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.padding(bottom = w * 0.06f).width(w * 0.3f).height(4.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.8f)))
+        } else Column(Modifier.fillMaxSize().padding(horizontal = w * 0.08f, vertical = w * 0.12f)) {
+            val icon = w * 0.14f
+            repeat(2) {
+                Row(Modifier.fillMaxWidth().padding(vertical = w * 0.04f), horizontalArrangement = Arrangement.SpaceBetween) {
+                    repeat(4) { Box(Modifier.size(icon).clip(RoundedCornerShape(icon * 0.3f)).background(Color.White.copy(alpha = 0.22f)).border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(icon * 0.3f))) }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(icon * 0.5f)).background(Color.White.copy(alpha = 0.16f)).padding(w * 0.03f), horizontalArrangement = Arrangement.SpaceBetween) {
+                repeat(4) { Box(Modifier.size(icon).clip(RoundedCornerShape(icon * 0.3f)).background(Color.White.copy(alpha = 0.3f))) }
+            }
+        }
+    }
+}
+
+/** Wallpaper of the day: the same one for everyone on a given day, from the built-in set. */
+object DailyWall {
+    fun today(hidden: Set<Int> = emptySet()): WallLibrary.Wall {
+        val list = WallLibrary.all.filter { it.id !in hidden }.ifEmpty { WallLibrary.all }
+        return list[(java.time.LocalDate.now().toEpochDay() % list.size).toInt()]
+    }
+    fun auto() = Prefs.getString("daily_wall") == "1"
+    fun setAuto(v: Boolean) = Prefs.setString("daily_wall", if (v) "1" else "0")
+    /** From the background refresh: after 6 am, set today's wallpaper once (home + lock) when switched on. */
+    suspend fun runIfDue(ctx: android.content.Context) {
+        if (!auto()) return
+        val day = java.time.LocalDate.now().toEpochDay().toString()
+        if (Prefs.getString("daily_wall_day") == day || java.time.LocalTime.now().hour < 6) return
+        if (WallLibrary.apply(ctx, today(), 3)) Prefs.setString("daily_wall_day", day)
     }
 }

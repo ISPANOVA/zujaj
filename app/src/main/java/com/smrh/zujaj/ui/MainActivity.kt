@@ -167,6 +167,7 @@ open class MainActivity : ComponentActivity() {
         Prefs.init(this)
         appCtx = applicationContext
         runCatching { TimeAccess.migrate(this) }
+        Motion.reduced = Z.reducedMotion(this)
         runCatching { WallMatch.follow(this) }
         if (savedInstanceState == null) {
             com.smrh.zujaj.remote.Stats.opened()
@@ -255,6 +256,25 @@ open class MainActivity : ComponentActivity() {
 
 class ConfigureActivity : MainActivity()
 
+/** The activity the launcher opens (MainActivity's name is now the default launcher icon alias). */
+class AppActivity : MainActivity()
+
+/** Launcher icon colour: one alias per colour, exactly one enabled. Index 0 = the original dark icon. */
+object AppIcon {
+    private val names = listOf("MainActivity", "IconViolet", "IconGold", "IconLight", "IconMint", "IconRose")
+    val colours = listOf(0xFF0E0E14, 0xFF3B2E8F, 0xFFB8862B, 0xFFF4F1EA, 0xFF0E6F5C, 0xFF8E2A50).map { it.toInt() }
+    private fun cn(ctx: android.content.Context, n: String) = android.content.ComponentName(ctx.packageName, "com.smrh.zujaj.ui.$n")
+    fun current(ctx: android.content.Context): Int = (1 until names.size).firstOrNull { i ->
+        ctx.packageManager.getComponentEnabledSetting(cn(ctx, names[i])) == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+    } ?: 0
+    fun set(ctx: android.content.Context, i: Int) = runCatching {
+        val pm = ctx.packageManager
+        // enable the new one first so the app always keeps a launcher icon
+        pm.setComponentEnabledSetting(cn(ctx, names[i]), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+        names.forEachIndexed { j, n -> if (j != i) pm.setComponentEnabledSetting(cn(ctx, n), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP) }
+    }
+}
+
 @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun Root(nav: Nav) {
@@ -276,7 +296,8 @@ fun Root(nav: Nav) {
             // later from 30dp away. Short distances + opacity only → GPU-cheap and smooth even while the new
             // page is still drawing its widget previews.
             val d = (30 * density).toInt() * dir
-            (slideInHorizontally(androidx.compose.animation.core.tween(300, 60, Motion.ease)) { d } + fadeIn(androidx.compose.animation.core.tween(210, 90, androidx.compose.animation.core.LinearOutSlowInEasing)))
+            if (Motion.reduced) fadeIn(androidx.compose.animation.core.tween(100)).togetherWith(fadeOut(androidx.compose.animation.core.tween(60)))
+            else (slideInHorizontally(androidx.compose.animation.core.tween(300, 60, Motion.ease)) { d } + fadeIn(androidx.compose.animation.core.tween(210, 90, androidx.compose.animation.core.LinearOutSlowInEasing)))
                 .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(300, easing = Motion.ease)) { -d } + fadeOut(androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutLinearInEasing)))
                 .using(androidx.compose.animation.SizeTransform(clip = false))
         }, label = "nav", contentKey = { it.id }) { entry -> val s = entry.screen
@@ -392,6 +413,20 @@ fun WidgetAddedHost(nav: Nav) {
     val ev by com.smrh.zujaj.widget.WidgetEvents.added.collectAsState()
     val (id, styleId) = ev ?: return
     val st = com.smrh.zujaj.catalog.Catalog.byId(styleId)
+    val q = com.smrh.zujaj.widget.WidgetEvents.queue
+    if (q.isNotEmpty()) {
+        Prefs.setString("starter_done", "1")
+        val next = com.smrh.zujaj.catalog.Catalog.byId(q.first())
+        ZDialog(Icons.Rounded.CheckCircle, tr("Added ✓ — ${q.size} to go", "اتضافت ✓ — فاضل ${q.size}"), next?.let { if (Prefs.isArabicUi) it.ar else it.en },
+            iconColor = Color(0xFF3DDC97), onDismiss = { q.clear(); com.smrh.zujaj.widget.WidgetEvents.added.value = null }) {
+            PrimaryButton(tr("Add the next one", "ضيف اللي بعدها"), Modifier.fillMaxWidth()) {
+                val n = q.removeAt(0); com.smrh.zujaj.widget.WidgetEvents.added.value = null
+                com.smrh.zujaj.catalog.Catalog.byId(n)?.let { pin(ctx, it.defaultConfig(), it.shape) }
+            }
+            androidx.compose.material3.TextButton(onClick = { q.clear(); com.smrh.zujaj.widget.WidgetEvents.added.value = null }, modifier = Modifier.fillMaxWidth()) { Text(tr("Stop here", "كفاية كده"), color = Z.sub) }
+        }
+        return
+    }
     fun close() { com.smrh.zujaj.widget.WidgetEvents.added.value = null }
     androidx.compose.runtime.LaunchedEffect(id) { Haptics.success(ctx) }
     ZDialog(Icons.Rounded.CheckCircle, tr("Added to your home screen", "اتضافت على الشاشة ✓"),

@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.automirrored.rounded.Redo
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.withContext
@@ -179,6 +183,21 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var showTapApp by remember { mutableStateOf(false) }
     var showCity by remember { mutableStateOf(false) }
     var askExact by remember { mutableStateOf(false) }
+    // undo / redo: a change is recorded once it has settled for a moment (not every slider step)
+    val original = remember(s) { cfg }
+    val undo = remember(s) { androidx.compose.runtime.mutableStateListOf<WidgetConfig>() }
+    val redo = remember(s) { androidx.compose.runtime.mutableStateListOf<WidgetConfig>() }
+    var committed by remember(s) { mutableStateOf(cfg) }
+    LaunchedEffect(cfg) {
+        if (cfg == committed) return@LaunchedEffect
+        kotlinx.coroutines.delay(450)
+        undo.add(committed); if (undo.size > 40) undo.removeAt(0)
+        committed = cfg; redo.clear()
+    }
+    fun doUndo() { if (undo.isEmpty()) return; Haptics.tick(ctx); val prev = undo.removeAt(undo.lastIndex); redo.add(cfg); committed = prev; cfg = prev }
+    fun doRedo() { if (redo.isEmpty()) return; Haptics.tick(ctx); val next = redo.removeAt(redo.lastIndex); undo.add(cfg); committed = next; cfg = next }
+    // before / after: hold the preview to see the widget as it was when the editor opened
+    var showOriginal by remember { mutableStateOf(false) }
     // remember the last 8 designs opened, for "Recently opened" on the home page
     LaunchedEffect(style.id) { Prefs.setString("recent", (listOf(style.id) + Prefs.getString("recent").split(",").filter { it.isNotBlank() && it != style.id }).take(8).joinToString(",")) }
     // gradient time needs the permissions; 1 = asked from the switch, 2 = asked from Apply/Save
@@ -236,9 +255,12 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
         ) {
             AdUnlockCard(style.id, locked, unlockVer)
+            val pill = locked && adPillShown(style.id)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (pill) AdPill(style.id, unlockVer, Modifier.weight(1f))
             PrimaryButton(
-                modifier = Modifier.fillMaxWidth(),
-                text = if (locked) tr("Unlock with Pro", "افتح مع برو") else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
+                modifier = if (pill) Modifier.weight(1f) else Modifier.fillMaxWidth(),
+                text = if (locked) (if (pill) "Pro" else tr("Unlock with Pro", "افتح مع برو")) else if (s.widgetId != -1) tr("Save", "حفظ") else tr("Apply", "إضافة للشاشة"),
                 icon = if (locked) Icons.Rounded.Lock else Icons.Rounded.Check,
             ) {
                 when {
@@ -258,13 +280,21 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                 }
             }
+            }
         }
     }
     var tab by rememberSaveable(s) { mutableIntStateOf(editorStartTab) }
     var stage by remember { mutableIntStateOf(0) }
+    val wallBrush = remember { WallMatch.colours(ctx)?.let { cs -> Brush.linearGradient(cs.map { Color(it) } + Color(cs.first()).copy(alpha = 0.8f)) } }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(style.name(ar), tryLeave) {
+                IconButton(onClick = { doUndo() }, enabled = undo.isNotEmpty() || cfg != committed) {
+                    Icon(Icons.AutoMirrored.Rounded.Undo, tr("Undo", "تراجع"), tint = if (undo.isNotEmpty() || cfg != committed) Z.text else Z.sub.copy(alpha = 0.4f))
+                }
+                IconButton(onClick = { doRedo() }, enabled = redo.isNotEmpty()) {
+                    Icon(Icons.AutoMirrored.Rounded.Redo, tr("Redo", "إعادة"), tint = if (redo.isNotEmpty()) Z.text else Z.sub.copy(alpha = 0.4f))
+                }
                 val accentArgb = LocalAccent.current.let { android.graphics.Color.argb(255, (it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
                 Box {
                     var shareMenu by remember { mutableStateOf(false) }
@@ -290,11 +320,17 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             // ---------------------------------------------------------------- preview
             Box(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp).sharedWidget(style.id).clip(RoundedCornerShape(30.dp))
-                    .background(Backdrops.brush(stage))
+                    .background(if (stage == 99 && wallBrush != null) wallBrush else Backdrops.brush(stage))
                     .padding(top = 26.dp, bottom = 46.dp, start = if (style.shape == Shape.SMALL) 84.dp else 22.dp, end = if (style.shape == Shape.SMALL) 84.dp else 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                WidgetPreview(cfg, Modifier.fillMaxWidth(), density = 3f, live = true)
+                WidgetPreview(if (showOriginal) original else cfg, Modifier.fillMaxWidth()
+                    .pointerInput(Unit) { detectTapGestures(onLongPress = { }, onPress = {
+                        val t = kotlinx.coroutines.withTimeoutOrNull(350) { tryAwaitRelease() }
+                        if (t == null) { showOriginal = true; Haptics.tick(ctx); tryAwaitRelease(); showOriginal = false }
+                    }) }, density = 3f, live = true)
+                if (showOriginal) Text(tr("Before", "قبل"), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.TopStart).offset(y = (-18).dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 10.dp, vertical = 3.dp))
             }
             // backdrop picker floats over the stage's bottom edge
             Row(
@@ -304,6 +340,12 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     Modifier.clip(RoundedCornerShape(50)).background(Z.surface.copy(alpha = 0.92f)).border(1.dp, Z.line, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // "my wallpaper": its colours (Android shares them without any permission)
+                    if (wallBrush != null) Box(
+                        Modifier.size(22.dp).clip(CircleShape).background(wallBrush)
+                            .border(2.dp, if (stage == 99) Color.White else Z.tint(0.15f), CircleShape)
+                            .clickable { Haptics.tick(ctx); stage = 99 }, contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Rounded.Wallpaper, tr("My wallpaper", "خلفيتي"), tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(12.dp)) }
                     repeat(Backdrops.count) { i ->
                         Box(
                             Modifier.size(22.dp).clip(CircleShape).background(Backdrops.brush(i))
@@ -699,12 +741,21 @@ private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
         }
         return
     }
+    // locked: one compact line beside "Unlock with Pro" (see AdPill)
+}
+
+/** "Watch ads" as one small pill next to the Pro button: ▶ 1/3 · free 3 days, with a thin progress line. */
+@Composable
+private fun AdPill(id: String, ver: Int, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val U = com.smrh.zujaj.ads.AdUnlock
+    val ready by com.smrh.zujaj.ads.Ads.ready.collectAsState()
     val need = U.needed(); val done = remember(ver) { U.watched(id) }
     val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "u").animateFloat(0.55f, 1f,
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Reverse), label = "p")
-    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(shape)
+    Box(modifier.heightIn(min = 54.dp).clip(RoundedCornerShape(50))
         .background(Brush.linearGradient(listOf(Color(0xFF7B5CD6).copy(alpha = 0.35f), Color(0xFFE7B75F).copy(alpha = 0.22f))))
-        .border(1.dp, Z.tint(0.12f), shape)
+        .border(1.dp, Z.tint(0.14f), RoundedCornerShape(50))
         .clickable {
             val a = ctx as? Activity ?: return@clickable
             val shown = com.smrh.zujaj.ads.Ads.showReward(a, quota = false) {
@@ -713,27 +764,25 @@ private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
                     else tr("${U.watched(id)} of $need — keep going!", "${U.watched(id)} من $need — كمّل!"), Toast.LENGTH_SHORT).show()
             }
             if (!shown) Toast.makeText(ctx, tr("The ad is still loading — try again in a few seconds", "الإعلان لسه بيحمّل، جرب كمان ثواني"), Toast.LENGTH_SHORT).show()
-        }.padding(horizontal = 14.dp, vertical = 11.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.PlayCircle, null, tint = Color.White.copy(alpha = if (ready) pulse else 0.5f), modifier = Modifier.size(26.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(tr("Watch $need ads · free for ${U.days()} days", "شوف $need إعلانات وافتحها ${U.days()} أيام ببلاش"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(tr("Opens this widget only", "بتفتح الويدجت دي بس"), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+        }, contentAlignment = Alignment.Center) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (ready) Icon(Icons.Rounded.PlayCircle, null, tint = Z.text.copy(alpha = pulse), modifier = Modifier.size(22.dp))
+            else CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Z.text.copy(alpha = 0.7f))
+            Spacer(Modifier.width(8.dp))
+            Column {
+                Text(tr("Free · $done/$need ads", "ببلاش · $done/$need إعلانات"), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Z.text, maxLines = 1)
+                Text(tr("${U.days()} days, this widget", "${U.days()} أيام للويدجت دي"), fontSize = 11.sp, color = Z.sub, maxLines = 1)
             }
-            if (!ready) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White.copy(alpha = 0.7f))
         }
-        Spacer(Modifier.height(9.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(need) { i ->
-                val on = i < done
-                val f by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, label = "d$i")
-                Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(50)).background(Z.tint(0.18f))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Color.White))
-                }
-            }
+        Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 22.dp, vertical = 5.dp).fillMaxWidth().height(2.dp).clip(RoundedCornerShape(50)).background(Z.tint(0.15f))) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(done / need.toFloat().coerceAtLeast(1f)).background(LocalAccent.current))
         }
     }
+}
+
+private fun adPillShown(id: String): Boolean {
+    val styleIsPro = com.smrh.zujaj.catalog.Catalog.byId(id)?.let { Flags.isPro(it) } ?: false
+    return styleIsPro && !com.smrh.zujaj.data.Prefs.isPro && com.smrh.zujaj.ads.AdUnlock.enabled()
 }
 
 /** Corner radius the phone uses for widgets (Android 12+), in the editor's corner units; null when unknown. */

@@ -12,4 +12,9 @@
     </style>
     <color name="bg">#FF0A0A0E</color>
     <color name="ic_bg">#FF0E0E14</color>
+    <color name="ic_bg_violet">#FF3B2E8F</color>
+    <color name="ic_bg_gold">#FFB8862B</color>
+    <color name="ic_bg_light">#FFF4F1EA</color>
+    <color name="ic_bg_mint">#FF0E6F5C</color>
+    <color name="ic_bg_rose">#FF8E2A50</color>
 </resources>

@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.rounded.Tune
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.AlternateEmail
@@ -131,7 +134,7 @@ import kotlinx.coroutines.withContext
  * widens); each card shows the live design on a home-screen-like backdrop with a direct Edit action.
  */
 @Composable
-fun MyWidgetsTab(nav: Nav) {
+fun MyWidgetsTab(nav: Nav, onDiscover: () -> Unit = {}) {
     val ctx = LocalContext.current
     val ver by Prefs.version.collectAsState()
     val ids = remember(ver) { WidgetUpdater.allIds(ctx).filter { Prefs.widgetConfig(it)?.let { c -> Catalog.byId(c.styleId) } != null } }
@@ -143,7 +146,10 @@ fun MyWidgetsTab(nav: Nav) {
             EmptyState(Icons.Rounded.Dashboard, tr("Nothing on your home screen yet", "لسه مفيش ويدجت على شاشتك"),
                 tr("Pick any design, make it yours and tap Apply — it will show up here so you can edit it later.",
                     "اختار أي تصميم وعدّله واضغط إضافة — هيظهر هنا عشان تعدّله بعدين."),
-                tr("How to add widgets", "طريقة إضافة الويدجت")) { nav.go(Screen.Tutorial) }
+                tr("Add your first widget", "ضيف أول ويدجت")) { onDiscover() }
+            TextButton(onClick = { nav.go(Screen.Tutorial) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(tr("How adding widgets works", "إزاي الإضافة بتشتغل"), color = Z.sub)
+            }
             return@Column
         }
         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
@@ -163,7 +169,12 @@ fun MyWidgetsTab(nav: Nav) {
                     Row(Modifier.fillMaxWidth().padding(start = Sp.l, end = Sp.s, top = 2.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(st.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            Text(sizeLabel(st.shape), color = Z.sub, fontSize = 12.sp)
+                            val lock = remember(id) { WidgetUpdater.isKeyguard(ctx, id) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(if (lock) Icons.Rounded.Lock else Icons.Rounded.Home, null, tint = Z.sub, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text((if (lock) tr("On the lock screen", "على شاشة القفل") else tr("On the home screen", "على الرئيسية")) + " · " + sizeLabel(st.shape), color = Z.sub, fontSize = 13.sp, maxLines = 1)
+                            }
                         }
                         TextButton(onClick = { nav.go(Screen.Editor(st.id, id)) }) {
                             Icon(Icons.Rounded.Edit, null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
@@ -244,10 +255,30 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             else Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub)
         }
     }
+    val index = remember { SettingsIndex() }
+    var q by rememberSaveable { mutableStateOf("") }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsIndex provides index) {
     Column(Modifier.fillMaxSize()) {
         if (!asTab) TopBar("", { nav.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = (gut - Sp.l).coerceAtLeast(0.dp))) {
             Text(tr("Settings", "الإعدادات"), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = Sp.l + 4.dp, end = Sp.l, top = if (asTab) Sp.l + 4.dp else 0.dp, bottom = Sp.m))
+            // search: type a word, tap a result, the page scrolls to its group
+            Box(Modifier.padding(start = Sp.l, end = Sp.l, bottom = Sp.m)) { ZField(q, { q = it }, tr("Search settings", "ابحث في الإعدادات"), Icons.Rounded.Search) }
+            if (q.isNotBlank()) {
+                val hits = index.labels.flatMap { (sec, ls) -> ls.filter { it.contains(q.trim(), ignoreCase = true) || sec.contains(q.trim(), true) }.map { it to sec } }.take(8)
+                Column(Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))) {
+                    if (hits.isEmpty()) Text(tr("Nothing found", "مفيش نتايج"), color = Z.sub, modifier = Modifier.padding(16.dp))
+                    hits.forEachIndexed { i, (label, sec) ->
+                        if (i > 0) Divider()
+                        Row(Modifier.fillMaxWidth().clickable { q = ""; scope.launch { index.requesters[sec]?.bringIntoView() } }.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(label, color = Z.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text(sec, color = Z.sub, fontSize = 13.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(Sp.m))
+            }
             proStrip()
             // Five plain groups, the everyday options first. Rarely-touched switches live one tap deeper
             // ("More prayer options", "Keep widgets up to date") instead of filling the page.
@@ -257,7 +288,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
                 }
                 Divider()
-                ChoiceRow(tr("Appearance", "المظهر"), Z.mode(), listOf(1 to tr("Dark", "غامق"), 2 to tr("Light", "فاتح"), 0 to tr("Like the phone", "زي التليفون")), Icons.Rounded.DarkMode, purple) {
+                ChoiceRow(tr("Appearance", "المظهر"), Z.mode(), listOf(1 to tr("Dark", "غامق"), 3 to tr("Pure black (AMOLED)", "أسود خالص (AMOLED)"), 2 to tr("Light", "فاتح"), 0 to tr("Like the phone", "زي التليفون")), Icons.Rounded.DarkMode, purple) {
                     Prefs.setString("theme_mode", it.toString()); Z.refresh(ctx)
                 }
                 Divider()
@@ -269,6 +300,24 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                                 .border(2.dp, if (on) Z.text else Color.Transparent, CircleShape)
                                 .clickable { Haptics.tick(ctx); Z.pickAccent(i) })
                         }
+                    }
+                }
+                Divider()
+                RowBase(tr("App icon", "أيقونة التطبيق"), sub = tr("Its colour on your home screen", "لونها على شاشتك"), icon = Icons.Rounded.Apps, iconColor = gold) {
+                    var cur by remember { mutableIntStateOf(AppIcon.current(ctx)) }
+                    var ask by remember { mutableIntStateOf(-1) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        AppIcon.colours.forEachIndexed { i, c ->
+                            Box(Modifier.size(24.dp).clip(RoundedCornerShape(7.dp)).background(Color(c))
+                                .border(2.dp, if (i == cur) Z.text else Z.tint(0.15f), RoundedCornerShape(7.dp))
+                                .clickable { Haptics.tick(ctx); if (i != cur) ask = i })
+                        }
+                    }
+                    if (ask >= 0) ZDialog(Icons.Rounded.Apps, tr("Change the app icon?", "تغيّر أيقونة التطبيق؟"),
+                        tr("The icon on your home screen is replaced (it can take a few seconds, and some phones close the app). Your widgets stay.", "الأيقونة على شاشتك هتتغير (ممكن تاخد ثواني، وبعض التليفونات بتقفل التطبيق). الويدجت بتاعتك مش هتتأثر."),
+                        onDismiss = { ask = -1 }) {
+                        PrimaryButton(tr("Change", "غيّرها"), Modifier.fillMaxWidth()) { val i = ask; ask = -1; cur = i; AppIcon.set(ctx, i) }
+                        TextButton(onClick = { ask = -1 }) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
                     }
                 }
                 Divider()
@@ -384,6 +433,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
             } else { left(); right() }
             Spacer(Modifier.height(LocalDockSpace.current + 10.dp))
         }
+    }
     }
     if (showThemes) ThemesDialog { showThemes = false }
     if (showLoc) ZDialog(Icons.Rounded.MyLocation, tr("Your location", "موقعك"),

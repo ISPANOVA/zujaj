@@ -39,9 +39,11 @@ object Z {
     fun pickAccent(i: Int) { Prefs.accentIndex = i; accentIdx = i }
     /** Light look (set from Settings: system / dark / light). Every colour below follows it. */
     var light by androidx.compose.runtime.mutableStateOf(false)
-    val bg get() = if (light) Color(0xFFF3F2F7) else Color(0xFF07070C)
-    val surface get() = if (light) Color(0xFFFFFFFF) else Color(0xFF15151B)
-    val surface2 get() = if (light) Color(0xFFEDECF3) else Color(0xFF1D1D25)
+    /** Pure-black look for OLED screens (a dark variant). */
+    var black by androidx.compose.runtime.mutableStateOf(false)
+    val bg get() = if (light) Color(0xFFF3F2F7) else if (black) Color(0xFF000000) else Color(0xFF07070C)
+    val surface get() = if (light) Color(0xFFFFFFFF) else if (black) Color(0xFF0C0C0F) else Color(0xFF15151B)
+    val surface2 get() = if (light) Color(0xFFEDECF3) else if (black) Color(0xFF151519) else Color(0xFF1D1D25)
     val line get() = if (light) Color(0x14000000) else Color(0x1AFFFFFF)
     val text get() = if (light) Color(0xFF16151C) else Color(0xFFF4F3F0)
     val sub get() = if (light) Color(0xFF6B6977) else Color(0xFF9C9BA6)
@@ -54,9 +56,10 @@ object Z {
         android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }.getOrDefault(false)
 
-    /** 0 = follow the phone, 1 = dark, 2 = light. */
+    /** 0 = follow the phone, 1 = dark, 2 = light, 3 = pure black. */
     fun mode() = Prefs.getString("theme_mode", "1").toIntOrNull() ?: 1
     fun refresh(ctx: android.content.Context) {
+        black = mode() == 3
         light = when (mode()) {
             2 -> true
             0 -> (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) != android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -157,6 +160,8 @@ enum class WidthClass { COMPACT, MEDIUM, EXPANDED;
 
 /** One motion language: standard easing, three durations, and no bounce on UI chrome. */
 object Motion {
+    /** The phone's "remove animations" is on: page and tab changes just cross-fade quickly. */
+    var reduced = false
     val ease = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
     const val FAST = 140; const val MED = 240; const val SLOW = 360
     fun <T> std(ms: Int = MED) = androidx.compose.animation.core.tween<T>(ms, easing = ease)

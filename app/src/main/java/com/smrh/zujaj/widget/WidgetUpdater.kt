@@ -291,7 +291,7 @@ object WidgetUpdater {
     private const val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     fun editIntent(ctx: Context, id: Int): PendingIntent {
-        val i = Intent(ctx, MainActivity::class.java)
+        val i = Intent(ctx, com.smrh.zujaj.ui.AppActivity::class.java)
             .setAction("zujaj.EDIT_$id")
             .putExtra(MainActivity.EXTRA_EDIT_WIDGET, id)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -318,7 +318,7 @@ object WidgetUpdater {
     }
 
     fun appMain(ctx: Context, extra: String? = null): Intent =
-        Intent(ctx, MainActivity::class.java).apply { if (extra != null) { putExtra(MainActivity.EXTRA_OPEN, extra); action = "zujaj.OPEN.$extra" } }
+        Intent(ctx, com.smrh.zujaj.ui.AppActivity::class.java).apply { if (extra != null) { putExtra(MainActivity.EXTRA_OPEN, extra); action = "zujaj.OPEN.$extra" } }
 
     private fun pendingFor(ctx: Context, id: Int, slot: Int, a: HitAction): PendingIntent? {
         val req = id * 100 + slot

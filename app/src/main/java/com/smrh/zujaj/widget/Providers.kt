@@ -225,6 +225,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             runCatching { com.smrh.zujaj.billing.Billing.recheck() }
         }
         com.smrh.zujaj.billing.Billing.refreshPro()
+        runCatching { com.smrh.zujaj.ui.DailyWall.runIfDue(applicationContext) }
         runCatching { com.smrh.zujaj.ui.WallMatch.follow(applicationContext) }
         WidgetUpdater.updateAll(applicationContext)
         Scheduler.scheduleAlarms(applicationContext)
@@ -310,4 +311,6 @@ object Scheduler {
 object WidgetEvents {
     @Volatile var listening = false
     val added = kotlinx.coroutines.flow.MutableStateFlow<Pair<Int, String>?>(null)
+    /** "Add all 3" from the starter card: the ones still to place, one at a time. */
+    val queue = mutableListOf<String>()
 }

@@ -67,7 +67,7 @@ object Reminders {
             Kind.ASHURA -> if (ar) (if (d == 10) "بكرة عاشوراء" else "بكرة تاسوعاء") else (if (d == 10) "Tomorrow is Ashura" else "Tomorrow is Tasu'a")
         }
         val body = if (ar) "تذكير بالصيام — ما تنساش السحور." else "A reminder to fast — don't miss suhoor."
-        val open = PendingIntent.getActivity(ctx, 41, Intent(ctx, com.smrh.zujaj.ui.MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val open = PendingIntent.getActivity(ctx, 41, Intent(ctx, com.smrh.zujaj.ui.AppActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(ctx, CH).setSmallIcon(com.smrh.zujaj.R.drawable.ic_mono)
             .setContentTitle(title).setContentText(body).setContentIntent(open).setAutoCancel(true).build()
         runCatching { NotificationManagerCompat.from(ctx).notify(4100 + k.ordinal, n) }
