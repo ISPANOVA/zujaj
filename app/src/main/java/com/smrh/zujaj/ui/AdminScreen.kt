@@ -634,6 +634,11 @@ private fun GeneralAdmin(email: String, page: Int) {
     val scope = AdminWork
     val flags by Flags.flags.collectAsState()
     var freeAll by remember(flags) { mutableStateOf(flags.freeAll) }
+    // timer for "everything free": days + hours from now (0 + 0 = no end). Only re-stamped when changed here.
+    val leftH = remember(flags) { if (flags.freeUntil > 0) ((flags.freeUntil - System.currentTimeMillis()) / 3_600_000L).coerceAtLeast(0).toInt() else 0 }
+    var freeDays by remember(flags) { mutableIntStateOf(leftH / 24) }
+    var freeHours by remember(flags) { mutableIntStateOf(leftH % 24) }
+    var freeTouched by remember(flags) { mutableStateOf(false) }
     var notice by remember(flags) { mutableStateOf(flags.notice) }
     var certs by remember(flags) { mutableStateOf(flags.certs.joinToString("\n")) }
     var otp by remember(flags) { mutableStateOf(flags.otpUrl) }
@@ -656,7 +661,14 @@ private fun GeneralAdmin(email: String, page: Int) {
     var upNote by remember(flags) { mutableStateOf(flags.updateNote) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (page == 0) Section(tr("Promotion", "العروض")) {
-            SwitchRow(tr("Everything free", "كل حاجة مجاني"), freeAll, tr("Every Pro widget unlocked for all users", "كل ويدجت البرو مفتوحة لكل المستخدمين")) { freeAll = it }
+            SwitchRow(tr("Everything free", "كل حاجة مجاني"), freeAll, tr("Every Pro widget unlocked for all users", "كل ويدجت البرو مفتوحة لكل المستخدمين")) { freeAll = it; freeTouched = true }
+            if (freeAll) {
+                Divider(); StepperRow(tr("For how many days", "لمدة كام يوم"), freeDays, 0..60, 1) { freeDays = it; freeTouched = true }
+                Divider(); StepperRow(tr("And hours", "وكام ساعة"), freeHours, 0..23, 1) { freeHours = it; freeTouched = true }
+                Text(if (freeDays + freeHours == 0) tr("No end — free until you turn it off.", "من غير نهاية — مجاني لحد ما تقفله.")
+                    else tr("Everyone sees a banner: free for ${freeDays}d ${freeHours}h, counting down. Press Save below.", "الكل هيشوف شريط: مجاني لمدة $freeDays يوم و$freeHours ساعة بعدّاد تنازلي. دوس حفظ تحت."),
+                    color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+            }
         }
         if (page == 0) Section(tr("Message to all users", "رسالة لكل المستخدمين")) {
             OutlinedTextField(notice, { notice = it }, placeholder = { Text(tr("Shown on the home page (leave empty to hide)", "بتظهر في الصفحة الرئيسية (سيبها فاضية عشان تختفي)")) },
@@ -754,7 +766,7 @@ private fun GeneralAdmin(email: String, page: Int) {
         PrimaryButton(tr("Save", "حفظ"), Modifier.fillMaxWidth().padding(16.dp)) {
             scope.launch(kotlinx.coroutines.NonCancellable) {
                 val list = certs.split('\n', ',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1), adHomeEvery = homeEvery.toIntOrNull() ?: 5, adCatalogEvery = catEvery.toIntOrNull() ?: 6, adInterstitial = interUnit, adRewardInter = rInterUnit, adInterGapMin = (interGap.toIntOrNull() ?: 4).coerceAtLeast(1), adInterPerSession = interMax.toIntOrNull() ?: 2)) }
+                val r = runCatching { Flags.save(flags.copy(freeAll = freeAll, freeUntil = when { !freeAll -> 0L; !freeTouched -> flags.freeUntil; freeDays + freeHours == 0 -> 0L; else -> System.currentTimeMillis() + (freeDays * 24L + freeHours) * 3_600_000L }, notice = notice.trim(), certs = list, otpUrl = otp, noticeOnce = once, latestCode = latest.toLongOrNull() ?: 0, forceUpdate = force, updateNote = upNote.trim(), adsOn = adsOn, adBanner = adBanner, adReward = adReward, adWallPerDay = adPer.toIntOrNull() ?: 3, adblockLock = adLock, adUnlockAds = unAds.toIntOrNull() ?: 3, adUnlockDays = (unDays.toIntOrNull() ?: 3).coerceAtLeast(1), adHomeEvery = homeEvery.toIntOrNull() ?: 5, adCatalogEvery = catEvery.toIntOrNull() ?: 6, adInterstitial = interUnit, adRewardInter = rInterUnit, adInterGapMin = (interGap.toIntOrNull() ?: 4).coerceAtLeast(1), adInterPerSession = interMax.toIntOrNull() ?: 2)) }
                 Toast.makeText(ctx, if (r.isSuccess) tr("Saved ✓", "اتحفظ ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
             }
         }
@@ -1134,6 +1146,7 @@ private fun StatsAdmin() {
             Divider(); RowBase(tr("Widgets added", "ويدجت اتضافت")) { Text("${sum("added")}") }
             Divider(); RowBase(tr("Pro purchases", "اشتراكات برو")) { Text("${sum("pro")}") }
             Divider(); RowBase(tr("Wallpaper purchases", "اشتراكات الخلفيات")) { Text("${sum("wall")}") }
+            Divider(); RowBase(tr("Free wallpapers used", "خلفيات مجانية اتحطت")) { Text("${sum("walls")}") }
         }
         Text(tr("Counted anonymously from this version on; older versions don't report.", "العدّ بيبدأ من الإصدار ده ومن غير أي بيانات شخصية؛ الإصدارات القديمة مش بتبعت."), color = Z.sub, fontSize = 12.sp)
     }

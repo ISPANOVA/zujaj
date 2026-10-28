@@ -37,6 +37,7 @@ object Stats {
         bump(*f.toTypedArray())
     }
     fun widgetAdded(styleId: String) = bump("added", "s_" + styleId.filter { it.isLetterOrDigit() || it == '_' }.take(40))
+    fun wallpaperUsed() = bump("walls")
     fun purchase(kind: String) = bump(if (kind == "wall") "wall" else "pro")
 
     data class Day(val date: String, val values: Map<String, Long>)

@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.WallpaperManager
 import android.graphics.Bitmap
@@ -254,7 +258,7 @@ fun SetDetailScreen(nav: Nav, id: String) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val ar = Prefs.isArabicUi
-    val locked = set.pro && !Prefs.isPro
+    val locked = set.pro && !Prefs.isPro && !com.smrh.zujaj.remote.Flags.freeNow()
     var wallDone by rememberSaveable(id) { mutableStateOf<Boolean>(false) }
     var busy by remember { mutableStateOf(false) }
     // a widget counts as added when one more of that design appears on the home screen than when we opened
@@ -330,5 +334,75 @@ private fun StepRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title
         if (done) Box(Modifier.size(28.dp).clip(CircleShape).background(Color(0xFF34C77B)), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
         } else Text(if (busy) "…" else tr("Add", "إضافة"), color = accent, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.End)
+    }
+}
+
+/** Home: one compact, colourful card instead of the big strip; opens the full list of sets. */
+@Composable
+fun SetsCard(nav: Nav, gutter: Dp) {
+    val remoteSets by WidgetSets.remote.collectAsState()
+    val list = remoteSets.filter { it.visible }.sortedBy { it.order } + WidgetSets.builtIn
+    val a = Color(list.first().accent); val b = Color(list.getOrElse(1) { list.first() }.accent)
+    Row(Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = Sp.s).height(112.dp).clip(RoundedCornerShape(Rad.l))
+        .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(a.copy(alpha = 0.55f), b.copy(alpha = 0.35f), Z.surface)))
+        .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.Sets) }.padding(start = 16.dp, end = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(tr("Ready-made sets", "سِتات جاهزة"), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Z.text)
+            Text(tr("Wallpaper + matching widgets · ${list.size} sets", "خلفية وويدجت متناسقين · ${list.size} سِتات"), fontSize = 13.sp, color = Z.sub, maxLines = 2)
+        }
+        // three mini phones fanned out
+        Box(Modifier.width(120.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            list.take(3).forEachIndexed { i, s ->
+                SetPhone(s, 44.dp, Modifier.offset(x = ((i - 1) * 30).dp, y = (if (i == 1) -4 else 6).dp)
+                    .graphicsLayer { rotationZ = (i - 1) * 8f }.zIndex(if (i == 1) 1f else 0f))
+            }
+        }
+    }
+}
+
+/** All sets, as a grid. */
+@Composable
+fun SetsScreen(nav: Nav) {
+    val remoteSets by WidgetSets.remote.collectAsState()
+    val list = remoteSets.filter { it.visible }.sortedBy { it.order } + WidgetSets.builtIn
+    val pane = LocalPaneWidth.current
+    val cols = when { pane >= 840 -> 4; pane >= 600 -> 3; else -> 2 }
+    val free = com.smrh.zujaj.remote.Flags.freeNow()
+    Column(Modifier.fillMaxSize()) {
+        TopBar(tr("Ready-made sets", "سِتات جاهزة"), { nav.back() })
+        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(androidx.compose.foundation.lazy.grid.GridCells.Fixed(cols), Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(Sp.l), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            items(list.size, key = { list[it].id }) { i -> val s = list[i]
+                Column(Modifier.clip(RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.SetDetail(s.id)) }) {
+                    Box { SetPhone(s, ((pane - 32 - 14 * (cols - 1)) / cols).dp)
+                        if (s.pro && !Prefs.isPro && !free) ProBadge(Modifier.align(Alignment.TopEnd).padding(10.dp)) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(s.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Z.text, modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(s.tag(Prefs.isArabicUi), fontSize = 12.sp, color = Z.sub, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp))
+                }
+            }
+            item { Spacer(Modifier.navigationBarsPadding()) }
+        }
+    }
+}
+
+/** Shown to everyone while the admin's "everything free" is on, with a live countdown when it has an end. */
+@Composable
+fun FreeBanner(until: Long, gutter: Dp) {
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    if (until > 0) LaunchedEffect(until) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
+    val left = (until - now).coerceAtLeast(0) / 1000
+    val d = left / 86400; val h = left % 86400 / 3600; val m = left % 3600 / 60; val s = left % 60
+    val time = if (d > 0) tr("${d}d ${h}h ${m}m", "$d يوم $h ساعة $m دقيقة") else "%02d:%02d:%02d".format(h, m, s)
+    Row(Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = 6.dp).clip(RoundedCornerShape(Rad.l))
+        .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xFF3DDC97), Color(0xFF2BB3C0)))).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text("🎁", fontSize = 24.sp); Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(tr("Everything is free!", "كل حاجة مجاني!"), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color(0xFF06281C))
+            Text(if (until > 0) tr("Every Pro widget and set, for ", "كل ويدجت وسِتات برو، لمدة ") + time else tr("Every Pro widget and set, for a limited time", "كل ويدجت وسِتات برو، لفترة محدودة"),
+                fontSize = 13.sp, color = Color(0xFF06281C))
+        }
     }
 }

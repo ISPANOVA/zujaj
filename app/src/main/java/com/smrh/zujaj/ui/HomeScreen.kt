@@ -118,6 +118,7 @@ import java.time.LocalTime
 private data class Dest(val icon: ImageVector, val en: String, val ar: String)
 private val dests = listOf(
     Dest(Icons.Rounded.Home, "Discover", "اكتشف"),
+    Dest(Icons.Rounded.Wallpaper, "Wallpapers", "خلفيات"),
     Dest(Icons.Rounded.Favorite, "Saved", "المفضلة"),
     Dest(Icons.Rounded.Dashboard, "Mine", "ويدجتاتي"),
     Dest(Icons.Rounded.Settings, "Settings", "الإعدادات"),
@@ -149,8 +150,9 @@ fun HomeScreen(nav: Nav) {
         ) { t ->
             when (t) {
                 0 -> DiscoverTab(nav)
-                1 -> FavoritesTab(nav) { tab = 0 }
-                2 -> MyWidgetsTab(nav)
+                1 -> WallLibraryTab()
+                2 -> FavoritesTab(nav) { tab = 0 }
+                3 -> MyWidgetsTab(nav)
                 else -> SettingsScreen(nav, asTab = true)
             }
         }
@@ -232,7 +234,7 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
                 Row(
                     Modifier.animateContentSize(Motion.std(Motion.MED)).clip(RoundedCornerShape(50)).background(bg)
                         .clickable { Haptics.tick(ctx); onTab(i) }
-                        .padding(horizontal = if (sel) 18.dp else 16.dp, vertical = 12.dp),
+                        .padding(horizontal = if (sel) 16.dp else 13.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(d.icon, tr(d.en, d.ar), tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp))
@@ -463,6 +465,7 @@ fun DiscoverTab(nav: Nav) {
                 }
             }
         }
+        if (com.smrh.zujaj.remote.Flags.freeNow(flags)) item(key = "free") { FreeBanner(flags.freeUntil, gut) }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
             Text(flags.notice, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 6.dp)
                 .clip(RoundedCornerShape(16.dp)).background(Z.tint(0.06f)).padding(14.dp))
@@ -523,7 +526,7 @@ fun DiscoverTab(nav: Nav) {
             }
         }
         // ---- ready-made sets: wallpaper + matching widgets
-        item(key = "sets") { SetsRow(nav, gut) }
+        item(key = "sets") { SetsCard(nav, gut) }
         item(key = "gallery") {
             Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s).clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
                 .clickable { nav.go(Screen.Gallery) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {

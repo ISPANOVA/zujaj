@@ -29,6 +29,8 @@ data class CatalogFlags(
     val fresh: List<String>? = null,
     val hidden: List<String> = emptyList(),
     val freeAll: Boolean = false,
+    /** When "everything free" ends (epoch ms); 0 = no end. */
+    val freeUntil: Long = 0,
     val notice: String = "",
     val updatedAt: Long = 0,
     /** SHA-256 of extra trusted signing certificates (the Google Play app-signing key). */
@@ -114,6 +116,7 @@ object Flags {
                 fresh = snap.get("fresh") as? List<String>,
                 hidden = (snap.get("hidden") as? List<String>) ?: emptyList(),
                 freeAll = snap.getBoolean("freeAll") ?: false,
+                freeUntil = snap.getLong("freeUntil") ?: 0,
                 notice = snap.getString("notice") ?: "",
                 updatedAt = snap.getLong("updatedAt") ?: 0,
                 certs = (snap.get("certs") as? List<String>) ?: emptyList(),
@@ -145,9 +148,12 @@ object Flags {
 
     fun isPro(s: WidgetStyle): Boolean {
         val f = _flags.value
-        if (f.freeAll) return false
+        if (freeNow(f)) return false
         return f.pro?.contains(s.id) ?: s.pro
     }
+
+    /** "Everything free" is on and its timer (if any) hasn't run out. */
+    fun freeNow(f: CatalogFlags = _flags.value) = f.freeAll && (f.freeUntil == 0L || System.currentTimeMillis() < f.freeUntil)
 
     fun isNew(s: WidgetStyle): Boolean = _flags.value.fresh?.contains(s.id) ?: s.isNew
     fun isHidden(s: WidgetStyle): Boolean = _flags.value.hidden.contains(s.id)
@@ -165,6 +171,7 @@ object Flags {
             "fresh" to (f.fresh ?: Catalog.all.filter { it.isNew }.map { it.id }),
             "hidden" to f.hidden,
             "freeAll" to f.freeAll,
+            "freeUntil" to f.freeUntil,
             "notice" to f.notice,
             "certs" to f.certs,
             "otpUrl" to f.otpUrl,
