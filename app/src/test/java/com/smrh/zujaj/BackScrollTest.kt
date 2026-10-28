@@ -19,9 +19,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Scroll the Discover list down, open a widget, press Back: the list must still be where it was. */
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = Application::class, qualifiers = "w400dp-h860dp-xhdpi")
 class BackScrollTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
