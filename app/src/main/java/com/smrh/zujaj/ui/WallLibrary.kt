@@ -204,7 +204,8 @@ object WallLibrary {
         // a whisper of grain hides gradient banding
         repeat((W * H / 900).toInt().coerceAtMost(6000)) {
             p.color = if (rnd.nextBoolean()) 0x08FFFFFF else 0x08000000
-            cv.drawRect(rnd.nextFloat() * W, rnd.nextFloat() * H, 0f, 0f, p)
+            val x = rnd.nextFloat() * W; val y = rnd.nextFloat() * H
+            cv.drawRect(x, y, x + 1.5f * u + 1f, y + 1.5f * u + 1f, p)
         }
         return b
     }
