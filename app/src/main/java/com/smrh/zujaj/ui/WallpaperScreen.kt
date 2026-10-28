@@ -169,7 +169,8 @@ fun WallpaperScreen(nav: Nav) {
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     var mask by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) { photo = WallRender.loadImage(design.image); mask = WallRender.loadImage(design.mask, 1600, trim = false) }
+        // a picture handed over from the Wallpapers tab is opened by usePhoto below instead
+        if (WallHandoff.path == null) withContext(Dispatchers.IO) { photo = WallRender.loadImage(design.image); mask = WallRender.loadImage(design.mask, 1600, trim = false) }
     }
     // save a moment after the last change (not on every finger move)
     LaunchedEffect(design) { kotlinx.coroutines.delay(500); withContext(Dispatchers.IO) { WallDesign.save(ctx, design) } }
@@ -222,12 +223,8 @@ fun WallpaperScreen(nav: Nav) {
         value = if (pw <= 0 || p == null || m == null) null else withContext(Dispatchers.Default) { runCatching { WallRender.outline(p, m, pw, ph, accent.toArgbInt(), design).asImageBitmap() }.getOrNull() }
     }
 
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            busy = true
-            val f = File(WallDesign.dir(ctx), "photo_${System.currentTimeMillis()}.jpg")
-            withContext(Dispatchers.IO) { ctx.contentResolver.openInputStream(uri)?.use { i -> f.outputStream().use { i.copyTo(it) } } }
+    /** Starts a new design on [f] (a picked photo, or a wallpaper handed over from the Wallpapers tab). */
+    suspend fun usePhoto(f: File) {
             File(design.image).takeIf { design.image.isNotBlank() }?.delete()
             File(design.mask).takeIf { design.mask.isNotBlank() }?.delete()
             photo = withContext(Dispatchers.IO) { WallRender.loadImage(f.path) }
@@ -235,8 +232,17 @@ fun WallpaperScreen(nav: Nav) {
             update(design.copy(image = f.path, mask = "", zoom = 1f, px = 0f, py = 0f, layers = design.layers.map { it.copy(behind = false) }))
             busy = false
             az = 1f; ax = 0f; ay = 0f; adjust = true; selected = null; gallery = false
+    }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            busy = true
+            val f = File(WallDesign.dir(ctx), "photo_${System.currentTimeMillis()}.jpg")
+            withContext(Dispatchers.IO) { ctx.contentResolver.openInputStream(uri)?.use { i -> f.outputStream().use { i.copyTo(it) } } }
+            usePhoto(f)
         }
     }
+    LaunchedEffect(Unit) { WallHandoff.path?.let { p -> WallHandoff.path = null; busy = true; usePhoto(File(p)) } }
 
     fun add(l: WallLayer) { update(design.copy(layers = design.layers + l)); selected = l.id; showSheet = false }
     fun change(id: Long, f: (WallLayer) -> WallLayer) = update(design.copy(layers = design.layers.map { if (it.id == id) f(it) else it }))

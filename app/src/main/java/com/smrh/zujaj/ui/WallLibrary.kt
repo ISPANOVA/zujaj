@@ -1,5 +1,9 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material.icons.rounded.Upload
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
@@ -236,67 +240,194 @@ object WallLibrary {
     }
 }
 
-/** Bottom-bar tab: the 50 free wallpapers. */
+/** Hands a picture to the wallpaper editor (photo + clocks/widgets on top). */
+object WallHandoff { @Volatile var path: String? = null }
+
+/** One card in the Wallpapers tab: a built-in drawing or an uploaded picture. */
+sealed class WallSrc {
+    abstract val key: String; abstract val by: String
+    data class Built(val wp: WallLibrary.Wall) : WallSrc() { override val key = "b${wp.id}"; override val by = "SMRH" }
+    data class Remote(val item: com.smrh.zujaj.remote.Walls.Item) : WallSrc() { override val key = "r${item.id}"; override val by = item.by }
+}
+
+/** Centre-crops [src] to the phone's screen shape and sets it. where: 1 home, 2 lock, 3 both. */
+suspend fun applyBitmap(ctx: android.content.Context, src: Bitmap, where: Int): Boolean = withContext(Dispatchers.Default) {
+    runCatching {
+        val dm = ctx.resources.displayMetrics
+        val w = minOf(dm.widthPixels, dm.heightPixels); val h = maxOf(dm.widthPixels, dm.heightPixels)
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val k = maxOf(w / src.width.toFloat(), h / src.height.toFloat())
+        val dw = src.width * k; val dh = src.height * k
+        Canvas(out).drawBitmap(src, null, android.graphics.RectF((w - dw) / 2, (h - dh) / 2, (w + dw) / 2, (h + dh) / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+        val wm = WallpaperManager.getInstance(ctx)
+        if (android.os.Build.VERSION.SDK_INT >= 24) {
+            val f = (if (where and 1 != 0) WallpaperManager.FLAG_SYSTEM else 0) or (if (where and 2 != 0) WallpaperManager.FLAG_LOCK else 0)
+            wm.setBitmap(out, null, true, f)
+        } else wm.setBitmap(out)
+        true
+    }.getOrDefault(false)
+}
+
+/** Bottom-bar tab: Home (SMRH's wallpapers) and Community (approved uploads), plus the photo + widgets editor. */
 @Composable
-fun WallLibraryTab() {
+fun WallLibraryTab(nav: Nav) {
+    val ctx = LocalContext.current
     val ar = Prefs.isArabicUi
-    var open by rememberSaveable { mutableIntStateOf(-1) }
+    var page by rememberSaveable { mutableIntStateOf(0) }
+    var open by remember { mutableStateOf<WallSrc?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var homeRemote by remember { mutableStateOf<List<com.smrh.zujaj.remote.Walls.Item>>(emptyList()) }
+    var hidden by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var community by remember { mutableStateOf<List<com.smrh.zujaj.remote.Walls.Item>?>(null) }
+    var err by remember { mutableStateOf(false) }
+    LaunchedEffect(reload) {
+        runCatching { com.smrh.zujaj.remote.Walls.hiddenBuiltIn() }.onSuccess { hidden = it }
+        runCatching { com.smrh.zujaj.remote.Walls.approved("home") }.onSuccess { homeRemote = it }
+        runCatching { com.smrh.zujaj.remote.Walls.approved("community") }.onSuccess { community = it; err = false }.onFailure { err = true; community = community ?: emptyList() }
+    }
+    // community upload: pick → name → send for review
+    var picked by remember { mutableStateOf<Bitmap?>(null) }
+    var name by rememberSaveable { mutableStateOf(Prefs.getString("wall_name")) }
+    var sending by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch { picked = withContext(Dispatchers.IO) { com.smrh.zujaj.remote.Walls.readPicked(ctx, uri) }
+            if (picked == null) Toast.makeText(ctx, tr("Couldn't open this picture", "الصورة دي مش نافعة"), Toast.LENGTH_SHORT).show() }
+    }
     val pane = LocalPaneWidth.current
     val cols = when { pane >= 840 -> 5; pane >= 600 -> 4; else -> 3 }
     val gut = if (pane >= 600) Sp.xl else Sp.l
+    val list: List<WallSrc>? = if (page == 0) homeRemote.map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in hidden }.map { WallSrc.Built(it) }
+        else community?.map { WallSrc.Remote(it) }
     LazyVerticalGrid(GridCells.Fixed(cols), Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = gut, end = gut, top = Sp.l, bottom = LocalDockSpace.current),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Column(Modifier.padding(bottom = Sp.s)) {
+        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(span = { GridItemSpan(maxLineSpan) }, key = "head") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(tr("Wallpapers", "خلفيات"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
-                Text(tr("50 calm designs, free. Tap one to use it.", "50 تصميم هادي ومريح للعين، ببلاش. اضغط على أي واحدة وحطها."), fontSize = 14.sp, color = Z.sub)
+                // the old "clock behind your photo" studio lives here now
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l))
+                    .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF8B5CF6).copy(alpha = 0.45f), Color(0xFFEC4899).copy(alpha = 0.3f), Z.surface)))
+                    .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.Wallpapers) }.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AddPhotoAlternate, null, tint = Z.text, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Your photo + widgets", "صورتك + ويدجت"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
+                        Text(tr("Put a clock behind your photo, add widgets, and your saved designs", "حط الساعة ورا صورتك وضيف ويدجت، وتصميماتك المحفوظة"), fontSize = 12.sp, color = Z.sub)
+                    }
+                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Z.sub)
+                }
+                Segmented(listOf(tr("Home", "الرئيسية"), tr("Community", "المجتمع")), page) { page = it }
+                if (page == 1) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Wallpapers shared by people, after review.", "خلفيات شاركها الناس، بعد المراجعة."), fontSize = 13.sp, color = Z.sub, modifier = Modifier.weight(1f))
+                    PrimaryButton(tr("Share yours", "شارك خلفيتك"), icon = Icons.Rounded.Upload) {
+                        if (!com.smrh.zujaj.remote.Walls.canSubmit()) Toast.makeText(ctx, tr("You can share 3 a day — try again tomorrow", "تقدر تشارك 3 في اليوم — جرب بكره"), Toast.LENGTH_LONG).show()
+                        else picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                }
+                if (page == 1 && err) Text(tr("Couldn't load — check the internet.", "معرفناش نحمّل — اتأكد من النت."), color = Color(0xFFE5484D), fontSize = 13.sp)
+                if (page == 1 && community?.isEmpty() == true && !err) Text(tr("Nothing here yet — be the first to share!", "لسه مفيش حاجة — كن أول واحد يشارك!"), color = Z.sub, fontSize = 13.sp)
             }
         }
-        items(WallLibrary.all, key = { it.id }) { wp ->
-            val img by produceState<ImageBitmap?>(null, wp.id) { value = WallLibrary.thumb(wp) }
-            Box(Modifier.aspectRatio(270f / 585f).clip(RoundedCornerShape(Rad.l)).background(Color(wp.pal.c[1]))
-                .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { open = wp.id }) {
-                img?.let { Image(it, wp.name(ar), Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        if (list == null) item(span = { GridItemSpan(maxLineSpan) }) {
+            Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) { androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current) }
+        }
+        items(list.orEmpty(), key = { it.key }) { src ->
+            Column {
+                WallThumb(src, Modifier.fillMaxWidth().aspectRatio(270f / 585f).clickable { open = src })
+                Text(src.by, fontSize = 11.sp, color = Z.sub, maxLines = 1, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
             }
         }
     }
-    if (open >= 0) WallSheet(WallLibrary.all[open]) { open = -1 }
+    open?.let { WallSheet(it, nav) { open = null } }
+    picked?.let { bmp ->
+        ZDialog(Icons.Rounded.Upload, tr("Share this wallpaper", "شارك الخلفية دي"), tr("It shows in Community after review. Your name appears under it.", "هتظهر في المجتمع بعد المراجعة، واسمك هيتكتب تحتها."), onDismiss = { if (!sending) picked = null }) {
+            Image(bmp.asImageBitmap(), null, Modifier.height(200.dp).aspectRatio(270f / 585f).clip(RoundedCornerShape(Rad.m)).align(Alignment.CenterHorizontally), contentScale = ContentScale.Crop)
+            ZField(name, { name = it.take(30) }, tr("Your name (required)", "اسمك (لازم)"))
+            PrimaryButton(if (sending) tr("Sending…", "بنبعت…") else tr("Send", "ابعت"), Modifier.fillMaxWidth()) {
+                if (sending) return@PrimaryButton
+                if (name.isBlank()) { Toast.makeText(ctx, tr("Write your name first", "اكتب اسمك الأول"), Toast.LENGTH_SHORT).show(); return@PrimaryButton }
+                sending = true
+                scope.launch(kotlinx.coroutines.NonCancellable) {
+                    Prefs.setString("wall_name", name.trim())
+                    val r = runCatching { com.smrh.zujaj.remote.Walls.upload(bmp, name, admin = false) }
+                    sending = false
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Sent ✓ It appears after review", "اتبعتت ✓ هتظهر بعد المراجعة") else tr("Couldn't send — check the internet", "معرفناش نبعت — اتأكد من النت"), Toast.LENGTH_LONG).show()
+                    if (r.isSuccess) picked = null
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun WallSheet(wp: WallLibrary.Wall, onClose: () -> Unit) {
+fun WallThumb(src: WallSrc, modifier: Modifier) {
+    val img by produceState<ImageBitmap?>(null, src.key) {
+        value = when (src) {
+            is WallSrc.Built -> WallLibrary.thumb(src.wp)
+            is WallSrc.Remote -> withContext(Dispatchers.Default) { com.smrh.zujaj.remote.Walls.decode(src.item.thumb)?.asImageBitmap() }
+        }
+    }
+    Box(modifier.clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))) {
+        img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    }
+}
+
+@Composable
+private fun WallSheet(src: WallSrc, nav: Nav, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val ar = Prefs.isArabicUi
     var busy by remember { mutableStateOf(false) }
-    val big by produceState<ImageBitmap?>(null, wp.id) { value = withContext(Dispatchers.Default) { WallLibrary.paint(wp, 540, 1170).asImageBitmap() } }
+    val big by produceState<Bitmap?>(null, src.key) {
+        value = when (src) {
+            is WallSrc.Built -> withContext(Dispatchers.Default) {
+                val dm = ctx.resources.displayMetrics
+                WallLibrary.paint(src.wp, minOf(dm.widthPixels, dm.heightPixels, 1440), maxOf(dm.widthPixels, dm.heightPixels).coerceAtMost(3120))
+            }
+            is WallSrc.Remote -> runCatching { com.smrh.zujaj.remote.Walls.fullImage(src.item.id) }.getOrNull()
+        }
+    }
+    val preview = remember(big) { big?.asImageBitmap() }
     Dialog(onClose, DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().padding(20.dp).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.fillMaxHeight(0.55f).aspectRatio(540f / 1170f).clip(RoundedCornerShape(Rad.l)).background(Color(wp.pal.c[1]))) {
-                big?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            Box(Modifier.fillMaxHeight(0.5f).aspectRatio(540f / 1170f).clip(RoundedCornerShape(Rad.l)).background(Z.surface2), contentAlignment = Alignment.Center) {
+                if (preview != null) Image(preview, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current)
             }
-            Spacer(Modifier.height(12.dp))
-            Text(wp.name(ar), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Z.text)
+            Spacer(Modifier.height(10.dp))
+            Text(tr("By ", "من ") + src.by, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Z.text)
             Spacer(Modifier.height(12.dp))
             fun go(where: Int) {
+                val b = big ?: return
                 if (busy) return; busy = true
                 scope.launch {
-                    val ok = WallLibrary.apply(ctx, wp, where)
+                    val ok = applyBitmap(ctx, b, where)
                     busy = false
                     if (ok) { Haptics.success(ctx); com.smrh.zujaj.remote.Stats.wallpaperUsed() }
                     Toast.makeText(ctx, if (ok) tr("Wallpaper set ✓", "اتحطت الخلفية ✓") else tr("Your phone didn't allow changing the wallpaper", "تليفونك مسمحش بتغيير الخلفية"), Toast.LENGTH_SHORT).show()
                     if (ok) onClose()
                 }
             }
-            PrimaryButton(tr("Home & lock screen", "الرئيسية والقفل"), Modifier.fillMaxWidth(), icon = Icons.Rounded.Smartphone) { go(3) }
+            PrimaryButton(tr("Add clock & widgets on it", "ضيف ساعة وويدجت عليها"), Modifier.fillMaxWidth(), icon = Icons.Rounded.Widgets) {
+                val b = big ?: return@PrimaryButton
+                if (busy) return@PrimaryButton; busy = true
+                scope.launch {
+                    val f = withContext(Dispatchers.IO) {
+                        java.io.File(com.smrh.zujaj.wall.WallDesign.dir(ctx), "photo_${System.currentTimeMillis()}.jpg").also { f -> f.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 92, it) } }
+                    }
+                    busy = false
+                    WallHandoff.path = f.path
+                    onClose(); nav.go(Screen.Wallpapers)
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OptionBtn(Icons.Rounded.Home, tr("Home screen", "الرئيسية"), Modifier.weight(1f)) { go(1) }
-                OptionBtn(Icons.Rounded.Lock, tr("Lock screen", "شاشة القفل"), Modifier.weight(1f)) { go(2) }
+                OptionBtn(Icons.Rounded.Smartphone, tr("Both", "الاتنين"), Modifier.weight(1f)) { go(3) }
+                OptionBtn(Icons.Rounded.Home, tr("Home", "الرئيسية"), Modifier.weight(1f)) { go(1) }
+                OptionBtn(Icons.Rounded.Lock, tr("Lock", "القفل"), Modifier.weight(1f)) { go(2) }
             }
-            if (busy) Text(tr("Setting…", "بنحطها…"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            if (busy) Text(tr("Working…", "ثانية…"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -306,6 +437,6 @@ private fun OptionBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
     Row(modifier.clip(RoundedCornerShape(50)).border(1.dp, Z.line, RoundedCornerShape(50)).clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Z.text, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-        Text(label, color = Z.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+        Text(label, color = Z.text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
     }
 }

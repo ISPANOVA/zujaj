@@ -1,5 +1,12 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material.icons.rounded.Upload
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.runtime.key
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.rounded.Edit
@@ -170,6 +177,7 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.Campaign to tr("Pop-up", "الإعلان المنبثق"),
             Icons.Rounded.Wallpaper to tr("Sets", "السِتات"),
             Icons.Rounded.BarChart to tr("Stats", "الإحصائيات"),
+            Icons.Rounded.Image to tr("Wallpapers", "الخلفيات"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -198,6 +206,7 @@ fun AdminScreen(nav: Nav) {
                 7 -> PopupAdmin()
                 8 -> SetsAdmin()
                 9 -> StatsAdmin()
+                10 -> WallsAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -1149,5 +1158,78 @@ private fun StatsAdmin() {
             Divider(); RowBase(tr("Free wallpapers used", "خلفيات مجانية اتحطت")) { Text("${sum("walls")}") }
         }
         Text(tr("Counted anonymously from this version on; older versions don't report.", "العدّ بيبدأ من الإصدار ده ومن غير أي بيانات شخصية؛ الإصدارات القديمة مش بتبعت."), color = Z.sub, fontSize = 12.sp)
+    }
+}
+
+// =============================================================================== wallpapers
+@Composable
+private fun WallsAdmin() {
+    val ctx = LocalContext.current
+    var page by rememberSaveable { mutableIntStateOf(0) } // 0 waiting, 1 home, 2 community
+    var reload by remember { mutableIntStateOf(0) }
+    var items by remember { mutableStateOf<List<WallSrc>?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var confirm by remember { mutableStateOf<WallSrc?>(null) }
+    var uploading by remember { mutableStateOf(false) }
+    LaunchedEffect(reload, page) {
+        items = null
+        runCatching {
+            val W = com.smrh.zujaj.remote.Walls
+            when (page) {
+                0 -> W.pending().map { WallSrc.Remote(it) }
+                1 -> { val h = W.hiddenBuiltIn(); W.approved("home").map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in h }.map { WallSrc.Built(it) } }
+                else -> W.approved("community").map { WallSrc.Remote(it) }
+            }
+        }.onSuccess { items = it; err = null }.onFailure { err = it.message; items = emptyList() }
+    }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { uploading = true
+            AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                val r = runCatching {
+                    val b = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.smrh.zujaj.remote.Walls.readPicked(ctx, uri) } ?: error("bad picture")
+                    com.smrh.zujaj.remote.Walls.upload(b, "SMRH", admin = true)
+                }
+                uploading = false
+                Toast.makeText(ctx, if (r.isSuccess) tr("Published in Home ✓", "اتنشرت في الرئيسية ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                page = 1; reload++
+            } }
+    }
+    confirm?.let { w ->
+        ZDialog(Icons.Rounded.Delete, tr("Delete this wallpaper?", "تمسح الخلفية دي؟"), tr("It disappears for everyone.", "هتختفي عند الكل."), iconColor = Color(0xFFE5484D), onDismiss = { confirm = null }) {
+            PrimaryButton(tr("Delete", "امسح"), Modifier.fillMaxWidth()) {
+                confirm = null
+                AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                    val r = runCatching { when (w) { is WallSrc.Built -> com.smrh.zujaj.remote.Walls.hideBuiltIn(w.wp.id); is WallSrc.Remote -> com.smrh.zujaj.remote.Walls.remove(w.item.id) } }
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتمسحت") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++
+                }
+            }
+            TextButton(onClick = { confirm = null }) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+        }
+    }
+    LazyVerticalGrid(GridCells.Adaptive(110.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryButton(if (uploading) tr("Uploading…", "بنرفع…") else tr("Upload to Home (SMRH)", "ارفع للرئيسية (SMRH)"), Modifier.fillMaxWidth(), icon = Icons.Rounded.Upload) {
+                    if (!uploading) picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+                Segmented(listOf(tr("Waiting", "مستني"), tr("Home", "الرئيسية"), tr("Community", "المجتمع")), page) { page = it }
+                if (err != null) Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err, color = Color(0xFFE5484D), fontSize = 13.sp)
+                if (items?.isEmpty() == true && err == null) Text(if (page == 0) tr("Nothing to review ✓", "مفيش حاجة تتراجع ✓") else tr("Empty", "فاضي"), color = Z.sub)
+            }
+        }
+        items(items.orEmpty(), key = { it.key }) { w ->
+            Column {
+                WallThumb(w, Modifier.fillMaxWidth().aspectRatio(270f / 585f))
+                Text(w.by, fontSize = 11.sp, color = Z.sub, maxLines = 1)
+                Row {
+                    if (page == 0 && w is WallSrc.Remote) TextButton(onClick = {
+                        AdminWork.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { com.smrh.zujaj.remote.Walls.approve(w.item.id) }
+                            Toast.makeText(ctx, if (r.isSuccess) tr("Approved ✓", "اتوافق عليها ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }
+                    }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("✓", color = Color(0xFF3DDC97), fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                    TextButton(onClick = { confirm = w }, contentPadding = PaddingValues(horizontal = 6.dp)) { Icon(Icons.Rounded.Delete, null, tint = Color(0xFFE5484D)) }
+                }
+            }
+        }
     }
 }

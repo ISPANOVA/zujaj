@@ -38,6 +38,28 @@ service cloud.firestore {
     }
     // Community gallery: anyone may submit a pending design; only approved ones are public;
     // a like may only add exactly 1; the admin approves and deletes.
+    // Wallpapers tab: admin uploads go straight to Home; anyone may send a pending Community wallpaper.
+    match /app/walls {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /walls/{id} {
+      allow get, list: if resource.data.status == 'approved' || isAdmin();
+      allow create: if isAdmin() || (request.resource.data.status == 'pending'
+        && request.resource.data.kind == 'community'
+        && request.resource.data.keys().hasOnly(['thumb', 'by', 'kind', 'status', 'createdAt'])
+        && request.resource.data.thumb is string && request.resource.data.thumb.size() < 70000
+        && request.resource.data.by is string && request.resource.data.by.size() > 0 && request.resource.data.by.size() <= 30
+        && exists(/databases/$(database)/documents/wallsFull/$(id)));
+      allow update, delete: if isAdmin();
+    }
+    match /wallsFull/{id} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAdmin() || (request.resource.data.keys().hasOnly(['img'])
+        && request.resource.data.img is string && request.resource.data.img.size() < 900000);
+      allow update, delete: if isAdmin();
+    }
     match /sets/{id} {
       allow read: if true;
       allow write: if isAdmin();

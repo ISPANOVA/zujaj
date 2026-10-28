@@ -150,7 +150,7 @@ fun HomeScreen(nav: Nav) {
         ) { t ->
             when (t) {
                 0 -> DiscoverTab(nav)
-                1 -> WallLibraryTab()
+                1 -> WallLibraryTab(nav)
                 2 -> FavoritesTab(nav) { tab = 0 }
                 3 -> MyWidgetsTab(nav)
                 else -> SettingsScreen(nav, asTab = true)
@@ -515,15 +515,8 @@ fun DiscoverTab(nav: Nav) {
                     }
                 }
             }
-            if (wide) Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s), horizontalArrangement = Arrangement.spacedBy(Sp.l)) {
-                showcase(Modifier.weight(1.6f))
-                WallpapersEntry(Modifier.weight(1f).height(260.dp), tall = true) { nav.go(Screen.Wallpapers) }
-            } else {
-                Column {
-                    showcase(Modifier.padding(top = Sp.s))
-                    WallpapersEntry(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.l), tall = false) { nav.go(Screen.Wallpapers) }
-                }
-            }
+            // the wallpaper studio moved to the Wallpapers tab in the bottom bar
+            showcase(Modifier.padding(top = Sp.s, bottom = Sp.s))
         }
         // ---- ready-made sets: wallpaper + matching widgets
         item(key = "sets") { SetsCard(nav, gut) }
