@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -155,6 +156,11 @@ open class MainActivity : ComponentActivity() {
         }
         Prefs.init(this)
         appCtx = applicationContext
+        if (savedInstanceState == null) {
+            com.smrh.zujaj.remote.Stats.opened()
+            // seasonal sets from the control panel
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { runCatching { com.smrh.zujaj.remote.RemoteSets.load() } }
+        }
         Z.refresh(this)
         bars()
         super.onCreate(savedInstanceState)

@@ -65,6 +65,8 @@ data class WidgetSet(
     val id: String, val en: String, val ar: String, val tagEn: String, val tagAr: String,
     val pro: Boolean, val wall: String, val items: List<String>,
     val accent: Int, val card: Int, val card2: Int, val text: Int = 0xFFFFFFFF.toInt(), val sub: Int = 0xCCFFFFFF.toInt(),
+    /** Sets made in the control panel: their own wallpaper photo (base64 JPEG) instead of a drawn one. */
+    val image: String = "", val order: Int = 0, val remote: Boolean = false, val visible: Boolean = true,
 ) {
     fun name(ar: Boolean) = if (ar) this.ar else en
     fun tag(ar: Boolean) = if (ar) tagAr else tagEn
@@ -82,7 +84,11 @@ data class WidgetSet(
 }
 
 object WidgetSets {
-    val all = listOf(
+    /** Seasonal sets published from the control panel (Firestore `sets/{id}`), shown before the built-in ones. */
+    val remote = kotlinx.coroutines.flow.MutableStateFlow<List<WidgetSet>>(emptyList())
+    val all: List<WidgetSet> get() = remote.value.filter { it.visible }.sortedBy { it.order } + builtIn
+    fun byId(id: String) = remote.value.firstOrNull { it.id == id } ?: builtIn.firstOrNull { it.id == id }
+    val builtIn = listOf(
         WidgetSet("midnight", "Midnight", "منتصف الليل", "Black glass, violet light", "زجاج أسود ونور بنفسجي", false, "midnight",
             listOf("dark_day", "digital_stacked", "athkar_small"), 0xFFA78BFA.toInt(), 0xFF120F1F.toInt(), 0xFF1C1631.toInt()),
         WidgetSet("desert", "Desert", "الصحراء", "Warm sand and gold", "رمل دافي ودهب", true, "desert",
@@ -92,7 +98,20 @@ object WidgetSets {
         WidgetSet("rose", "Rose", "الورد", "Soft pink everything", "كل حاجة وردي", true, "rose",
             listOf("rose_next", "rose_weather", "rose_prayers", "rose_music"), 0xFFFF7BA9.toInt(), 0xFF2A0F1E.toInt(), 0xFF3A1428.toInt()),
     )
-    fun byId(id: String) = all.firstOrNull { it.id == id }
+
+    /** The set's wallpaper: the uploaded photo (centre-cropped) or the drawn one. */
+    fun paintSet(set: WidgetSet, w: Int, h: Int): Bitmap {
+        if (set.image.isNotBlank()) runCatching {
+            val bytes = android.util.Base64.decode(set.image, android.util.Base64.DEFAULT)
+            val src = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)!!
+            val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val k = maxOf(w / src.width.toFloat(), h / src.height.toFloat())
+            val dw = src.width * k; val dh = src.height * k
+            Canvas(out).drawBitmap(src, null, android.graphics.RectF((w - dw) / 2, (h - dh) / 2, (w + dw) / 2, (h + dh) / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+            return out
+        }
+        return paint(set.wall, w, h)
+    }
 
     /** Paints the set's wallpaper at any size (thumbnail or full screen). Pure drawing — no assets. */
     fun paint(kind: String, w: Int, h: Int): Bitmap {
@@ -161,7 +180,7 @@ object WidgetSets {
         runCatching {
             val dm = ctx.resources.displayMetrics
             val w = minOf(dm.widthPixels, dm.heightPixels); val h = maxOf(dm.widthPixels, dm.heightPixels)
-            val bmp = paint(set.wall, w, h)
+            val bmp = paintSet(set, w, h)
             val wm = WallpaperManager.getInstance(ctx)
             if (android.os.Build.VERSION.SDK_INT >= 24) wm.setBitmap(bmp, null, true, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
             else wm.setBitmap(bmp)
@@ -179,8 +198,8 @@ private fun span(s: Shape): Pair<Int, Int> = when (s) {
 @Composable
 fun SetPhone(set: WidgetSet, width: Dp, modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
-    val wall by produceState<ImageBitmap?>(null, set.id) { value = withContext(Dispatchers.Default) { WidgetSets.paint(set.wall, 360, 780).asImageBitmap() } }
-    val cfgs = remember(set.id) { set.items.map { set.dress(it) } }
+    val wall by produceState<ImageBitmap?>(null, set.id) { value = withContext(Dispatchers.Default) { WidgetSets.paintSet(set, 360, 780).asImageBitmap() } }
+    val cfgs = remember(set.id) { set.items.filter { Catalog.byId(it) != null }.map { set.dress(it) } }
     val radius = width * 0.12f
     Box(modifier.width(width).aspectRatio(360f / 780f).clip(RoundedCornerShape(radius)).background(Color(0xFF0B0B10))
         .border(3.dp, Color(0xFF2A2A33), RoundedCornerShape(radius))) {
@@ -213,8 +232,9 @@ fun SetsRow(nav: Nav, gutter: Dp) {
                 Text(tr("Wallpaper + matching widgets, in one go", "خلفية وويدجت متناسقين مرة واحدة"), fontSize = 13.sp, color = Z.sub)
             }
         }
+        val remoteSets by WidgetSets.remote.collectAsState()
         LazyRow(contentPadding = PaddingValues(horizontal = gutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(WidgetSets.all, key = { it.id }) { s ->
+            items(remoteSets.filter { it.visible }.sortedBy { it.order } + WidgetSets.builtIn, key = { it.id }) { s ->
                 Column(Modifier.width(150.dp).clip(RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.SetDetail(s.id)) }) {
                     Box { SetPhone(s, 150.dp)
                         if (s.pro && !Prefs.isPro) ProBadge(Modifier.align(Alignment.TopEnd).padding(10.dp)) }
@@ -274,7 +294,7 @@ fun SetDetailScreen(nav: Nav, id: String) {
                     }
                 }
                 set.items.forEachIndexed { i, st ->
-                    val style = Catalog.byId(st)!!
+                    val style = Catalog.byId(st) ?: return@forEachIndexed
                     val done = counts.getOrElse(i) { 0 } > startCounts.getOrElse(i) { 0 }
                     Divider()
                     StepRow(Icons.Rounded.Widgets, style.name(ar), sizeLabel(style.shape), done, false) {

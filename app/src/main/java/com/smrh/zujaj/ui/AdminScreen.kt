@@ -1,5 +1,10 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.runtime.key
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.DropdownMenuItem
@@ -163,6 +168,8 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.Security to tr("Security", "الحماية"),
             Icons.Rounded.Groups to tr("Gallery", "المعرض"),
             Icons.Rounded.Campaign to tr("Pop-up", "الإعلان المنبثق"),
+            Icons.Rounded.Wallpaper to tr("Sets", "السِتات"),
+            Icons.Rounded.BarChart to tr("Stats", "الإحصائيات"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -189,6 +196,8 @@ fun AdminScreen(nav: Nav) {
                 4 -> GeneralAdmin(user?.email ?: "", 1)
                 6 -> GalleryAdmin()
                 7 -> PopupAdmin()
+                8 -> SetsAdmin()
+                9 -> StatsAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -942,5 +951,190 @@ private fun PopupAdmin() {
             }
             Text(tr("Saving shows it again to everyone it applies to.", "كل حفظ بيخليه يظهر تاني للناس المحددين."), color = Z.sub, fontSize = 12.sp)
         }
+    }
+}
+
+// =============================================================================== seasonal sets
+@Composable
+private fun SetsAdmin() {
+    val ctx = LocalContext.current
+    var list by remember { mutableStateOf<List<WidgetSet>?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var editing by remember { mutableStateOf<WidgetSet?>(null) }
+    LaunchedEffect(reload) { runCatching { com.smrh.zujaj.remote.RemoteSets.load() }.onSuccess { list = it; err = null }.onFailure { err = it.message } }
+    editing?.let { e -> SetEditor(e, onClose = { editing = null; reload++ }); return }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text(tr("Your own sets appear first in “Ready-made sets”, without an app update. The 4 built-in ones stay after them.",
+                "السِتات اللي بتعملها هنا بتظهر الأول في «سِتات جاهزة» من غير تحديث. الـ4 الأصليين بيفضلوا بعدهم."), color = Z.sub, fontSize = 13.sp)
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton(tr("New set", "سِت جديد"), Modifier.fillMaxWidth()) {
+                editing = WidgetSet("", "", "", "", "", true, "midnight", emptyList(), 0xFFE7B75F.toInt(), 0xFF15151B.toInt(), 0xFF1D1D25.toInt(), order = (list?.size ?: 0))
+            }
+        }
+        if (err != null) item { Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err, color = Color(0xFFE5484D), fontSize = 13.sp) }
+        items(list.orEmpty().sortedBy { it.order }, key = { it.id }) { st ->
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { editing = st }.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                SetPhone(st, 70.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(st.name(Prefs.isArabicUi).ifBlank { "—" }, fontWeight = FontWeight.Bold)
+                    Text((if (st.visible) tr("Showing", "ظاهر") else tr("Hidden", "مخفي")) + " · " + (if (st.pro) "Pro" else tr("Free", "مجاني")) + " · ${st.items.size} " + tr("widgets", "ويدجت"), color = Z.sub, fontSize = 12.sp)
+                }
+                Icon(Icons.Rounded.Edit, null, tint = Z.sub)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetEditor(start: WidgetSet, onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    var s by remember { mutableStateOf(start) }
+    var q by remember { mutableStateOf("") }
+    var colorFor by remember { mutableIntStateOf(-1) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            // phone-shaped photo, max 1080 px tall, JPEG — keeps the set document well under Firestore's 1 MB
+            val b64 = runCatching {
+                val src = ctx.contentResolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+                val k = minOf(1f, 1080f / maxOf(src.width, src.height))
+                val bmp = android.graphics.Bitmap.createScaledBitmap(src, (src.width * k).toInt(), (src.height * k).toInt(), true)
+                var q2 = 80; var bytes: ByteArray
+                do { val o = java.io.ByteArrayOutputStream(); bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, q2, o); bytes = o.toByteArray(); q2 -= 10 } while (bytes.size > 600_000 && q2 > 30)
+                android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            }.getOrNull()
+            if (b64 == null) Toast.makeText(ctx, tr("Couldn't use this picture", "الصورة دي مش نافعة"), Toast.LENGTH_SHORT).show() else s = s.copy(image = b64)
+        }
+    }
+    if (colorFor != -1) ColorPickerDialog(when (colorFor) { 0 -> s.accent; 1 -> s.card; else -> s.card2 }, { colorFor = -1 }) { c ->
+        s = when (colorFor) { 0 -> s.copy(accent = c); 1 -> s.copy(card = c); else -> s.copy(card2 = c) }
+    }
+    if (confirmDelete) ZDialog(Icons.Rounded.Delete, tr("Delete this set?", "تمسح السِت ده؟"), null, iconColor = Color(0xFFE5484D), onDismiss = { confirmDelete = false }) {
+        PrimaryButton(tr("Delete", "امسح"), Modifier.fillMaxWidth()) {
+            confirmDelete = false
+            AdminWork.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { com.smrh.zujaj.remote.RemoteSets.delete(s) }; Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتمسح") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); onClose() }
+        }
+        TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel", "إلغاء"), color = Z.sub) }
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 40.dp)) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onClose) { Text("← " + tr("Back", "رجوع"), color = Z.sub) }
+            Spacer(Modifier.weight(1f))
+            if (s.remote) TextButton(onClick = { confirmDelete = true }) { Text(tr("Delete", "امسح"), color = Color(0xFFE5484D)) }
+        }
+        Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) { key(s) { SetPhone(s, 180.dp) } }
+        Section(tr("Name", "الاسم")) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ZField(s.ar, { s = s.copy(ar = it.take(30)) }, tr("Arabic name (e.g. رمضان)", "الاسم بالعربي (مثلاً رمضان)"))
+                ZField(s.en, { s = s.copy(en = it.take(30)) }, tr("English name (e.g. Ramadan)", "الاسم بالإنجليزي (مثلاً Ramadan)"))
+                ZField(s.tagAr, { s = s.copy(tagAr = it.take(50)) }, tr("Arabic tagline", "جملة قصيرة بالعربي"))
+                ZField(s.tagEn, { s = s.copy(tagEn = it.take(50)) }, tr("English tagline", "جملة قصيرة بالإنجليزي"))
+            }
+        }
+        Section(tr("Who and where", "مين وفين")) {
+            SwitchRow(tr("Showing in the app", "ظاهر في التطبيق"), s.visible) { s = s.copy(visible = it) }
+            Divider(); SwitchRow(tr("Pro only", "لمشتركين برو بس"), s.pro) { s = s.copy(pro = it) }
+            Divider(); StepperRow(tr("Position (1 = first)", "الترتيب (1 = الأول)"), s.order + 1, 1..50, 1) { s = s.copy(order = it - 1) }
+        }
+        Section(tr("Wallpaper", "الخلفية")) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("midnight" to tr("Midnight", "منتصف الليل"), "desert" to tr("Desert", "الصحراء"), "ramadan" to tr("Ramadan", "رمضان"), "rose" to tr("Rose", "الورد"))
+                    .forEach { (k, l) -> ZChip(l, s.image.isBlank() && s.wall == k) { s = s.copy(wall = k, image = "") } }
+                ZChip(tr("My photo", "صورة من عندي"), s.image.isNotBlank()) { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+            }
+        }
+        Section(tr("Colours of the widgets", "ألوان الويدجت")) {
+            RowBase(tr("Accent", "اللون المميز")) { ColorDot(s.accent) { colorFor = 0 } }
+            Divider(); RowBase(tr("Card", "الكارت")) { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ColorDot(s.card) { colorFor = 1 }; ColorDot(s.card2) { colorFor = 2 } } }
+        }
+        Section(tr("Widgets (up to 4)", "الويدجت (لحد 4)")) {
+            s.items.forEachIndexed { i, id ->
+                if (i > 0) Divider()
+                RowBase(Catalog.byId(id)?.name(Prefs.isArabicUi) ?: id, sub = Catalog.byId(id)?.let { sizeLabel(it.shape) }) {
+                    TextButton(onClick = { s = s.copy(items = s.items.filterIndexed { j, _ -> j != i }) }) { Text(tr("Remove", "شيل"), color = Color(0xFFE5484D)) }
+                }
+            }
+            if (s.items.size < 4) {
+                Divider()
+                Column(Modifier.padding(12.dp)) {
+                    ZField(q, { q = it }, tr("Search a widget to add", "ابحث عن ويدجت تضيفها"), Icons.Rounded.Search)
+                    if (q.isNotBlank()) Catalog.all.filter { com.smrh.zujaj.catalog.WidgetSearch.matches(it, q) && it.id !in s.items }.take(8).forEach { st ->
+                        Row(Modifier.fillMaxWidth().clickable { s = s.copy(items = s.items + st.id); q = "" }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(st.name(Prefs.isArabicUi), modifier = Modifier.weight(1f)); Text(sizeLabel(st.shape), color = Z.sub, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+        Column(Modifier.padding(16.dp)) {
+            PrimaryButton(tr("Save & publish", "احفظ وانشر"), Modifier.fillMaxWidth()) {
+                if ((s.ar.isBlank() && s.en.isBlank()) || s.items.isEmpty()) { Toast.makeText(ctx, tr("Add a name and at least one widget", "حط اسم وويدجت واحدة على الأقل"), Toast.LENGTH_LONG).show(); return@PrimaryButton }
+                AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                    val r = runCatching { com.smrh.zujaj.remote.RemoteSets.save(s.copy(en = s.en.ifBlank { s.ar }, ar = s.ar.ifBlank { s.en })) }
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓", "اتنشر ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                    if (r.isSuccess) onClose()
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================== stats
+@Composable
+private fun StatsAdmin() {
+    var range by rememberSaveable { mutableIntStateOf(7) }
+    var days by remember { mutableStateOf<List<com.smrh.zujaj.remote.Stats.Day>?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(range) { days = null; runCatching { com.smrh.zujaj.remote.Stats.last(range) }.onSuccess { days = it; err = null }.onFailure { err = it.message } }
+    val d = days
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Segmented(listOf(tr("7 days", "7 أيام"), tr("30 days", "30 يوم")), if (range == 7) 0 else 1) { range = if (it == 0) 7 else 30 }
+        if (err != null) Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err, color = Color(0xFFE5484D), fontSize = 13.sp)
+        if (d == null) { Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) { androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current) }; return@Column }
+        fun sum(k: String) = d.sumOf { it.values[k] ?: 0L }
+        val today = d.last().values
+        // headline numbers
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Stat(tr("Today", "النهارده"), (today["users"] ?: 0).toInt(), Z.text, Modifier.weight(1f))
+            Stat(tr("New", "جديد"), sum("installs").toInt(), Color(0xFF3DDC97), Modifier.weight(1f))
+            Stat(tr("Added", "اتضاف"), sum("added").toInt(), LocalAccent.current, Modifier.weight(1f))
+            Stat("Pro", (sum("pro") + sum("wall")).toInt(), Z.pro, Modifier.weight(1f))
+        }
+        Text(tr("“Today” = phones that opened the app today. Other numbers are for the whole period.", "«النهارده» = عدد الموبايلات اللي فتحت التطبيق النهارده. الباقي للمدة كلها."), color = Z.sub, fontSize = 12.sp)
+        // daily users as bars
+        Section(tr("Phones per day", "الموبايلات كل يوم")) {
+            val max = (d.maxOfOrNull { it.values["users"] ?: 0L } ?: 0L).coerceAtLeast(1L)
+            Row(Modifier.fillMaxWidth().height(140.dp).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
+                d.forEach { day ->
+                    val v = day.values["users"] ?: 0L
+                    Box(Modifier.weight(1f).fillMaxHeight((v.toFloat() / max).coerceAtLeast(0.02f)).clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)).background(LocalAccent.current.copy(alpha = if (day == d.last()) 1f else 0.6f)))
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                Text(d.first().date.substring(5), color = Z.sub, fontSize = 11.sp, modifier = Modifier.weight(1f)); Text(d.last().date.substring(5), color = Z.sub, fontSize = 11.sp)
+            }
+        }
+        // most added designs
+        Section(tr("Most added widgets", "أكتر ويدجت اتضافت")) {
+            val top = d.flatMap { it.values.entries }.filter { it.key.startsWith("s_") }.groupBy { it.key.removePrefix("s_") }
+                .mapValues { (_, v) -> v.sumOf { it.value } }.entries.sortedByDescending { it.value }.take(10)
+            if (top.isEmpty()) Text(tr("No widgets added in this period yet", "مفيش ويدجت اتضافت في المدة دي"), color = Z.sub, modifier = Modifier.padding(16.dp))
+            top.forEachIndexed { i, (id, n) ->
+                if (i > 0) Divider()
+                RowBase("${i + 1}. " + (Catalog.byId(id)?.name(Prefs.isArabicUi) ?: id)) { Text("$n", fontWeight = FontWeight.Bold, color = LocalAccent.current) }
+            }
+        }
+        Section(tr("Totals", "الإجمالي")) {
+            RowBase(tr("App opens", "مرات فتح التطبيق")) { Text("${sum("opens")}") }
+            Divider(); RowBase(tr("New installs", "تثبيتات جديدة")) { Text("${sum("installs")}") }
+            Divider(); RowBase(tr("Widgets added", "ويدجت اتضافت")) { Text("${sum("added")}") }
+            Divider(); RowBase(tr("Pro purchases", "اشتراكات برو")) { Text("${sum("pro")}") }
+            Divider(); RowBase(tr("Wallpaper purchases", "اشتراكات الخلفيات")) { Text("${sum("wall")}") }
+        }
+        Text(tr("Counted anonymously from this version on; older versions don't report.", "العدّ بيبدأ من الإصدار ده ومن غير أي بيانات شخصية؛ الإصدارات القديمة مش بتبعت."), color = Z.sub, fontSize = 12.sp)
     }
 }

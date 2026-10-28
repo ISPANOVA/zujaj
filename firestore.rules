@@ -38,6 +38,14 @@ service cloud.firestore {
     }
     // Community gallery: anyone may submit a pending design; only approved ones are public;
     // a like may only add exactly 1; the admin approves and deletes.
+    match /sets/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /stats/{day} {
+      allow read, delete: if isAdmin();
+      allow create, update: if request.resource.data.keys().size() < 500;
+    }
     match /gallery/{id} {
       allow get, list: if resource.data.status == 'approved' || isAdmin();
       allow create: if request.resource.data.status == 'pending'

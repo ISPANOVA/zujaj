@@ -190,11 +190,11 @@ object Billing {
                 if (it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it)) {
                     acknowledge(it)
                     if (it.products.any { p -> p in WALL_IDS }) {
-                        Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"
+                        Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"; com.smrh.zujaj.remote.Stats.purchase("wall")
                     } else {
                         Prefs.proPlan = it.products.firstOrNull() ?: ""
                         setPro(true)
-                        _message.value = "pro_ok"
+                        _message.value = "pro_ok"; com.smrh.zujaj.remote.Stats.purchase("pro")
                     }
                 } else if (it.purchaseState == Purchase.PurchaseState.PENDING) {
                     _message.value = "pending"

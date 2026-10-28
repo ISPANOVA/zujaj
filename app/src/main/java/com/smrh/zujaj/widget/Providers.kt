@@ -66,7 +66,7 @@ class PinReceiver : BroadcastReceiver() {
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         val token = intent.getStringExtra("token")
         if (id == -1) return
-        Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it) }
+        Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it); com.smrh.zujaj.remote.Stats.widgetAdded(it.styleId) }
         runCatching { WidgetUpdater.update(context, id) }
         Toast.makeText(context, if (Prefs.isArabicUi) "تمت إضافة الويدجت ✓" else "Widget added ✓", Toast.LENGTH_SHORT).show()
     }
