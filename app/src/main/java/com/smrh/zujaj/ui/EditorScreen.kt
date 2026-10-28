@@ -179,6 +179,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var showTapApp by remember { mutableStateOf(false) }
     var showCity by remember { mutableStateOf(false) }
     var askExact by remember { mutableStateOf(false) }
+    // remember the last 8 designs opened, for "Recently opened" on the home page
+    LaunchedEffect(style.id) { Prefs.setString("recent", (listOf(style.id) + Prefs.getString("recent").split(",").filter { it.isNotBlank() && it != style.id }).take(8).joinToString(",")) }
     // gradient time needs the permissions; 1 = asked from the switch, 2 = asked from Apply/Save
     var needAccess by remember { mutableIntStateOf(0) }
     // an interstitial may follow only after the user finished (added a widget) and leaves the editor

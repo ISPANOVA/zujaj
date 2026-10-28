@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.ui.platform.testTag
@@ -537,6 +538,18 @@ fun DiscoverTab(nav: Nav) {
                 }
             }
         }
+        // ---- pick up where you left off
+        val recent = Prefs.getString("recent").split(",").filter { it.isNotBlank() }.mapNotNull { id -> all.firstOrNull { it.id == id } }
+        if (recent.isNotEmpty()) item(key = "recent") {
+            Column {
+                Text(tr("Recently opened", "فتحتها قريب"), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Z.text, modifier = Modifier.padding(start = gut, end = gut, top = Sp.m, bottom = Sp.s))
+                LazyRow(contentPadding = PaddingValues(horizontal = gut), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(recent, key = { "rec_" + it.id }) { st ->
+                        PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 130.dp else 220.dp), stage = 120.dp, compact = true) { nav.go(Screen.Editor(st.id)) }
+                    }
+                }
+            }
+        }
         // ---- most added (published by the admin from the stats)
         val top = flags.top.mapNotNull { id -> all.firstOrNull { it.id == id } }
         if (top.isNotEmpty()) item(key = "top") {
@@ -608,7 +621,8 @@ fun DiscoverTab(nav: Nav) {
     }
     // index of the sticky collection tabs in the list (items above it)
     fun tabsIndex() = 1 + (if (com.smrh.zujaj.remote.Flags.freeNow(flags)) 1 else 0) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0) +
-        1 + 1 + (if (flags.top.any { id -> all.any { it.id == id } }) 1 else 0) + 1
+        1 + 1 + (if (Prefs.getString("recent").split(",").any { id -> all.any { it.id == id } }) 1 else 0) +
+        (if (flags.top.any { id -> all.any { it.id == id } }) 1 else 0) + 1
     LaunchedEffect(jumpToTabs) { if (jumpToTabs) { delay(60); listState.animateScrollToItem(tabsIndex()); jumpToTabs = false } }
     // a NEW collection starts from its top (tabs stay pinned). Only on an actual change of collection —
     // coming back from a widget re-runs this screen and must leave the scroll exactly where it was.
