@@ -157,6 +157,7 @@ open class MainActivity : ComponentActivity() {
         }
         Prefs.init(this)
         appCtx = applicationContext
+        runCatching { TimeAccess.migrate(this) }
         if (savedInstanceState == null) {
             com.smrh.zujaj.remote.Stats.opened()
             // seasonal sets from the control panel

@@ -297,7 +297,7 @@ object PrayerR {
         val colonL = x0 + pw + gap            // ink left of the colon
         val minL = colonL + cW + gap          // ink left of the minutes
         val clockRight = minL + pw
-        val baked = r.preview || r.bakeLive
+        val baked = r.bakeLive || (r.preview && c.gradTime)
         if (baked) {
             fun lg(a: Float, b: Float, c1: Int, c2: Int) = android.graphics.LinearGradient(a, 0f, b, 0f, c1, c2, android.graphics.Shader.TileMode.CLAMP)
             val hStart = colonL - gap - hW

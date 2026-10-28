@@ -59,8 +59,13 @@ object Moments2R {
         val hh = Kit.bakedTime(r, r.hh()); val mm = Kit.bakedTime(r, "mm")
         val top = Color.WHITE; val bot = RenderCtx.mix(r.c1, r.accent, 0.55f)
         val dh = r.h * 0.2f
-        emboss(r, hh, cx, r.h * 0.15f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
-        emboss(r, mm, cx, r.h * 0.37f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
+        if (r.cfg.gradTime) {
+            emboss(r, hh, cx, r.h * 0.15f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
+            emboss(r, mm, cx, r.h * 0.37f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
+        } else {
+            r.liveTime(r.hh(), cx, r.h * 0.15f, dh * 1.25f, LiveFont.RIGHTEOUS, top, Paint.Align.CENTER, maxW = r.w * 0.6f, maxH = dh, sample = "00")
+            r.liveTime("mm", cx, r.h * 0.37f, dh * 1.25f, LiveFont.RIGHTEOUS, bot, Paint.Align.CENTER, maxW = r.w * 0.6f, maxH = dh, sample = "00")
+        }
         val day = Calendars.dayName(r.today, r.ar)
         emboss(r, day, cx, r.h * 0.6f, r.h * 0.17f, if (r.ar) r.calliFont else F.PLAYFAIR, Color.WHITE, 0xFFB9B9C6.toInt(), r.w * 0.66f, r.h * 0.15f)
         // info row
@@ -112,7 +117,8 @@ object Moments2R {
         val pw = tp.measureText(time) + 22 * r.u
         val pill = RectF(cx - pw / 2, ty - 11 * r.u, cx + pw / 2, ty + 11 * r.u)
         r.canvas.drawRoundRect(pill, pill.height() / 2, pill.height() / 2, r.fillPaint(withAlpha(Color.WHITE, 235)))
-        r.text(time, cx, ty, 13 * r.u, 0xFF1A1A22.toInt(), r.sansBold, Paint.Align.CENTER)
+        if (r.cfg.gradTime) r.text(time, cx, ty, 13 * r.u, 0xFF1A1A22.toInt(), r.sansBold, Paint.Align.CENTER)
+        else r.liveTime(r.hm(), cx, ty, 13 * r.u, LiveFont.SANS_BOLD, 0xFF1A1A22.toInt(), Paint.Align.CENTER, sample = "00:00")
         val leftTxt = if (r.ar) gregLine(r) else hijriLine(r)
         val rightTxt = if (r.ar) hijriLine(r) else gregLine(r)
         r.text(leftTxt, pill.left - 10 * r.u, ty, 11 * r.u * r.s2, r.c1, r.sansBold, Paint.Align.RIGHT, maxW = pill.left - r.pad - 10 * r.u)
@@ -218,9 +224,15 @@ object Moments2R {
         val ty = p0 + tb.height()
         val tw = tp.measureText(hh + mm)
         val tx = if (ar) R - tw else L
-        c.drawText(hh, tx + r.u, ty + 2 * r.u, Paint(tp).apply { color = withAlpha(Color.BLACK, 120) })
-        c.drawText(hh, tx, ty, tp)
-        c.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })
+        if (r.cfg.gradTime) {
+            c.drawText(hh, tx + r.u, ty + 2 * r.u, Paint(tp).apply { color = withAlpha(Color.BLACK, 120) })
+            c.drawText(hh, tx, ty, tp)
+            c.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })
+        } else {
+            val tcy = ty - tb.height() / 2f
+            r.liveTime(r.hh(), tx, tcy, tp.textSize, LiveFont.BEBAS, ink, Paint.Align.LEFT, sample = "00")
+            r.liveTime("mm", tx + tp.measureText(hh), tcy, tp.textSize, LiveFont.BEBAS, acc, Paint.Align.LEFT, sample = "00")
+        }
         // ---- lower block: pills + prayer
         val gap = r.h * 0.018f
         val barH = 4 * r.u

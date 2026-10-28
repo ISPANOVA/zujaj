@@ -77,6 +77,16 @@ object Kit {
     fun bakedTime(r: RenderCtx, pattern: String = r.hm()): String =
         r.n(SimpleDateFormat(pattern, Locale.US).format(Date(r.now.toInstant().toEpochMilli())))
 
+    /**
+     * The main time of a gradient design: with "gradient time" on it is drawn into the picture with the
+     * gradient (redrawn every minute); otherwise the phone draws it live in [c1] — always exact.
+     */
+    fun timeText(r: RenderCtx, cx: Float, cy: Float, size: Float, live: LiveFont, c1: Int, c2: Int,
+                 maxW: Float = 0f, maxH: Float = 0f, pattern: String = r.hm(), font: F? = null) {
+        if (r.cfg.gradTime) gradText(r, bakedTime(r, pattern), cx, cy, size, font ?: r.resolveFont(live, 60 * r.u).f, c1, c2, maxW = maxW, maxH = maxH)
+        else r.liveTime(pattern, cx, cy, size, live, c1, Paint.Align.CENTER, maxW = maxW, maxH = maxH, sample = pattern.replace(Regex("[a-zA-Z]"), "0"))
+    }
+
     /** Draws [s] with a vertical/horizontal gradient fill, centred on (cx, cy) by ink. Returns ink bounds. */
     fun gradText(r: RenderCtx, s: String, cx: Float, cy: Float, size: Float, font: F, c1: Int, c2: Int,
                  vertical: Boolean = true, maxW: Float = 0f, maxH: Float = 0f, align: Paint.Align = Paint.Align.CENTER): RectF {

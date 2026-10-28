@@ -92,6 +92,8 @@ data class WidgetConfig(
     // Per-part colours (Prayer Hub)
     val accent2: Int = 0xFFF2865E.toInt(),
     val minGrad: Boolean = true,
+    /** Time drawn into the picture with gradients. Off = the phone draws the time itself (always exact). */
+    val gradTime: Boolean = false,
     val hourGrad: Boolean = false,
     val hourColor2: Int = 0xFFE7B75F.toInt(),
     /** One gradient across the whole time (hours colour → minutes 2nd colour). */

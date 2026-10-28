@@ -41,10 +41,16 @@ object CalliR {
         val ink = android.graphics.Rect(); p.getTextBounds("0123456789", 0, 10, ink)
         val base = (top + bot) / 2 - ink.exactCenterY()
         var x = r.pad + 2 * r.u
-        r.canvas.drawText("$hh:", x, base, p); x += p.measureText("$hh:")
-        p.shader = LinearGradient(0f, base + ink.top, 0f, base + ink.bottom, c.accent, withAlpha(c.accent, 60), Shader.TileMode.CLAMP)
-        r.canvas.drawText(mm, x, base, p); x += p.measureText(mm)
-        p.shader = null
+        if (c.gradTime) {
+            r.canvas.drawText("$hh:", x, base, p); x += p.measureText("$hh:")
+            p.shader = LinearGradient(0f, base + ink.top, 0f, base + ink.bottom, c.accent, withAlpha(c.accent, 60), Shader.TileMode.CLAMP)
+            r.canvas.drawText(mm, x, base, p); x += p.measureText(mm)
+            p.shader = null
+        } else {
+            val tcy = (top + bot) / 2
+            r.liveTime(r.hh() + ":", x, tcy, p.textSize, LiveFont.BEBAS, c.color1, Paint.Align.LEFT, sample = "00:"); x += p.measureText("$hh:")
+            r.liveTime("mm", x, tcy, p.textSize, LiveFont.BEBAS, c.accent, Paint.Align.LEFT, sample = "00"); x += p.measureText(mm)
+        }
         Kit.calli(r, dayAr(r), x - 4 * r.u, r.h * 0.42f, r.h * 0.32f * r.s2, r.c1, maxW = (r.w - r.pad - x) * 1.6f + 60 * r.u, maxH = r.h * 0.3f)
         r.text(Kit.hijri(r), r.w - r.pad, r.h * 0.13f, 10 * r.u, r.c2, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.4f)
         r.text(Kit.greg(r), r.w - r.pad, r.h * 0.25f, 10 * r.u, r.c2, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.4f)
@@ -56,7 +62,7 @@ object CalliR {
         val split = r.w * 0.58f
         val cx = (r.pad + split) / 2
         r.text(Kit.hijri(r), cx, r.h * 0.13f, 10 * r.u, r.c1, r.sans, Paint.Align.CENTER, maxW = split - r.pad)
-        Kit.gradText(r, Kit.bakedTime(r), cx, r.h * 0.5f, r.h * 0.6f * r.s1, r.resolveFont(LiveFont.BEBAS, 60 * r.u).f,
+        Kit.timeText(r, cx, r.h * 0.5f, r.h * 0.6f * r.s1, LiveFont.BEBAS,
             r.c1, withAlpha(r.c1, 30), maxW = split - r.pad - 6 * r.u, maxH = r.h * 0.5f)
         Kit.calli(r, dayAr(r), cx, r.h * 0.66f, r.h * 0.22f * r.s2, r.accent, maxW = split - r.pad, maxH = r.h * 0.22f)
         r.text(Kit.greg(r), cx, r.h * 0.88f, 10 * r.u, r.c2, r.sans, Paint.Align.CENTER, maxW = split - r.pad)
@@ -158,7 +164,7 @@ object CalliR {
     // 9 — tall stretched digits beside the day and date (S)
     fun obelisk(r: RenderCtx) {
         val left = r.pad
-        Kit.gradText(r, Kit.bakedTime(r), left + r.w * 0.27f, r.h * 0.42f, r.h * 0.6f * r.s1, r.resolveFont(LiveFont.SIXCAPS, 60 * r.u).f,
+        Kit.timeText(r, left + r.w * 0.27f, r.h * 0.42f, r.h * 0.6f * r.s1, LiveFont.SIXCAPS,
             r.c1, withAlpha(r.c1, 70), maxW = r.w * 0.5f, maxH = r.h * 0.6f)
         Kit.calli(r, dayAr(r), r.w * 0.76f, r.h * 0.3f, r.h * 0.16f, r.c1, maxW = r.w * 0.4f, maxH = r.h * 0.16f)
         r.textTight(r.n(r.today.dayOfMonth), r.w * 0.76f, r.h * 0.5f, 30 * r.u * r.s2, r.c1, r.sansBold)
@@ -223,7 +229,7 @@ object CalliR {
     // 16 — fading clock with the day in accent over it and blossoms (W)
     fun blossom(r: RenderCtx) {
         r.text(Kit.greg(r) + "  |  " + Kit.hijri(r), r.w / 2, r.h * 0.12f, 10 * r.u, r.c1, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
-        Kit.gradText(r, Kit.bakedTime(r), r.w / 2, r.h * 0.48f, r.h * 0.5f * r.s1, r.resolveFont(LiveFont.BEBAS, 60 * r.u).f,
+        Kit.timeText(r, r.w / 2, r.h * 0.48f, r.h * 0.5f * r.s1, LiveFont.BEBAS,
             r.c1, withAlpha(r.c1, 20), maxW = r.w * 0.6f, maxH = r.h * 0.48f)
         Kit.calli(r, dayAr(r), r.w * 0.58f, r.h * 0.6f, r.h * 0.26f * r.s2, r.accent, maxW = r.w * 0.5f, maxH = r.h * 0.26f)
         // blossoms
@@ -251,7 +257,7 @@ object CalliR {
             Kit.line(r, x, y, x + 18 * r.u, y - 8 * r.u, withAlpha(r.c1, 60), 0.7f * r.u)
             r.circle(x + 18 * r.u, y - 8 * r.u, 1.2f * r.u, withAlpha(r.c1, 160))
         }
-        Kit.gradText(r, Kit.bakedTime(r), r.w / 2, r.h * 0.5f, r.h * 0.6f * r.s1, r.resolveFont(LiveFont.BEBAS, 60 * r.u).f,
+        Kit.timeText(r, r.w / 2, r.h * 0.5f, r.h * 0.6f * r.s1, LiveFont.BEBAS,
             r.c1, withAlpha(r.c1, 10), maxW = r.w * 0.6f, maxH = r.h * 0.56f)
         Kit.calli(r, dayAr(r), r.w * 0.62f, r.h * 0.68f, r.h * 0.3f * r.s2, withAlpha(r.accent, 230), maxW = r.w * 0.6f, maxH = r.h * 0.3f, color2 = r.c2)
         r.text(Kit.greg(r) + "  |  " + Kit.hijri(r), r.w / 2, r.h * 0.9f, 10 * r.u, r.c1, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)

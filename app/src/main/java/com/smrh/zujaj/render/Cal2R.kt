@@ -207,6 +207,11 @@ object Cal2R {
             Calendars.hijri(d).let { "${Calendars.toArabicDigits(it.day.toString())} ${Calendars.hijriMonth(it.month, true)}" }, Calendars.toArabicDigits("${Kit.battery(r)}") + "٪")
         for (i in 0 until 4) {
             val y = r.h * (0.38f + i * 0.16f)
+            if (i == 0 && !r.cfg.gradTime) {
+                r.liveTime("HH:mm", r.w * 0.45f, y, 12 * r.u * r.s1, LiveFont.SANS_BOLD, green, Paint.Align.RIGHT, sample = "00:00")
+                r.liveTime("HH:mm", r.w * 0.55f, y, 12 * r.u * r.s1, LiveFont.AR_CAIRO, green, Paint.Align.LEFT, sample = "00:00")
+                continue
+            }
             r.text(en[i], r.w * 0.45f, y, 12 * r.u * r.s1, green, F.SANS_BOLD, Paint.Align.RIGHT)
             r.text(ar[i], r.w * 0.55f, y, 12 * r.u * r.s1, green, F.CAIRO_BOLD)
         }

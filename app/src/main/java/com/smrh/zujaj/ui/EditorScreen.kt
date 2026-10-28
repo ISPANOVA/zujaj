@@ -179,6 +179,8 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     var showTapApp by remember { mutableStateOf(false) }
     var showCity by remember { mutableStateOf(false) }
     var askExact by remember { mutableStateOf(false) }
+    // gradient time needs the permissions; 1 = asked from the switch, 2 = asked from Apply/Save
+    var needAccess by remember { mutableIntStateOf(0) }
     // an interstitial may follow only after the user finished (added a widget) and leaves the editor
     var appliedOnce by remember { mutableStateOf(false) }
     val actForAd = ctx as? Activity
@@ -190,6 +192,12 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
         PrimaryButton(tr("Allow", "اسمح"), Modifier.fillMaxWidth()) { askExact = false; Prefs.setString("exact_asked", "1"); com.smrh.zujaj.widget.Scheduler.askExact(ctx) }
         androidx.compose.material3.TextButton(onClick = { askExact = false; Prefs.setString("exact_asked", "1") }) { Text(tr("Later", "بعدين"), color = Z.sub) }
     }
+    if (needAccess != 0) TimeAccessDialog(
+        title = tr("Gradient time needs 3 permissions", "الساعة المتدرّجة محتاجة 3 أذونات"),
+        onPlain = { cfg = cfg.copy(gradTime = false); needAccess = 0 },
+        onReady = { needAccess = 0 },
+        onDismiss = { if (!TimeAccess.ok(ctx)) cfg = cfg.copy(gradTime = false); needAccess = 0 },
+    )
     val ar = Prefs.isArabicUi
     val f = style.feats
 
@@ -233,6 +241,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             ) {
                 when {
                     locked -> nav.go(Screen.Paywall)
+                    style.bakeTime(cfg) && !TimeAccess.ok(ctx) -> needAccess = 2
                     s.widgetId != -1 -> {
                         Haptics.success(ctx)
                         Prefs.saveWidgetConfig(s.widgetId, cfg); cleanJson = cfg.toJson()
@@ -244,7 +253,6 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     else -> {
                         Haptics.success(ctx); pin(ctx, cfg, style.shape)
                         appliedOnce = true; cleanJson = cfg.toJson()
-                        if (style.bakeTime(cfg) && !com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx) && Prefs.getString("exact_asked") != "1") askExact = true
                     }
                 }
             }
@@ -457,6 +465,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 Section(tr("Ready-made looks", "أشكال جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         presets.forEach { (en, a, p) -> ZChip(if (ar) a else en, false) { cfg = cfg.applyLook(p) } }
+                    }
+                }
+                if (style.bakeTime(cfg.copy(gradTime = true, minGrad = true))) Section(tr("Time style", "شكل الساعة")) {
+                    SwitchRow(tr("Gradient time", "ساعة متدرّجة"), cfg.gradTime,
+                        if (cfg.gradTime) tr("Drawn by Zujaj every minute — needs Alarms, Battery and Auto-start", "زجاج بيرسمها كل دقيقة — محتاجة المنبهات والبطارية والتشغيل التلقائي")
+                        else tr("Off: the phone draws the time — always exact, one colour", "مقفولة: التليفون بيرسم الوقت — مظبوط دايماً، لون واحد")) {
+                        cfg = cfg.copy(gradTime = it); if (it && !TimeAccess.ok(ctx)) needAccess = 1
                     }
                 }
                 if (Feat.HUB in f) Section(tr("Main colours", "الألوان الأساسية")) {

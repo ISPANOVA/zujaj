@@ -127,7 +127,7 @@ fun AppGates(nav: Nav? = null) {
         f.noticeOnce && f.notice.isNotBlank() && seen != f.notice -> GateDialog(
             tr("Message", "رسالة"), f.notice, tr("OK", "تمام"), { seen = f.notice; Prefs.setString("notice_seen", f.notice) }, null, null,
         )
-        else -> BatteryIntro()
+        else -> { BatteryIntro(); if (Prefs.getString("bat_intro") == "1") TimeAccessCheck() }
     }
 }
 
@@ -267,4 +267,105 @@ private fun AdBlockWall(why: com.smrh.zujaj.security.AdBlock.Why, checking: Bool
             TextButton(onClick = onPro) { Text(tr("Go Pro — no ads", "اشترك برو — من غير إعلانات"), color = accent, fontWeight = FontWeight.Bold) }
         }
     }
+}
+
+// ------------------------------------------------------------------ gradient time: mandatory permissions
+/**
+ * Designs whose time is drawn into the picture (with a gradient) must be redrawn by the app every minute.
+ * Phones only allow that on time with: exact alarms, battery "Unrestricted" and (on some brands) auto-start.
+ * Without them the time can lag, so those designs require all three; otherwise the phone draws the time itself.
+ */
+object TimeAccess {
+    fun exact(ctx: android.content.Context) = com.smrh.zujaj.widget.Scheduler.exactAllowed(ctx)
+    fun battery(ctx: android.content.Context) = ignoringBattery(ctx)
+    fun hasAutoStart(ctx: android.content.Context) = com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null
+    /** Auto-start can't be read back, so the user confirms it. */
+    fun autoStart(ctx: android.content.Context) = !hasAutoStart(ctx) || Prefs.getString("autostart_ok") == "1"
+    fun ok(ctx: android.content.Context) = exact(ctx) && battery(ctx) && autoStart(ctx)
+
+    /** Widgets on the home screen that draw a gradient time. */
+    fun gradientWidgets(ctx: android.content.Context): List<Int> = com.smrh.zujaj.widget.WidgetUpdater.allIds(ctx).filter { id ->
+        val cfg = Prefs.widgetConfig(id) ?: return@filter false
+        com.smrh.zujaj.catalog.Catalog.byId(cfg.styleId)?.bakeTime?.invoke(cfg) == true
+    }
+
+    /** Once, after updating: widgets made before this choice existed keep their gradient look. */
+    fun migrate(ctx: android.content.Context) {
+        if (Prefs.getString("grad_mig") == "1") return
+        Prefs.setString("grad_mig", "1")
+        com.smrh.zujaj.widget.WidgetUpdater.allIds(ctx).forEach { id ->
+            val cfg = Prefs.widgetConfig(id) ?: return@forEach
+            val st = com.smrh.zujaj.catalog.Catalog.byId(cfg.styleId) ?: return@forEach
+            if (!cfg.gradTime && st.bakeTime(cfg.copy(gradTime = true))) Prefs.saveWidgetConfig(id, cfg.copy(gradTime = true))
+        }
+    }
+
+    /** Switches every gradient widget to the always-exact time drawn by the phone. */
+    fun makePlain(ctx: android.content.Context) {
+        gradientWidgets(ctx).forEach { id ->
+            Prefs.widgetConfig(id)?.let { Prefs.saveWidgetConfig(id, it.copy(gradTime = false)) }
+            runCatching { com.smrh.zujaj.widget.WidgetUpdater.update(ctx, id) }
+        }
+    }
+}
+
+/**
+ * The required steps for gradient time. [onPlain] = use the always-exact time without the gradient instead.
+ * [onReady] runs once everything is allowed.
+ */
+@Composable
+fun TimeAccessDialog(title: String, onPlain: () -> Unit, onReady: () -> Unit, onDismiss: () -> Unit, plainLabel: String = tr("Use it without the gradient", "استخدمها من غير تدرّج")) {
+    val ctx = LocalContext.current
+    var exact by remember { mutableStateOf(TimeAccess.exact(ctx)) }
+    var batt by remember { mutableStateOf(TimeAccess.battery(ctx)) }
+    var auto by remember { mutableStateOf(TimeAccess.autoStart(ctx)) }
+    var autoOpened by remember { mutableStateOf(false) }
+    val oem = remember { TimeAccess.hasAutoStart(ctx) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) { exact = TimeAccess.exact(ctx); batt = TimeAccess.battery(ctx); auto = TimeAccess.autoStart(ctx) }
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    val all = exact && batt && auto
+    ZDialog(androidx.compose.material.icons.Icons.Rounded.Check, title,
+        tr("Gradient clocks are drawn by Zujaj every minute. To stay on time on every phone, these are required:",
+            "الساعة المتدرّجة زجاج بيرسمها كل دقيقة بنفسه. عشان تفضل مظبوطة على أي تليفون لازم الخطوات دي:"),
+        onDismiss = onDismiss) {
+        StepRow(1, tr("Alarms & reminders", "المنبهات والتذكيرات"), tr("Allow it for Zujaj", "اسمح بيها لزجاج"), exact) { com.smrh.zujaj.widget.Scheduler.askExact(ctx) }
+        StepRow(2, tr("Battery: Unrestricted", "البطارية: بدون قيود"), tr("App info → Battery → Unrestricted", "معلومات التطبيق ← البطارية ← غير مقيّد"), batt) {
+            runCatching {
+                ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }.onFailure { runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+        }
+        if (oem) {
+            StepRow(3, tr("Auto-start (${com.smrh.zujaj.widget.Oem.brand})", "التشغيل التلقائي (${com.smrh.zujaj.widget.Oem.brand})"),
+                tr("Turn Zujaj on in the list", "فعّل زجاج في القايمة"), auto) { com.smrh.zujaj.widget.Oem.openAutoStart(ctx); autoOpened = true }
+            if (autoOpened && !auto) TextButton(onClick = { Prefs.setString("autostart_ok", "1"); auto = true }) {
+                Text(tr("I turned it on ✓", "فعّلته ✓"), color = LocalAccent.current, fontWeight = FontWeight.Bold)
+            }
+        }
+        PrimaryButton(if (all) tr("Done", "تمام") else tr("Finish the steps above", "كمّل الخطوات اللي فوق"), Modifier.fillMaxWidth()) { if (all) onReady() }
+        TextButton(onClick = onPlain, modifier = Modifier.fillMaxWidth()) { Text(plainLabel, color = Z.sub) }
+    }
+}
+
+/** On opening the app: gradient widgets without the required permissions → allow them, or switch to exact time. */
+@Composable
+fun TimeAccessCheck() {
+    val ctx = LocalContext.current
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(1500); while (!Onboarding.done()) delay(500)
+        show = TimeAccess.gradientWidgets(ctx).isNotEmpty() && !TimeAccess.ok(ctx)
+    }
+    if (show) TimeAccessDialog(
+        title = tr("Your clock widget may run late", "ويدجت الساعة عندك ممكن تتأخر"),
+        plainLabel = tr("Switch to exact time (no gradient)", "حوّلها لوقت مظبوط (من غير تدرّج)"),
+        onPlain = { TimeAccess.makePlain(ctx); show = false; android.widget.Toast.makeText(ctx, tr("Done — the time is now always exact", "تمام — الوقت بقى مظبوط على طول"), android.widget.Toast.LENGTH_LONG).show() },
+        onReady = { show = false; com.smrh.zujaj.widget.WidgetUpdater.updateAll(ctx) },
+        onDismiss = { },   // required: pick one of the two
+    )
 }

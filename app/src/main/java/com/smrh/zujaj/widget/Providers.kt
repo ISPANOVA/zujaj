@@ -250,6 +250,8 @@ object Scheduler {
         val req = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("zujaj_refresh", ExistingPeriodicWorkPolicy.KEEP, req)
         scheduleAlarms(ctx)
+        // re-arm the minute tick if the chain broke (process killed by the phone)
+        if (WidgetUpdater.allIds(ctx).any { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(ctx, id, it) } == true }) minuteTick(ctx)
     }
 
     fun refreshNow(ctx: Context) {
