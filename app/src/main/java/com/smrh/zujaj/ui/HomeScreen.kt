@@ -120,7 +120,7 @@ import java.time.LocalTime
 private data class Dest(val icon: ImageVector, val en: String, val ar: String)
 private val dests = listOf(
     Dest(Icons.Rounded.Home, "Discover", "اكتشف"),
-    Dest(Icons.Rounded.Collections, "Wallpapers", "خلفيات"),
+    Dest(Icons.Rounded.Collections, "Walls", "خلفيات"),
     Dest(Icons.Rounded.Favorite, "Saved", "المفضلة"),
     Dest(Icons.Rounded.Dashboard, "Mine", "ويدجتاتي"),
     Dest(Icons.Rounded.Settings, "Settings", "الإعدادات"),
