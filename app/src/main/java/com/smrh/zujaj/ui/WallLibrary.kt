@@ -234,6 +234,28 @@ object WallLibrary {
         }.getOrDefault(false)
     }
 
+    /** Colour families for the filter: 0 all, 1 dark, 2 blue, 3 purple, 4 pink, 5 warm, 6 green. */
+    val families = listOf("All" to "الكل", "Dark" to "غامق", "Blue" to "أزرق", "Purple" to "بنفسجي", "Pink" to "وردي", "Warm" to "دافي", "Green" to "أخضر")
+    val familyDots = listOf(0xFF888888.toInt(), 0xFF1A1A22.toInt(), 0xFF2F6FC0.toInt(), 0xFF7B5CD6.toInt(), 0xFFD0618C.toInt(), 0xFFD0843A.toInt(), 0xFF3C9A72.toInt())
+    fun family(argb: Int): Int {
+        val hsv = FloatArray(3); android.graphics.Color.colorToHSV(argb, hsv)
+        val (h, s, v) = Triple(hsv[0], hsv[1], hsv[2])
+        if (s < 0.2f || v < 0.22f) return 1
+        return when {
+            h < 20 || h >= 330 -> 4
+            h < 65 -> 5
+            h < 170 -> 6
+            h < 245 -> 2
+            h < 290 -> 3
+            else -> 4
+        }
+    }
+    fun family(wp: Wall) = family(wp.pal.c[2])
+    /** Average colour of a picture (its thumbnail), for the filter. */
+    fun average(b: Bitmap): Int {
+        val s = Bitmap.createScaledBitmap(b, 1, 1, true); return s.getPixel(0, 0)
+    }
+
     private val thumbs = android.util.LruCache<Int, ImageBitmap>(60)
     suspend fun thumb(wp: Wall): ImageBitmap = thumbs.get(wp.id) ?: withContext(Dispatchers.Default) {
         paint(wp, 270, 585).asImageBitmap().also { thumbs.put(wp.id, it) }
@@ -295,10 +317,19 @@ fun WallLibraryTab(nav: Nav) {
             if (picked == null) Toast.makeText(ctx, tr("Couldn't open this picture", "الصورة دي مش نافعة"), Toast.LENGTH_SHORT).show() }
     }
     val pane = LocalPaneWidth.current
-    val cols = when { pane >= 840 -> 5; pane >= 600 -> 4; else -> 3 }
+    val cols = when { pane >= 840 -> 4; pane >= 600 -> 3; else -> 2 }
+    var fam by rememberSaveable { mutableIntStateOf(0) }
+    // colour family of uploaded pictures, worked out from their thumbnails
+    var remoteFam by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    LaunchedEffect(homeRemote, community) {
+        remoteFam = withContext(Dispatchers.Default) {
+            (homeRemote + community.orEmpty()).associate { it.id to (com.smrh.zujaj.remote.Walls.decode(it.thumb)?.let { b -> WallLibrary.family(WallLibrary.average(b)) } ?: 1) }
+        }
+    }
+    fun famOf(s: WallSrc) = when (s) { is WallSrc.Built -> WallLibrary.family(s.wp); is WallSrc.Remote -> remoteFam[s.item.id] ?: -1 }
     val gut = if (pane >= 600) Sp.xl else Sp.l
-    val list: List<WallSrc>? = if (page == 0) homeRemote.map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in hidden }.map { WallSrc.Built(it) }
-        else community?.map { WallSrc.Remote(it) }
+    val list: List<WallSrc>? = (if (page == 0) homeRemote.map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in hidden }.map { WallSrc.Built(it) }
+        else community?.map { WallSrc.Remote(it) })?.filter { fam == 0 || famOf(it) == fam }
     LazyVerticalGrid(GridCells.Fixed(cols), Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = gut, end = gut, top = Sp.l, bottom = LocalDockSpace.current),
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -307,17 +338,29 @@ fun WallLibraryTab(nav: Nav) {
                 Text(tr("Wallpapers", "خلفيات"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
                 // the old "clock behind your photo" studio lives here now
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l))
-                    .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF8B5CF6).copy(alpha = 0.45f), Color(0xFFEC4899).copy(alpha = 0.3f), Z.surface)))
+                    .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(LocalAccent.current.copy(alpha = 0.32f), LocalAccent.current.copy(alpha = 0.12f), Z.surface)))
                     .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.Wallpapers) }.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.AddPhotoAlternate, null, tint = Z.text, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr("Your photo + widgets", "صورتك + ويدجت"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Z.text)
-                        Text(tr("Put a clock behind your photo, add widgets, and your saved designs", "حط الساعة ورا صورتك وضيف ويدجت، وتصميماتك المحفوظة"), fontSize = 12.sp, color = Z.sub)
+                        Text(tr("Put a clock behind your photo, add widgets, and your saved designs", "حط الساعة ورا صورتك وضيف ويدجت، وتصميماتك المحفوظة"), fontSize = 13.sp, color = Z.sub)
                     }
                     Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Z.sub)
                 }
                 Segmented(listOf(tr("Home", "الرئيسية"), tr("Community", "المجتمع")), page) { page = it }
+                // colour filter
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(WallLibrary.families.size) { i ->
+                        val sel = i == fam
+                        Row(Modifier.clip(RoundedCornerShape(50)).background(if (sel) LocalAccent.current.copy(alpha = 0.2f) else Z.surface)
+                            .border(1.dp, if (sel) LocalAccent.current else Z.line, RoundedCornerShape(50))
+                            .clickable { Haptics.tick(ctx); fam = i }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (i > 0) { Box(Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(WallLibrary.familyDots[i])).border(1.dp, Z.tint(0.3f), androidx.compose.foundation.shape.CircleShape)); Spacer(Modifier.width(6.dp)) }
+                            Text(WallLibrary.families[i].let { if (ar) it.second else it.first }, fontSize = 13.sp, color = if (sel) Z.text else Z.sub, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium)
+                        }
+                    }
+                }
                 if (page == 1) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Wallpapers shared by people, after review.", "خلفيات شاركها الناس، بعد المراجعة."), fontSize = 13.sp, color = Z.sub, modifier = Modifier.weight(1f))
                     PrimaryButton(tr("Share yours", "شارك خلفيتك"), icon = Icons.Rounded.Upload) {
@@ -329,13 +372,14 @@ fun WallLibraryTab(nav: Nav) {
                 if (page == 1 && community?.isEmpty() == true && !err) Text(tr("Nothing here yet — be the first to share!", "لسه مفيش حاجة — كن أول واحد يشارك!"), color = Z.sub, fontSize = 13.sp)
             }
         }
-        if (list == null) item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) { androidx.compose.material3.CircularProgressIndicator(color = LocalAccent.current) }
+        if (list == null) items(6) { Box(Modifier.fillMaxWidth().aspectRatio(270f / 585f).clip(RoundedCornerShape(Rad.l)).shimmer()) }
+        if (list?.isEmpty() == true && fam != 0) item(span = { GridItemSpan(maxLineSpan) }) {
+            Text(tr("No wallpapers in this colour here yet", "مفيش خلفيات باللون ده هنا لسه"), color = Z.sub, fontSize = 14.sp, modifier = Modifier.padding(vertical = 30.dp))
         }
         items(list.orEmpty(), key = { it.key }) { src ->
             Column {
                 WallThumb(src, Modifier.fillMaxWidth().aspectRatio(270f / 585f).clickable { open = src })
-                Text(src.by, fontSize = 11.sp, color = Z.sub, maxLines = 1, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                Text(src.by, fontSize = 12.sp, color = Z.sub, maxLines = 1, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
             }
         }
     }
@@ -368,7 +412,7 @@ fun WallThumb(src: WallSrc, modifier: Modifier) {
             is WallSrc.Remote -> withContext(Dispatchers.Default) { com.smrh.zujaj.remote.Walls.decode(src.item.thumb)?.asImageBitmap() }
         }
     }
-    Box(modifier.clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))) {
+    Box(modifier.clip(RoundedCornerShape(Rad.l)).then(if (img == null) Modifier.shimmer() else Modifier.background(Z.surface)).border(1.dp, Z.line, RoundedCornerShape(Rad.l))) {
         img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
     }
 }

@@ -28,10 +28,12 @@ open class UiShotsTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
     open val tag = ""
+    open val light = false
 
     @Test
     fun screens() {
         Prefs.init(rule.activity)
+        com.smrh.zujaj.ui.Z.light = light
         val out = File(System.getProperty("user.dir"), "build/previews").apply { mkdirs() }
         val screens = listOf(
             "home" to Screen.Home,
@@ -49,6 +51,9 @@ open class UiShotsTest {
             "set_desert" to Screen.SetDetail("desert"),
             "set_midnight" to Screen.SetDetail("midnight"),
             "gallery" to Screen.Gallery,
+            "tab_walls" to Screen.Home,
+            "tab_mine" to Screen.Home,
+            "sets" to Screen.Sets,
         )
         rule.mainClock.autoAdvance = false
         val nav = Nav(Screen.Home)
@@ -58,6 +63,7 @@ open class UiShotsTest {
                 rule.runOnUiThread {
                     Prefs.appLanguage = if (ar) "ar" else "en"
                     com.smrh.zujaj.ui.editorStartTab = if (name == "editor_font") 99 else 0
+                    com.smrh.zujaj.ui.homeStartTab = when (name) { "tab_walls" -> 1; "tab_mine" -> 3; else -> 0 }
                     nav.reset(s)
                 }
                 repeat(6) {
@@ -107,3 +113,9 @@ class UiShotsTestLarge : UiShotsTest() { override val tag = "_large" }
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = Application::class, qualifiers = "w800dp-h1280dp-port-mdpi")
 class UiShotsTestTabletPort : UiShotsTest() { override val tag = "_tabp" }
+
+/** Phone in the light look. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], application = Application::class, qualifiers = "w400dp-h860dp-xhdpi")
+class UiShotsTestLight : UiShotsTest() { override val tag = "_light"; override val light = true }

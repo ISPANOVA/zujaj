@@ -51,7 +51,7 @@ fun NumeralsSwitch(cfg: WidgetConfig, onChange: (WidgetConfig) -> Unit) {
             ) {
                 Text(t.first, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = if (sel) accent else Z.text,
                     fontFamily = family(if (isAr) LiveFont.AR_CAIRO else LiveFont.SANS_BOLD))
-                Text(t.second, fontSize = 11.sp, color = Z.sub)
+                Text(t.second, fontSize = 12.sp, color = Z.sub)
             }
         }
     }

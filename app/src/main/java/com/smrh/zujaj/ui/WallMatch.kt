@@ -38,4 +38,20 @@ object WallMatch {
             hourColor2 = accent, dayColor = white, hijriColor = white, timeColor = white, nameColor = sub,
         )
     }
+
+    /** Widgets set to "Follow my wallpaper" re-colour when the wallpaper's colours changed. Returns true if any did. */
+    fun follow(ctx: Context): Boolean {
+        val cols = colours(ctx) ?: return false
+        val sig = cols.joinToString(",")
+        if (com.smrh.zujaj.data.Prefs.getString("wm_sig") == sig) return false
+        com.smrh.zujaj.data.Prefs.setString("wm_sig", sig)
+        var any = false
+        com.smrh.zujaj.widget.WidgetUpdater.allIds(ctx).forEach { id ->
+            val cfg = com.smrh.zujaj.data.Prefs.widgetConfig(id) ?: return@forEach
+            if (!cfg.autoWall) return@forEach
+            com.smrh.zujaj.data.Prefs.saveWidgetConfig(id, apply(cfg, cols).copy(autoWall = true)); any = true
+            runCatching { com.smrh.zujaj.widget.WidgetUpdater.update(ctx, id) }
+        }
+        return any
+    }
 }

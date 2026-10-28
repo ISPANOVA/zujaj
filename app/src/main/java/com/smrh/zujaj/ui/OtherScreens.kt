@@ -555,7 +555,7 @@ fun PaywallScreen(nav: Nav) {
                 TextButton(onClick = { showRedeem = true }) { Text(tr("Have a code?", "معاك كود؟"), color = accent) }
             }
             Text(tr("Subscriptions renew automatically until cancelled in Google Play. Cancel anytime.", "الاشتراكات بتتجدد لوحدها لحد ما تلغيها من جوجل بلاي. تقدر تلغي في أي وقت."),
-                color = Z.sub, fontSize = 11.5.sp, textAlign = TextAlign.Center, lineHeight = 15.sp)
+                color = Z.sub, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 15.sp)
         }
     }
 
@@ -870,7 +870,7 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(tr("Save password on this phone", "احفظ كلمة المرور على التليفون ده"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(tr("Opens straight away next time", "المرة الجاية هتفتح على طول"), fontSize = 12.sp, color = Z.sub)
+                Text(tr("Opens straight away next time", "المرة الجاية هتفتح على طول"), fontSize = 13.sp, color = Z.sub)
             }
             androidx.compose.material3.Switch(keep, { keep = it }, colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = LocalAccent.current, checkedThumbColor = Color.White))
         }

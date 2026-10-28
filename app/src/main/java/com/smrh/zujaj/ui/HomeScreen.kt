@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.heightIn
@@ -118,7 +119,7 @@ import java.time.LocalTime
 private data class Dest(val icon: ImageVector, val en: String, val ar: String)
 private val dests = listOf(
     Dest(Icons.Rounded.Home, "Discover", "اكتشف"),
-    Dest(Icons.Rounded.Wallpaper, "Wallpapers", "خلفيات"),
+    Dest(Icons.Rounded.Collections, "Wallpapers", "خلفيات"),
     Dest(Icons.Rounded.Favorite, "Saved", "المفضلة"),
     Dest(Icons.Rounded.Dashboard, "Mine", "ويدجتاتي"),
     Dest(Icons.Rounded.Settings, "Settings", "الإعدادات"),
@@ -129,9 +130,12 @@ private val dests = listOf(
  * landscape large phones) the destinations move to a side rail so the content gets the full height and
  * the grid gets the full remaining width. The selected tab is saved, so folding/unfolding keeps it.
  */
+/* Tab the home screen opens on (screenshot tests). */
+var homeStartTab = 0
+
 @Composable
 fun HomeScreen(nav: Nav) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(homeStartTab) }
     val pane = LocalPaneWidth.current
     val rail = WidthClass.of(pane) == WidthClass.EXPANDED
     val ver by Prefs.version.collectAsState()
@@ -224,24 +228,25 @@ private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
                 .clip(RoundedCornerShape(50))
                 .background(Z.surface.copy(alpha = 0.97f))
                 .border(1.dp, Z.tint(0.09f), RoundedCornerShape(50))
-                .padding(5.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // every destination keeps its label (no layout jump); the chosen one gets a coloured pill behind its icon
             dests.forEachIndexed { i, d ->
                 val sel = i == tab
-                val bg by androidx.compose.animation.animateColorAsState(if (sel) accent else Color.Transparent, Motion.color(), label = "db")
-                Row(
-                    Modifier.animateContentSize(Motion.std(Motion.MED)).clip(RoundedCornerShape(50)).background(bg)
-                        .clickable { Haptics.tick(ctx); onTab(i) }
-                        .padding(horizontal = if (sel) 16.dp else 13.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                val pill by androidx.compose.animation.animateColorAsState(if (sel) accent.copy(alpha = 0.22f) else Color.Transparent, Motion.color(), label = "db")
+                val fg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.sub, Motion.color(), label = "df")
+                Column(
+                    Modifier.width(64.dp).clip(RoundedCornerShape(22.dp)).clickable { Haptics.tick(ctx); onTab(i) }.padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(d.icon, tr(d.en, d.ar), tint = if (sel) Color(0xFF14110A) else Z.sub, modifier = Modifier.size(22.dp))
-                    if (sel) {
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr(d.en, d.ar), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14110A), maxLines = 1)
+                    Box(Modifier.width(48.dp).height(30.dp).clip(RoundedCornerShape(50)).background(pill), contentAlignment = Alignment.Center) {
+                        Icon(d.icon, null, tint = fg, modifier = Modifier.size(22.dp))
                     }
+                    Spacer(Modifier.height(3.dp))
+                    Text(tr(d.en, d.ar), fontSize = 11.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = fg, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -325,7 +330,7 @@ fun perRow(shape: Shape, widthDp: Int): Int = when (shape) {
 
 /** A widget on a soft stage that looks like a bit of a home screen; badge in the corner, name under it. */
 @Composable
-fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, compact: Boolean = false, onClick: () -> Unit) {
+fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolean = true, stage: androidx.compose.ui.unit.Dp? = null, compact: Boolean = false, share: Boolean = false, onClick: () -> Unit) {
     val small = st.shape == Shape.SMALL
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
@@ -334,7 +339,7 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
     Column(modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
         .clickable(interactionSource = src, indication = androidx.compose.material3.ripple(), onClick = onClick)) {
         Box(
-            Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).clip(RoundedCornerShape(24.dp))
+            Modifier.fillMaxWidth().then(if (stage != null) Modifier.height(stage) else Modifier).then(if (share) Modifier.sharedWidget(st.id) else Modifier).clip(RoundedCornerShape(24.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF17171D), Color(0xFF101015))))
                 .border(1.dp, Z.tint(0.07f), RoundedCornerShape(24.dp))
                 .padding(if (compact) 8.dp else if (small) 16.dp else 14.dp),
@@ -415,6 +420,7 @@ fun DiscoverTab(nav: Nav) {
     val all = Flags.visible()
     val cats = Cat.values().filter { c -> all.any { it.cat == c } }
     var chip by rememberSaveable { mutableStateOf("popular") }
+    var jumpToTabs by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     // rows animate in once per visit to Discover; returning from a widget shows them in place at once
     var entered by rememberSaveable { mutableStateOf(false) }
@@ -481,7 +487,7 @@ fun DiscoverTab(nav: Nav) {
                         HorizontalPager(pager, contentPadding = PaddingValues(horizontal = if (wide) 0.dp else gut), pageSpacing = 12.dp) { page ->
                             val st = featured[page]
                             val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                            val cardH = if (wide) 260.dp else 232.dp
+                            val cardH = if (wide) 230.dp else 196.dp
                             val capH = 58.dp
                             Column(Modifier.fillMaxWidth().height(cardH)
                                 .graphicsLayer { alpha = 1f - 0.35f * kotlin.math.abs(off) }
@@ -518,18 +524,48 @@ fun DiscoverTab(nav: Nav) {
             // the wallpaper studio moved to the Wallpapers tab in the bottom bar
             showcase(Modifier.padding(top = Sp.s, bottom = Sp.s))
         }
-        // ---- ready-made sets: wallpaper + matching widgets
-        item(key = "sets") { SetsCard(nav, gut) }
-        item(key = "gallery") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.s).clip(RoundedCornerShape(Rad.l)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(Rad.l))
-                .clickable { nav.go(Screen.Gallery) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconTile(Icons.Rounded.Groups, Color(0xFF4DB5FF), 44.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(tr("Community designs", "تصاميم الناس"), color = Z.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(tr("Widgets other people made — use any of them", "ويدجت عملها ناس تانيين — استخدم أي واحدة"), color = Z.sub, fontSize = 13.sp, maxLines = 1)
+        // ---- jump straight to a kind of widget
+        item(key = "cats") {
+            LazyRow(contentPadding = PaddingValues(horizontal = gut, vertical = Sp.s), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(cats, key = { it.name }) { c ->
+                    Column(Modifier.width(72.dp).clip(RoundedCornerShape(Rad.m)).clickable { Haptics.tick(ctxHome); chip = c.name; jumpToTabs = true }.padding(vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconTile(catIcon(c), catColor(c), 48.dp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(if (Prefs.isArabicUi) c.ar else c.en, fontSize = 12.sp, color = Z.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Z.sub)
+            }
+        }
+        // ---- most added (published by the admin from the stats)
+        val top = flags.top.mapNotNull { id -> all.firstOrNull { it.id == id } }
+        if (top.isNotEmpty()) item(key = "top") {
+            Column {
+                Text(tr("Most added", "الأكتر إضافة"), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Z.text, modifier = Modifier.padding(start = gut, end = gut, top = Sp.m, bottom = Sp.s))
+                LazyRow(contentPadding = PaddingValues(horizontal = gut), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(top, key = { "top_" + it.id }) { st ->
+                        PreviewTile(st, Modifier.width(if (st.shape == Shape.SMALL) 130.dp else 220.dp), stage = 120.dp, compact = true) { nav.go(Screen.Editor(st.id)) }
+                    }
+                }
+            }
+        }
+        // ---- ready-made sets and community designs: two matching cards
+        item(key = "sets") {
+            Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = Sp.m), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SetsCard(nav, Modifier.weight(1f))
+                FeatureCard(tr("Community designs", "تصاميم الناس"), tr("Made by people — use any", "عملها ناس — استخدم أي واحدة"),
+                    Color(0xFF4DB5FF), Modifier.weight(1f), onClick = { nav.go(Screen.Gallery) }) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        listOf(-1, 1, 0).forEach { k ->
+                            Box(Modifier.offset(x = (k * 22).dp, y = (if (k == 0) 0 else 8).dp).graphicsLayer { rotationZ = k * 9f }
+                                .size(56.dp).clip(RoundedCornerShape(16.dp)).background(Z.surface2).border(1.dp, Z.tint(0.12f), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center) {
+                                Icon(when (k) { -1 -> Icons.Rounded.Schedule; 1 -> Icons.Rounded.WbSunny; else -> Icons.Rounded.Groups }, null,
+                                    tint = if (k == 0) Color(0xFF4DB5FF) else Z.sub, modifier = Modifier.size(26.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
         // ---- collection tabs (stay on top while scrolling)
@@ -560,7 +596,7 @@ fun DiscoverTab(nav: Nav) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 7.dp)
                         .graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 18.dp.toPx() },
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        row.forEach { st -> PreviewTile(st, Modifier.weight(1f), compact = shape != Shape.SMALL) { nav.go(Screen.Editor(st.id)) } }
+                        row.forEach { st -> PreviewTile(st, Modifier.weight(1f), compact = shape != Shape.SMALL, share = true) { nav.go(Screen.Editor(st.id)) } }
                         repeat(per - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
@@ -570,13 +606,17 @@ fun DiscoverTab(nav: Nav) {
             }
         }
     }
+    // index of the sticky collection tabs in the list (items above it)
+    fun tabsIndex() = 1 + (if (com.smrh.zujaj.remote.Flags.freeNow(flags)) 1 else 0) + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0) +
+        1 + 1 + (if (flags.top.any { id -> all.any { it.id == id } }) 1 else 0) + 1
+    LaunchedEffect(jumpToTabs) { if (jumpToTabs) { delay(60); listState.animateScrollToItem(tabsIndex()); jumpToTabs = false } }
     // a NEW collection starts from its top (tabs stay pinned). Only on an actual change of collection —
     // coming back from a widget re-runs this screen and must leave the scroll exactly where it was.
     var shownChip by rememberSaveable { mutableStateOf(chip) }
     LaunchedEffect(chip) {
         if (chip == shownChip) return@LaunchedEffect
         shownChip = chip
-        val tabs = 4 + (if (flags.notice.isNotBlank() && !flags.noticeOnce) 1 else 0)
+        val tabs = tabsIndex()
         if (listState.firstVisibleItemIndex > tabs) listState.scrollToItem(tabs)
     }
 }
@@ -602,8 +642,18 @@ private fun EmptyNote() = EmptyState(Icons.Rounded.GridView, tr("Nothing here ye
 @Composable
 fun EmptyState(icon: ImageVector, title: String, body: String, action: String? = null, onAction: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Sp.xxl, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(64.dp).clip(RoundedCornerShape(Rad.l)).background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(Rad.l)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Z.sub, modifier = Modifier.size(28.dp))
+        // a small glass stack: two tilted panes behind a lit one carrying the icon
+        val accent = LocalAccent.current
+        Box(Modifier.size(width = 150.dp, height = 112.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.offset(x = (-30).dp, y = 8.dp).graphicsLayer { rotationZ = -12f }.size(72.dp, 84.dp).clip(RoundedCornerShape(20.dp))
+                .background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(20.dp)))
+            Box(Modifier.offset(x = 30.dp, y = 8.dp).graphicsLayer { rotationZ = 12f }.size(72.dp, 84.dp).clip(RoundedCornerShape(20.dp))
+                .background(Z.tint(0.05f)).border(1.dp, Z.line, RoundedCornerShape(20.dp)))
+            Box(Modifier.size(84.dp, 96.dp).clip(RoundedCornerShape(24.dp))
+                .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.28f), Z.surface)))
+                .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = accent, modifier = Modifier.size(34.dp))
+            }
         }
         Spacer(Modifier.height(Sp.l))
         Text(title, color = Z.text, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
@@ -874,6 +924,20 @@ private fun AdUnlockIntro(onDismiss: () -> Unit) {
                 color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             PrimaryButton(tr("Got it", "تمام"), Modifier.fillMaxWidth(), onClick = onDismiss)
+        }
+    }
+}
+
+/** Home: one of the two matching feature cards (sets, community). Art on top, title and a line below. */
+@Composable
+fun FeatureCard(title: String, sub: String, tint: Color, modifier: Modifier, onClick: () -> Unit, art: @Composable () -> Unit) {
+    Column(modifier.height(176.dp).pressScale(0.98f).clip(RoundedCornerShape(Rad.l))
+        .background(Brush.verticalGradient(listOf(tint.copy(alpha = if (Z.light) 0.16f else 0.22f), Z.surface)))
+        .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(Rad.l))) { art() }
+        Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp)) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Z.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(sub, fontSize = 12.sp, color = Z.sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

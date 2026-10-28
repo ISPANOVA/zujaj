@@ -68,7 +68,10 @@ class PinReceiver : BroadcastReceiver() {
         if (id == -1) return
         Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it); com.smrh.zujaj.remote.Stats.widgetAdded(it.styleId) }
         runCatching { WidgetUpdater.update(context, id) }
-        Toast.makeText(context, if (Prefs.isArabicUi) "تمت إضافة الويدجت ✓" else "Widget added ✓", Toast.LENGTH_SHORT).show()
+        // the app shows its own "added" sheet when it is open; otherwise a short toast
+        val style = Prefs.widgetConfig(id)?.styleId ?: ""
+        if (WidgetEvents.listening) WidgetEvents.added.value = id to style
+        else Toast.makeText(context, if (Prefs.isArabicUi) "تمت إضافة الويدجت ✓" else "Widget added ✓", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -222,6 +225,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             runCatching { com.smrh.zujaj.billing.Billing.recheck() }
         }
         com.smrh.zujaj.billing.Billing.refreshPro()
+        runCatching { com.smrh.zujaj.ui.WallMatch.follow(applicationContext) }
         WidgetUpdater.updateAll(applicationContext)
         Scheduler.scheduleAlarms(applicationContext)
         Result.success()
@@ -300,4 +304,10 @@ object Scheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         if (until > System.currentTimeMillis() && until != Long.MAX_VALUE) am.setAndAllowWhileIdle(AlarmManager.RTC, until + 1_000, pe) else am.cancel(pe)
     }
+}
+
+/** Tells the open app that a widget was just placed on the home screen. */
+object WidgetEvents {
+    @Volatile var listening = false
+    val added = kotlinx.coroutines.flow.MutableStateFlow<Pair<Int, String>?>(null)
 }

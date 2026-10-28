@@ -199,6 +199,7 @@ object Backdrops {
 @Composable
 fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val accent = LocalAccent.current
+    val ctx = LocalContext.current
     Row(
         modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.m)).background(Z.surface2)
             .border(1.dp, Z.line, RoundedCornerShape(Rad.m)).padding(4.dp),
@@ -210,7 +211,7 @@ fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier,
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(Rad.m - 4.dp))
                     .background(segBg)
-                    .clickable { onSelect(i) }.padding(vertical = 10.dp),
+                    .clickable { if (i != selected) Haptics.tick(ctx); onSelect(i) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(label, color = if (sel) Color(0xFF14110A) else Z.sub, style = MaterialTheme.typography.labelLarge, maxLines = 1)
@@ -222,7 +223,7 @@ fun Segmented(items: List<String>, selected: Int, modifier: Modifier = Modifier,
 // ------------------------------------------------------------------ setting rows
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Text(title.uppercase(), color = Z.sub, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, letterSpacing = if (Prefs.isArabicUi) 0.sp else 1.2.sp,
+    Text(title.uppercase(), color = Z.sub, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, letterSpacing = if (Prefs.isArabicUi) 0.sp else 1.2.sp,
         modifier = Modifier.padding(start = Sp.l + 4.dp, end = Sp.l + 4.dp, top = Sp.l, bottom = Sp.s))
     Column(
         Modifier.fillMaxWidth().padding(horizontal = Sp.l).clip(RoundedCornerShape(Rad.l))
@@ -250,7 +251,7 @@ fun RowBase(label: String, sub: String? = null, onClick: (() -> Unit)? = null, i
         if (icon != null) { IconTile(icon, iconColor); Spacer(Modifier.width(14.dp)) }
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp), color = Z.text)
-            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp), color = Z.sub, modifier = Modifier.padding(top = 1.dp))
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp), color = Z.sub, modifier = Modifier.padding(top = 1.dp))
         }
         trailing()
     }
@@ -266,6 +267,7 @@ fun SwitchRow(label: String, value: Boolean, sub: String? = null, icon: ImageVec
 
 @Composable
 fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, icon: ImageVector? = null, iconColor: Color = Color(0xFF8B7CFF), onChange: (T) -> Unit) {
+    val ctx = LocalContext.current
     var open by remember { mutableStateOf(false) }
     RowBase(label, onClick = { open = true }, icon = icon, iconColor = iconColor) {
         Box {
@@ -274,7 +276,7 @@ fun <T> ChoiceRow(label: String, value: T, options: List<Pair<T, String>>, icon:
                 Icon(Icons.Rounded.UnfoldMore, null, tint = LocalAccent.current.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
             }
             DropdownMenu(open, { open = false }, modifier = Modifier.background(Z.surface2)) {
-                options.forEach { (v, l) -> DropdownMenuItem(text = { Text(l) }, onClick = { onChange(v); open = false }) }
+                options.forEach { (v, l) -> DropdownMenuItem(text = { Text(l) }, onClick = { Haptics.tick(ctx); onChange(v); open = false }) }
             }
         }
     }
@@ -301,7 +303,9 @@ fun RoundIcon(icon: ImageVector, size: Dp = 30.dp, onClick: () -> Unit) {
 
 @Composable
 fun ColorDot(color: Int, size: Dp = 26.dp, onClick: () -> Unit) {
-    Box(Modifier.size(size).clip(CircleShape).background(Color(color)).border(2.dp, Color.White.copy(alpha = 0.7f), CircleShape).clickable(onClick = onClick))
+    val ctx = LocalContext.current
+    Box(Modifier.size(size).clip(CircleShape).background(Color(color)).border(2.dp, if (Z.light) Color.Black.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.7f), CircleShape)
+        .clickable { Haptics.tick(ctx); onClick() })
 }
 
 @Composable
@@ -474,4 +478,17 @@ fun ZField(
             }
         },
     )
+}
+
+/** Loading placeholder: a soft band of light sweeping across (skeleton), instead of a spinner. */
+fun Modifier.shimmer(): Modifier = composed {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "shimmer")
+    val x by t.animateFloat(-1f, 2f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1300, easing = androidx.compose.animation.core.LinearEasing)), label = "sx")
+    val base = Z.tint(0.06f); val hi = Z.tint(0.14f)
+    drawBehind {
+        drawRect(base)
+        val w = size.width
+        drawRect(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color.Transparent, hi, Color.Transparent),
+            start = androidx.compose.ui.geometry.Offset(w * x - w * 0.6f, 0f), end = androidx.compose.ui.geometry.Offset(w * x, size.height * 0.4f)))
+    }
 }

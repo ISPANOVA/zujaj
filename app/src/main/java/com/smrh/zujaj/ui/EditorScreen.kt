@@ -287,7 +287,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                 fun PreviewPane() {
             // ---------------------------------------------------------------- preview
             Box(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(30.dp))
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).sharedWidget(style.id).clip(RoundedCornerShape(30.dp))
                     .background(Backdrops.brush(stage))
                     .padding(top = 26.dp, bottom = 46.dp, start = if (style.shape == Shape.SMALL) 84.dp else 22.dp, end = if (style.shape == Shape.SMALL) 84.dp else 22.dp),
                 contentAlignment = Alignment.Center,
@@ -461,6 +461,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         }, icon = Icons.Rounded.Wallpaper, iconColor = LocalAccent.current) {
                         WallMatch.colours(ctx)?.let { cs -> Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { cs.forEach { c -> Box(Modifier.size(20.dp).clip(CircleShape).background(Color(c)).border(1.5.dp, Z.surface, CircleShape)) } } }
                     }
+                    if (WallMatch.colours(ctx) != null) {
+                        Divider()
+                        SwitchRow(tr("Follow my wallpaper", "تتغير مع خلفيتي"), cfg.autoWall,
+                            tr("When you change the wallpaper, this widget re-colours itself", "لما تغيّر خلفية الشاشة الويدجت تتلوّن لوحدها")) {
+                            cfg = cfg.copy(autoWall = it); if (it) WallMatch.colours(ctx)?.let { cols -> cfg = WallMatch.apply(cfg, cols).copy(autoWall = true) }
+                        }
+                    }
                 }
                 Section(tr("Ready-made looks", "أشكال جاهزة")) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -529,6 +536,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                     Expander(tr("Corners, border & texture", "الحواف والإطار والملمس")) {
                         StepperRow(tr("Corners", "الحواف"), cfg.corner, 0..60, 2) { cfg = cfg.copy(corner = it) }
+                        phoneCorner(ctx)?.let { pc ->
+                            Divider()
+                            RowBase(tr("Match my phone's corners", "زي حواف تليفونك"), sub = tr("Same roundness as the phone's own widgets", "نفس انحناء ويدجت التليفون نفسه"),
+                                onClick = { Haptics.tick(ctx); cfg = cfg.copy(corner = pc) }) {
+                                if (cfg.corner == pc) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current) else Text("$pc", color = Z.sub)
+                            }
+                        }
                         Divider()
                         SwitchRow(tr("Border", "إطار"), cfg.border) { cfg = cfg.copy(border = it) }
                         Divider()
@@ -719,3 +733,9 @@ private fun AdUnlockCard(id: String, locked: Boolean, ver: Int) {
         }
     }
 }
+
+/** Corner radius the phone uses for widgets (Android 12+), in the editor's corner units; null when unknown. */
+fun phoneCorner(ctx: android.content.Context): Int? = if (android.os.Build.VERSION.SDK_INT < 31) null else runCatching {
+    val px = ctx.resources.getDimension(android.R.dimen.system_app_widget_background_radius)
+    (px / ctx.resources.displayMetrics.density).toInt().takeIf { it in 1..60 }
+}.getOrNull()

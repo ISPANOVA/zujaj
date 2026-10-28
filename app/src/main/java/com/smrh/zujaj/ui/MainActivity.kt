@@ -1,5 +1,14 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.Icons
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.material.icons.rounded.CardGiftcard
@@ -158,6 +167,7 @@ open class MainActivity : ComponentActivity() {
         Prefs.init(this)
         appCtx = applicationContext
         runCatching { TimeAccess.migrate(this) }
+        runCatching { WallMatch.follow(this) }
         if (savedInstanceState == null) {
             com.smrh.zujaj.remote.Stats.opened()
             // seasonal sets from the control panel
@@ -245,6 +255,7 @@ open class MainActivity : ComponentActivity() {
 
 class ConfigureActivity : MainActivity()
 
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun Root(nav: Nav) {
     BackHandler(enabled = nav.stack.size > 1) { nav.back() }
@@ -255,6 +266,8 @@ fun Root(nav: Nav) {
         val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
         val density = androidx.compose.ui.platform.LocalDensity.current.density
         nav.onPop = { holder.removeState(it) }
+        androidx.compose.animation.SharedTransitionLayout {
+        val shared = this
         AnimatedContent(nav.topEntry, transitionSpec = {
             // new pages slide in from the reading edge; going back slides them away again
             val dir = (if (nav.forward) 1 else -1) * (if (rtl) -1 else 1)
@@ -267,6 +280,8 @@ fun Root(nav: Nav) {
                 .togetherWith(slideOutHorizontally(androidx.compose.animation.core.tween(300, easing = Motion.ease)) { -d } + fadeOut(androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutLinearInEasing)))
                 .using(androidx.compose.animation.SizeTransform(clip = false))
         }, label = "nav", contentKey = { it.id }) { entry -> val s = entry.screen
+            val navScope = this
+            androidx.compose.runtime.CompositionLocalProvider(LocalSharedScope provides shared, LocalNavScope provides navScope) {
             holder.SaveableStateProvider(entry.id) {
             // full window width: each screen adapts its own layout to the space (grids, split panes, reading width)
             // forms & reading pages keep a comfortable line length on big screens; catalogue/editor/wallpapers use the full width
@@ -298,8 +313,25 @@ fun Root(nav: Nav) {
               }
             }
             }
+            }
         }
+        }
+        WidgetAddedHost(nav)
     }
+}
+
+/** The page transition scopes, so a widget card can grow into the editor (shared element). */
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+val LocalSharedScope = androidx.compose.runtime.compositionLocalOf<androidx.compose.animation.SharedTransitionScope?> { null }
+val LocalNavScope = androidx.compose.runtime.compositionLocalOf<androidx.compose.animation.AnimatedVisibilityScope?> { null }
+
+/** The widget card and the editor's preview share this key, so opening a widget morphs the card into the editor. */
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.sharedWidget(styleId: String): Modifier {
+    val sts = LocalSharedScope.current ?: return this
+    val avs = LocalNavScope.current ?: return this
+    return with(sts) { this@sharedWidget.sharedBounds(rememberSharedContentState("w_$styleId"), avs, resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds) }
 }
 
 /** After a crash: say so plainly and let the user send the details (they decide; nothing is sent automatically). */
@@ -349,5 +381,29 @@ private fun RewardedInterIntro() {
         androidx.compose.material3.TextButton(onClick = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
             androidx.compose.material3.Text(tr("No thanks", "لا شكراً"), color = Z.sub)
         }
+    }
+}
+
+/** "✓ Added" sheet after a widget lands on the home screen: add another, or fine-tune this one. */
+@Composable
+fun WidgetAddedHost(nav: Nav) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.DisposableEffect(Unit) { com.smrh.zujaj.widget.WidgetEvents.listening = true; onDispose { com.smrh.zujaj.widget.WidgetEvents.listening = false } }
+    val ev by com.smrh.zujaj.widget.WidgetEvents.added.collectAsState()
+    val (id, styleId) = ev ?: return
+    val st = com.smrh.zujaj.catalog.Catalog.byId(styleId)
+    fun close() { com.smrh.zujaj.widget.WidgetEvents.added.value = null }
+    androidx.compose.runtime.LaunchedEffect(id) { Haptics.success(ctx) }
+    ZDialog(Icons.Rounded.CheckCircle, tr("Added to your home screen", "اتضافت على الشاشة ✓"),
+        st?.let { (if (Prefs.isArabicUi) it.ar else it.en) }, iconColor = Color(0xFF3DDC97), onDismiss = { close() }) {
+        val cfg = Prefs.widgetConfig(id)
+        if (cfg != null) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Backdrops.brush(1)).padding(16.dp), contentAlignment = Alignment.Center) {
+            WidgetPreview(cfg, if (st?.shape == com.smrh.zujaj.catalog.Shape.SMALL) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth(), density = 2f)
+        }
+        PrimaryButton(tr("Add another widget", "ضيف ويدجت تانية"), Modifier.fillMaxWidth()) { close(); nav.reset(Screen.Home) }
+        androidx.compose.material3.TextButton(onClick = { close(); nav.go(Screen.Editor(styleId, id)) }, modifier = Modifier.fillMaxWidth()) {
+            Text(tr("Fine-tune this one", "عدّل دي"), color = LocalAccent.current, fontWeight = FontWeight.Bold)
+        }
+        androidx.compose.material3.TextButton(onClick = { close() }, modifier = Modifier.fillMaxWidth()) { Text(tr("Done", "تمام"), color = Z.sub) }
     }
 }

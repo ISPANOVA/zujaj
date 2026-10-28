@@ -61,7 +61,11 @@ fun GalleryScreen(nav: Nav) {
         val shown = items
         when {
             failed -> EmptyState(Icons.Rounded.CloudOff, tr("Couldn't load the gallery", "معرفناش نحمّل التصاميم"), tr("Check your connection and try again.", "اتأكد من النت وجرّب تاني."), tr("Try again", "جرّب تاني")) { reload++ }
-            shown == null -> Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAccent.current) }
+            shown == null -> LazyVerticalGrid(GridCells.Adaptive(if (pane >= 600) 300.dp else 160.dp),
+                contentPadding = PaddingValues(start = gut, end = gut, top = 8.dp), userScrollEnabled = false,
+                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(6) { Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(Rad.l)).shimmer()) }
+            }
             shown.isEmpty() -> EmptyState(Icons.Rounded.Groups, tr("No designs yet", "لسه مفيش تصاميم"),
                 tr("Be the first: open any widget, make it yours, then Share → Publish to gallery.", "كن الأول: افتح أي ويدجت، ظبطها، وبعدين مشاركة ← انشر في المعرض."))
             else -> LazyVerticalGrid(GridCells.Adaptive(if (pane >= 600) 300.dp else 160.dp),

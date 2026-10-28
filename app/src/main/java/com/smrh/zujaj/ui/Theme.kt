@@ -99,8 +99,8 @@ fun ZujajTheme(content: @Composable () -> Unit) {
         displayLarge = base.displayLarge.f(), displayMedium = base.displayMedium.f(), displaySmall = base.displaySmall.f(),
         headlineLarge = base.headlineLarge.f(), headlineMedium = base.headlineMedium.f(), headlineSmall = base.headlineSmall.f(),
         titleLarge = base.titleLarge.f().copy(fontWeight = FontWeight.Bold), titleMedium = base.titleMedium.f().copy(fontWeight = FontWeight.SemiBold),
-        titleSmall = base.titleSmall.f(), bodyLarge = base.bodyLarge.f(), bodyMedium = base.bodyMedium.f(), bodySmall = base.bodySmall.f(),
-        labelLarge = base.labelLarge.f().copy(fontWeight = FontWeight.SemiBold), labelMedium = base.labelMedium.f(), labelSmall = base.labelSmall.f().copy(fontSize = 11.sp),
+        titleSmall = base.titleSmall.f(), bodyLarge = base.bodyLarge.f(), bodyMedium = base.bodyMedium.f(), bodySmall = base.bodySmall.f().copy(fontSize = 13.sp, lineHeight = 18.sp),
+        labelLarge = base.labelLarge.f().copy(fontWeight = FontWeight.SemiBold), labelMedium = base.labelMedium.f(), labelSmall = base.labelSmall.f().copy(fontSize = 12.sp),
     )
     val scheme = if (Z.light) androidx.compose.material3.lightColorScheme(
         primary = accent, onPrimary = Color(0xFF14110A), secondary = accent,

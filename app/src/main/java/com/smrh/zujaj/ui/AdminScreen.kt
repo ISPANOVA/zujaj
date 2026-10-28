@@ -1144,6 +1144,15 @@ private fun StatsAdmin() {
             val top = d.flatMap { it.values.entries }.filter { it.key.startsWith("s_") }.groupBy { it.key.removePrefix("s_") }
                 .mapValues { (_, v) -> v.sumOf { it.value } }.entries.sortedByDescending { it.value }.take(10)
             if (top.isEmpty()) Text(tr("No widgets added in this period yet", "مفيش ويدجت اتضافت في المدة دي"), color = Z.sub, modifier = Modifier.padding(16.dp))
+            else {
+                val ctx = LocalContext.current
+                TextButton(onClick = {
+                    AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                        val r = runCatching { Flags.setTop(top.map { it.key }.filter { Catalog.byId(it) != null }) }
+                        Toast.makeText(ctx, if (r.isSuccess) tr("Shown on the home page ✓", "ظهرت في الرئيسية ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show()
+                    }
+                }, modifier = Modifier.padding(horizontal = 8.dp)) { Text(tr("Show these on the home page as “Most added”", "اعرضهم في الرئيسية كـ «الأكتر إضافة»"), color = LocalAccent.current, fontWeight = FontWeight.Bold) }
+            }
             top.forEachIndexed { i, (id, n) ->
                 if (i > 0) Divider()
                 RowBase("${i + 1}. " + (Catalog.byId(id)?.name(Prefs.isArabicUi) ?: id)) { Text("$n", fontWeight = FontWeight.Bold, color = LocalAccent.current) }

@@ -94,6 +94,8 @@ data class WidgetConfig(
     val minGrad: Boolean = true,
     /** Time drawn into the picture with gradients. Off = the phone draws the time itself (always exact). */
     val gradTime: Boolean = false,
+    /** Re-colour from the home-screen wallpaper whenever it changes. */
+    val autoWall: Boolean = false,
     val hourGrad: Boolean = false,
     val hourColor2: Int = 0xFFE7B75F.toInt(),
     /** One gradient across the whole time (hours colour → minutes 2nd colour). */

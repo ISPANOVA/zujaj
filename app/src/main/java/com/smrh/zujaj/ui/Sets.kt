@@ -244,7 +244,7 @@ fun SetsRow(nav: Nav, gutter: Dp) {
                         if (s.pro && !Prefs.isPro) ProBadge(Modifier.align(Alignment.TopEnd).padding(10.dp)) }
                     Spacer(Modifier.height(8.dp))
                     Text(s.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Z.text, modifier = Modifier.padding(horizontal = 4.dp))
-                    Text(s.tag(Prefs.isArabicUi), fontSize = 12.sp, color = Z.sub, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(s.tag(Prefs.isArabicUi), fontSize = 13.sp, color = Z.sub, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp))
                 }
             }
         }
@@ -307,7 +307,7 @@ fun SetDetailScreen(nav: Nav, id: String) {
                 }
             }
             Spacer(Modifier.height(Sp.l))
-            Text(tr("Tip: each widget can still be changed later from My widgets.", "تقدر تعدّل أي ويدجت بعدين من «ويدجتاتي»."), fontSize = 12.sp, color = Z.sub)
+            Text(tr("Tip: each widget can still be changed later from My widgets.", "تقدر تعدّل أي ويدجت بعدين من «ويدجتاتي»."), fontSize = 13.sp, color = Z.sub)
             Spacer(Modifier.height(Sp.xxl))
         }
     }
@@ -329,7 +329,7 @@ private fun StepRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Z.text, maxLines = 1)
-            Text(sub, fontSize = 12.sp, color = Z.sub)
+            Text(sub, fontSize = 13.sp, color = Z.sub)
         }
         if (done) Box(Modifier.size(28.dp).clip(CircleShape).background(Color(0xFF34C77B)), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -337,25 +337,17 @@ private fun StepRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title
     }
 }
 
-/** Home: one compact, colourful card instead of the big strip; opens the full list of sets. */
+/** Home: the sets card (matches the community card next to it); opens the full list of sets. */
 @Composable
-fun SetsCard(nav: Nav, gutter: Dp) {
+fun SetsCard(nav: Nav, modifier: Modifier) {
     val remoteSets by WidgetSets.remote.collectAsState()
     val list = remoteSets.filter { it.visible }.sortedBy { it.order } + WidgetSets.builtIn
-    val a = Color(list.first().accent); val b = Color(list.getOrElse(1) { list.first() }.accent)
-    Row(Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = Sp.s).height(112.dp).clip(RoundedCornerShape(Rad.l))
-        .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(a.copy(alpha = 0.55f), b.copy(alpha = 0.35f), Z.surface)))
-        .border(1.dp, Z.line, RoundedCornerShape(Rad.l)).clickable { nav.go(Screen.Sets) }.padding(start = 16.dp, end = 10.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(tr("Ready-made sets", "سِتات جاهزة"), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Z.text)
-            Text(tr("Wallpaper + matching widgets · ${list.size} sets", "خلفية وويدجت متناسقين · ${list.size} سِتات"), fontSize = 13.sp, color = Z.sub, maxLines = 2)
-        }
-        // three mini phones fanned out
-        Box(Modifier.width(120.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+    FeatureCard(tr("Ready-made sets", "سِتات جاهزة"), tr("${list.size} sets · wallpaper + widgets", "${list.size} سِتات · خلفية وويدجت"),
+        Color(list.first().accent), modifier, onClick = { nav.go(Screen.Sets) }) {
+        Box(Modifier.fillMaxSize().padding(top = 10.dp), contentAlignment = Alignment.Center) {
             list.take(3).forEachIndexed { i, s ->
-                SetPhone(s, 44.dp, Modifier.offset(x = ((i - 1) * 30).dp, y = (if (i == 1) -4 else 6).dp)
-                    .graphicsLayer { rotationZ = (i - 1) * 8f }.zIndex(if (i == 1) 1f else 0f))
+                SetPhone(s, 46.dp, Modifier.offset(x = ((i - 1) * 30).dp, y = (if (i == 1) -2 else 8).dp)
+                    .graphicsLayer { rotationZ = (i - 1) * 9f }.zIndex(if (i == 1) 1f else 0f))
             }
         }
     }
@@ -379,7 +371,7 @@ fun SetsScreen(nav: Nav) {
                         if (s.pro && !Prefs.isPro && !free) ProBadge(Modifier.align(Alignment.TopEnd).padding(10.dp)) }
                     Spacer(Modifier.height(8.dp))
                     Text(s.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Z.text, modifier = Modifier.padding(horizontal = 4.dp))
-                    Text(s.tag(Prefs.isArabicUi), fontSize = 12.sp, color = Z.sub, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(s.tag(Prefs.isArabicUi), fontSize = 13.sp, color = Z.sub, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp))
                 }
             }
             item { Spacer(Modifier.navigationBarsPadding()) }
