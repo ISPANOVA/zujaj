@@ -182,11 +182,18 @@ class SystemEventsReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED, Intent.ACTION_POWER_DISCONNECTED -> WidgetUpdater.updateCategory(context, "system")
             Scheduler.MINUTE -> {
-                // redraw only widgets whose time is drawn into the picture (they reschedule the tick)
-                WidgetUpdater.allIds(context).forEach { id ->
-                    val cfg = Prefs.widgetConfig(id) ?: return@forEach
-                    if (WidgetUpdater.bakes(context, id, cfg)) runCatching { WidgetUpdater.update(context, id) }
-                }
+                // checked every 5 s; widgets whose time is drawn into the picture are redrawn as soon as
+                // the minute changes, so even a late alarm is caught within seconds
+                val minute = System.currentTimeMillis() / 60_000
+                var any = false
+                if (minute != Scheduler.drawnMinute) {
+                    WidgetUpdater.allIds(context).forEach { id ->
+                        val cfg = Prefs.widgetConfig(id) ?: return@forEach
+                        if (WidgetUpdater.bakes(context, id, cfg)) { any = true; runCatching { WidgetUpdater.update(context, id) } }
+                    }
+                    Scheduler.drawnMinute = minute
+                } else any = WidgetUpdater.allIds(context).any { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(context, id, it) } == true }
+                if (any) Scheduler.minuteTick(context)
                 return
             }
             Scheduler.PRO_END -> { com.smrh.zujaj.billing.Billing.refreshPro(); WidgetUpdater.updateAll(context) }
@@ -226,12 +233,18 @@ object Scheduler {
     const val MINUTE = "com.smrh.zujaj.MINUTE"
     const val PRO_END = "com.smrh.zujaj.PRO_END"
 
-    /** Next whole minute (non-waking: only delivered while the phone is awake, e.g. on the lock screen). */
+    /** Minute last drawn into the gradient widgets (in this process). */
+    @Volatile var drawnMinute = -1L
+
+    /**
+     * Next check: the next whole minute or 5 s from now, whichever comes first (non-waking: only
+     * delivered while the phone is awake, e.g. on the lock screen). Checking every 5 s catches late alarms.
+     */
     fun minuteTick(ctx: Context) = runCatching {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val now = System.currentTimeMillis()
-        // right on the minute (a few ms after, so the new minute is drawn)
-        val t = now - now % 60_000 + 60_000 + 40
+        // right on the minute (a few ms after, so the new minute is drawn), at most 5 s away
+        val t = minOf(now - now % 60_000 + 60_000 + 40, now + 5_000)
         val pi = PendingIntent.getBroadcast(ctx, 8, Intent(ctx, SystemEventsReceiver::class.java).setAction(MINUTE),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         if (exactAllowed(ctx)) am.setExact(AlarmManager.RTC, t, pi) else am.setWindow(AlarmManager.RTC, t, 1_000, pi)
