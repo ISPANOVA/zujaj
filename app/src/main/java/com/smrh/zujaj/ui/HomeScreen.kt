@@ -348,7 +348,10 @@ fun PreviewTile(st: WidgetStyle, modifier: Modifier = Modifier, showName: Boolea
     var menu by remember { mutableStateOf(false) }
     // each design sits on one of our calm dark wallpapers, so it looks like it would on a real home screen
     val wall = remember(st.id) { stageWalls[(st.id.hashCode() and 0x7fffffff) % stageWalls.size] }
-    val wallImg by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, wall) { value = WallLibrary.thumb(WallLibrary.all[wall]) }
+    val wallImg by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, wall) {
+        // screenshot tests draw every tile in software; painting a wallpaper behind each one made them take over an hour
+        if (!com.smrh.zujaj.security.Guard.isTest) value = WallLibrary.thumb(WallLibrary.all[wall])
+    }
     val accent = LocalAccent.current
     Box(modifier) {
     Column(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(24.dp))
