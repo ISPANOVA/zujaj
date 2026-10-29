@@ -221,10 +221,12 @@ object AdPolicy {
             now - sessionStart > 90_000L &&                                   // not in the first minute and a half
             shownThisSession < f().adInterPerSession.coerceIn(0, 10) &&
             now - lastShown > f().adInterGapMin.coerceIn(1, 120) * 60_000L
-        // prefer the rewarded kind: people get something for their time
-        if (capsOk && rInter != null) {
+        // the rewarded kind is only offered when it gives something real: a step towards the locked Pro widget
+        // the user was just looking at. It never starts by itself — only when they tap "Watch".
+        val target = rewardTarget?.takeIf { AdUnlock.enabled() && !AdUnlock.open(it) }
+        if (capsOk && rInter != null && target != null) {
             shownThisSession++; lastShown = now
-            offer.value = rewardTarget?.takeIf { AdUnlock.enabled() && !AdUnlock.open(it) } ?: ""
+            offer.value = target
             return
         }
         preloadRewarded(a)

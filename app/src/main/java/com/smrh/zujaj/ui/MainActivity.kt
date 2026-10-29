@@ -388,17 +388,12 @@ private fun RewardedInterIntro() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val act = ctx as? android.app.Activity ?: return
     val name = remember(t) { if (t.isEmpty()) null else com.smrh.zujaj.catalog.Catalog.byId(t)?.name(Prefs.isArabicUi) }
-    var left by androidx.compose.runtime.remember(t) { androidx.compose.runtime.mutableIntStateOf(5) }
-    LaunchedEffect(t) {
-        while (left > 0) { kotlinx.coroutines.delay(1000); left-- }
-        com.smrh.zujaj.ads.AdPolicy.playRewarded(act)
-    }
     val reward = if (name != null) tr("one step towards unlocking “$name”", "خطوة من فتح «$name»")
         else tr("one extra free wallpaper today", "خلفية مجانية زيادة النهارده")
     ZDialog(androidx.compose.material.icons.Icons.Rounded.CardGiftcard, tr("A short ad — with a gift", "إعلان قصير — وليك هدية"),
         tr("Watch it to the end and get $reward.", "كمّله للآخر وخد $reward."),
         onDismiss = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
-        PrimaryButton(tr("Watch now ($left)", "شوف دلوقتي ($left)"), androidx.compose.ui.Modifier.fillMaxWidth()) { com.smrh.zujaj.ads.AdPolicy.playRewarded(act) }
+        PrimaryButton(tr("Watch the ad", "شوف الإعلان"), androidx.compose.ui.Modifier.fillMaxWidth()) { com.smrh.zujaj.ads.AdPolicy.playRewarded(act) }
         androidx.compose.material3.TextButton(onClick = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
             androidx.compose.material3.Text(tr("No thanks", "لا شكراً"), color = Z.sub)
         }
