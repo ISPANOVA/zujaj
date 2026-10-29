@@ -344,7 +344,16 @@ class RenderCtx(
         // TextView (includeFontPadding=false, centre gravity) puts the baseline at boxTop + (boxH - lineH)/2 - ascent
         val boxH = lineH * 1.06f
         val top = baseline + fm.ascent - (boxH - lineH) / 2f
-        val rect = RectF(left, top, left + width, top + boxH)
+        // The phone draws this text itself, and its font metrics, the user's letter spacing and rounding can make it a
+        // little wider or taller than measured here. The box is made generously larger on the side the text grows
+        // towards (gravity keeps the text exactly where it is), so it can never be cut.
+        val extraW = width * 0.35f + measureStr.length * (cfg.spacing / 100f) * sz + 6 * u
+        val extraH = boxH * 0.25f
+        val rect = when (align) {
+            Paint.Align.LEFT -> RectF(left, top - extraH, left + width + extraW, top + boxH + extraH)
+            Paint.Align.RIGHT -> RectF(left - extraW, top - extraH, left + width, top + boxH + extraH)
+            else -> RectF(left - extraW / 2, top - extraH, left + width + extraW / 2, top + boxH + extraH)
+        }
         if (preview || bakeLive) {
             canvas.drawText(shown, cx, baseline, p)
         } else {
