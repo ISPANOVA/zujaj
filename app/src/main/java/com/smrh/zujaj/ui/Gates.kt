@@ -127,7 +127,7 @@ fun AppGates(nav: Nav? = null) {
         f.noticeOnce && f.notice.isNotBlank() && seen != f.notice -> GateDialog(
             tr("Message", "رسالة"), f.notice, tr("OK", "تمام"), { seen = f.notice; Prefs.setString("notice_seen", f.notice) }, null, null,
         )
-        else -> { BatteryIntro(); if (Prefs.getString("bat_intro") == "1") TimeAccessCheck() }
+        else -> BatteryIntro()
     }
 }
 
@@ -156,7 +156,9 @@ private fun ignoringBattery(ctx: android.content.Context): Boolean = runCatching
 @Composable
 fun BatteryIntro() {
     val ctx = LocalContext.current
-    var done by remember { mutableStateOf(Prefs.getString("bat_intro") == "1") }
+    // required: the app can't be used until the battery is set to Unrestricted (re-checked every time the app opens)
+    if (com.smrh.zujaj.security.Guard.isTest) return
+    var done by remember { mutableStateOf(false) }
     if (done) return
     // wait until the splash has gone
     var ready by remember { mutableStateOf(false) }
@@ -172,11 +174,11 @@ fun BatteryIntro() {
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
-    fun finish() { Prefs.setString("bat_intro", "1"); done = true }
-    LaunchedEffect(Unit) { if (battOk && !oem) finish() }
-    if (battOk && !oem) return
+    fun finish() { if (battOk) { Prefs.setString("bat_intro", "1"); done = true } }
+    LaunchedEffect(battOk) { if (battOk && (Prefs.getString("bat_intro") == "1" || !oem)) finish() }
+    if (battOk && (Prefs.getString("bat_intro") == "1" || !oem)) return
     val gold = Color(0xFFE7B75F)
-    androidx.compose.ui.window.Dialog(onDismissRequest = { finish() }) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = { }, properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
         Column(
             Modifier.clip(RoundedCornerShape(30.dp))
                 .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1E1A10), Z.surface, Z.surface)))
@@ -207,8 +209,9 @@ fun BatteryIntro() {
                 }
             }
             Spacer(Modifier.height(20.dp))
-            PrimaryButton(if (battOk) tr("Done", "تمام") else tr("Continue", "متابعة"), Modifier.fillMaxWidth()) { finish() }
-            TextButton(onClick = { finish() }) { Text(tr("Later (Settings → Battery)", "بعدين (من الإعدادات ← البطارية)"), color = Z.sub, fontSize = 12.sp) }
+            PrimaryButton(if (battOk) tr("Done", "تمام") else tr("Set the battery to Unrestricted first", "خلّي البطارية «بدون قيود» الأول"), Modifier.fillMaxWidth()) { finish() }
+            if (!battOk) Text(tr("Required — Zujaj can't keep your clocks on time without it.", "إجباري — من غيره زجاج مش هيقدر يخلّي الساعة مظبوطة."),
+                color = Z.sub, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
         }
     }
 }

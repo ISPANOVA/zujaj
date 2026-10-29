@@ -53,7 +53,7 @@ object Fancy2R {
     fun neon(r: RenderCtx) {
         r.text(Kit.weekdayShort(r, r.today.dayOfWeek.value), r.w / 2, r.h * 0.16f, 11 * r.u, withAlpha(r.c1, 150), r.sansBold, Paint.Align.CENTER, spacing = 0.2f)
         val s = Kit.bakedTime(r, if (r.cfg.hour24) "HH:mm" else "hh:mm")
-        if (!r.cfg.gradTime) {
+        if (!r.gradTime) {
             r.liveTime(if (r.cfg.hour24) "HH:mm" else "hh:mm", r.w / 2, r.h * 0.46f, r.h * 0.3f * r.s1, LiveFont.SANS_BOLD, r.accent, Paint.Align.CENTER, maxW = r.w - 2 * r.pad, maxH = r.h * 0.3f, sample = "00:00")
             if (!r.cfg.hour24) r.liveTime("a", r.w / 2, r.h * 0.68f, 11 * r.u, LiveFont.SANS_BOLD, r.c2, Paint.Align.CENTER)
             r.text(Kit.greg(r), r.w / 2, r.h * 0.86f, 9 * r.u, withAlpha(r.c1, 170), r.sans, Paint.Align.CENTER)
@@ -113,7 +113,7 @@ object Fancy2R {
         r.circle(cx, cy, 2.4f * r.u, r.accent)
         val t = Kit.bakedTime(r, r.hm())
         val cell = (r.w - cx - r.h * 0.38f - r.pad) / ((3 * 3 + 2) * 4 + (1 * 3 + 2))
-        if (r.cfg.gradTime) dotDigits(r, t, cx + r.h * 0.42f, cy, cell.coerceAtMost(r.h * 0.6f / 15), r.c1, withAlpha(r.c1, 18))
+        if (r.gradTime) dotDigits(r, t, cx + r.h * 0.42f, cy, cell.coerceAtMost(r.h * 0.6f / 15), r.c1, withAlpha(r.c1, 18))
         else r.liveTime(r.hm(), cx + r.h * 0.42f, cy, r.h * 0.4f, LiveFont.ORBITRON, r.c1, Paint.Align.LEFT, maxW = r.w - cx - r.h * 0.42f - r.pad, maxH = r.h * 0.4f, sample = "00:00")
     }
 

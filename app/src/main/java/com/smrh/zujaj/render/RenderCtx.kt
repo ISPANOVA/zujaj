@@ -141,6 +141,8 @@ class RenderCtx(
      * those widgets are then redrawn every minute.
      */
     var bakeLive = false
+    /** Gradient designs always draw their time into the picture (redrawn every few seconds by the app). */
+    val gradTime: Boolean get() = true
     val hits = mutableListOf<Hit>()
 
     /** One "design unit": scales the nominal design (dp) to the real widget size. */

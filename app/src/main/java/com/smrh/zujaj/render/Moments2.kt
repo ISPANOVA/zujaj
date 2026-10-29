@@ -59,7 +59,7 @@ object Moments2R {
         val hh = Kit.bakedTime(r, r.hh()); val mm = Kit.bakedTime(r, "mm")
         val top = Color.WHITE; val bot = RenderCtx.mix(r.c1, r.accent, 0.55f)
         val dh = r.h * 0.2f
-        if (r.cfg.gradTime) {
+        if (r.gradTime) {
             emboss(r, hh, cx, r.h * 0.15f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
             emboss(r, mm, cx, r.h * 0.37f, dh * 1.25f, F.CLK_RIGHTEOUS, top, bot, r.w * 0.6f, dh, puffy = 0.09f)
         } else {
@@ -117,7 +117,7 @@ object Moments2R {
         val pw = tp.measureText(time) + 22 * r.u
         val pill = RectF(cx - pw / 2, ty - 11 * r.u, cx + pw / 2, ty + 11 * r.u)
         r.canvas.drawRoundRect(pill, pill.height() / 2, pill.height() / 2, r.fillPaint(withAlpha(Color.WHITE, 235)))
-        if (r.cfg.gradTime) r.text(time, cx, ty, 13 * r.u, 0xFF1A1A22.toInt(), r.sansBold, Paint.Align.CENTER)
+        if (r.gradTime) r.text(time, cx, ty, 13 * r.u, 0xFF1A1A22.toInt(), r.sansBold, Paint.Align.CENTER)
         else r.liveTime(r.hm(), cx, ty, 13 * r.u, LiveFont.SANS_BOLD, 0xFF1A1A22.toInt(), Paint.Align.CENTER, sample = "00:00")
         val leftTxt = if (r.ar) gregLine(r) else hijriLine(r)
         val rightTxt = if (r.ar) hijriLine(r) else gregLine(r)
@@ -224,7 +224,7 @@ object Moments2R {
         val ty = p0 + tb.height()
         val tw = tp.measureText(hh + mm)
         val tx = if (ar) R - tw else L
-        if (r.cfg.gradTime) {
+        if (r.gradTime) {
             c.drawText(hh, tx + r.u, ty + 2 * r.u, Paint(tp).apply { color = withAlpha(Color.BLACK, 120) })
             c.drawText(hh, tx, ty, tp)
             c.drawText(mm, tx + tp.measureText(hh), ty, Paint(tp).apply { color = acc })

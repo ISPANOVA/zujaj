@@ -83,7 +83,7 @@ object Kit {
      */
     fun timeText(r: RenderCtx, cx: Float, cy: Float, size: Float, live: LiveFont, c1: Int, c2: Int,
                  maxW: Float = 0f, maxH: Float = 0f, pattern: String = r.hm(), font: F? = null) {
-        if (r.cfg.gradTime) gradText(r, bakedTime(r, pattern), cx, cy, size, font ?: r.resolveFont(live, 60 * r.u).f, c1, c2, maxW = maxW, maxH = maxH)
+        if (r.gradTime) gradText(r, bakedTime(r, pattern), cx, cy, size, font ?: r.resolveFont(live, 60 * r.u).f, c1, c2, maxW = maxW, maxH = maxH)
         else r.liveTime(pattern, cx, cy, size, live, c1, Paint.Align.CENTER, maxW = maxW, maxH = maxH, sample = pattern.replace(Regex("[a-zA-Z]"), "0"))
     }
 

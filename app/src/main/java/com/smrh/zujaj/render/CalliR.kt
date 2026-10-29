@@ -41,7 +41,7 @@ object CalliR {
         val ink = android.graphics.Rect(); p.getTextBounds("0123456789", 0, 10, ink)
         val base = (top + bot) / 2 - ink.exactCenterY()
         var x = r.pad + 2 * r.u
-        if (c.gradTime) {
+        if (r.gradTime) {
             r.canvas.drawText("$hh:", x, base, p); x += p.measureText("$hh:")
             p.shader = LinearGradient(0f, base + ink.top, 0f, base + ink.bottom, c.accent, withAlpha(c.accent, 60), Shader.TileMode.CLAMP)
             r.canvas.drawText(mm, x, base, p); x += p.measureText(mm)
