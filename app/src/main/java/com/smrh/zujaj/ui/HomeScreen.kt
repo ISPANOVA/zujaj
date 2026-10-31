@@ -1,5 +1,8 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -247,59 +250,69 @@ private fun NavRail(tab: Int, onTab: (Int) -> Unit) {
 @Composable
 private fun DockBar(tab: Int, folded: Boolean, modifier: Modifier, onUnfold: () -> Unit, onTab: (Int) -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    // the gesture below is set up once, so it must read the CURRENT tab and callback, not the ones from the first frame
+    val curTab by androidx.compose.runtime.rememberUpdatedState(tab)
+    val curOnTab by androidx.compose.runtime.rememberUpdatedState(onTab)
     val n = dests.size
-    val itemW = 60.dp; val barH = 64.dp; val pad = 6.dp
+    val itemW = 60.dp; val barH = 64.dp; val pad = 6.dp; val ball = 56.dp
     val barW = itemW * n + pad * 2
-    // finger position while scrubbing (index as a float); null when not touching
+    // finger position while scrubbing (as a fractional index); null when not touching
     var drag by remember { mutableStateOf<Float?>(null) }
     var hover by remember { mutableIntStateOf(tab) }
-    val target = drag ?: tab.toFloat()
-    val pos by androidx.compose.animation.core.animateFloatAsState(target,
-        if (drag != null) androidx.compose.animation.core.spring(stiffness = 2200f) else androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 500f), label = "disc")
-    val width by androidx.compose.animation.core.animateDpAsState(if (folded) 56.dp else barW, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 420f), label = "w")
-    val height by androidx.compose.animation.core.animateDpAsState(if (folded) 56.dp else barH, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 420f), label = "h")
+    val pos by androidx.compose.animation.core.animateFloatAsState(drag ?: tab.toFloat(),
+        if (drag != null) androidx.compose.animation.core.spring(stiffness = 3000f) else androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 600f), label = "disc")
+    // one progress value drives the whole fold: 0 = open bar in the middle, 1 = round button at the left
+    val f by androidx.compose.animation.core.animateFloatAsState(if (folded) 1f else 0f,
+        androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.CubicBezierEasing(0.3f, 0f, 0.1f, 1f)), label = "fold")
     val rtl = Prefs.isRtlUi
-    val dark = Color(0xFF0E0E11)
-    Box(
-        modifier.fillMaxWidth()
-            .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 10.dp),
-        // folded: bottom left (like the reference) in every language; open: centred
-        contentAlignment = if (folded) androidx.compose.ui.AbsoluteAlignment.CenterLeft else Alignment.Center,
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.fillMaxWidth().navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 10.dp),
     ) {
+        val full = maxWidth
+        val w = barW + (ball - barW) * f
+        val h = barH + (ball - barH) * f
+        // the bar slides from centred to the left edge while it shrinks (always the left, in every language)
+        val x = ((full - barW) / 2) * (1f - f)
         Box(
-            Modifier.width(width).height(height)
+            Modifier.absoluteOffset(x = x).width(w).height(h).align(androidx.compose.ui.AbsoluteAlignment.CenterLeft)
                 .shadow(18.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(50))
-                .background(Brush.verticalGradient(listOf(Color(0xFF1A1A1F), dark)))
+                .background(Brush.verticalGradient(listOf(Color(0xFF1A1A1F), Color(0xFF0E0E11))))
                 .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(50))
-                .then(if (folded) Modifier.clickable { Haptics.tick(ctx); onUnfold() } else Modifier.pointerInput(n, rtl) {
-                    val w = itemW.toPx(); val p = pad.toPx()
-                    fun idx(x: Float): Float { val f = ((x - p) / w - 0.5f).coerceIn(0f, n - 1f); return if (rtl) (n - 1f - f) else f }
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        drag = idx(down.position.x); hover = kotlin.math.round(drag!!).toInt()
-                        while (true) {
-                            val ev = awaitPointerEvent()
-                            val c = ev.changes.firstOrNull() ?: break
-                            if (!c.pressed) break
-                            drag = idx(c.position.x)
-                            val h = kotlin.math.round(drag!!).toInt()
-                            if (h != hover) { hover = h; Haptics.tick(ctx) }
-                            c.consume()
-                        }
-                        val chosen = hover
-                        drag = null
-                        if (chosen != tab) { Haptics.tick(ctx); onTab(chosen) }
+                .pointerInput(n, rtl, folded) {
+                    if (folded) {
+                        detectTapGestures { Haptics.tick(ctx); onUnfold() }
+                        return@pointerInput
                     }
-                }),
+                    val iw = itemW.toPx(); val p = pad.toPx()
+                    fun idx(px: Float): Float { val v = ((px - p) / iw - 0.5f).coerceIn(0f, n - 1f); return if (rtl) (n - 1f - v) else v }
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        try {
+                            drag = idx(down.position.x); hover = kotlin.math.round(drag!!).toInt()
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!c.pressed) break
+                                drag = idx(c.position.x)
+                                val hv = kotlin.math.round(drag!!).toInt()
+                                if (hv != hover) { hover = hv; Haptics.tick(ctx) }
+                                c.consume()
+                            }
+                            if (hover != curTab) { Haptics.tick(ctx); curOnTab(hover) }
+                        } finally {
+                            // whatever ended the gesture (lift, cancel, fold), never leave the disc stuck
+                            drag = null
+                        }
+                    }
+                },
             contentAlignment = Alignment.CenterStart,
         ) {
-            if (folded) {
-                Icon(dests[tab].icon, tr(dests[tab].en, dests[tab].ar), tint = Color.White, modifier = Modifier.align(Alignment.Center).size(24.dp))
-            } else {
-                // the light disc (moves with the finger)
+            // open bar: fades out in the first part of the fold
+            val openAlpha = (1f - f * 2.2f).coerceIn(0f, 1f)
+            if (openAlpha > 0f) Box(Modifier.requiredWidth(barW).fillMaxHeight().graphicsLayer { alpha = openAlpha }) {
                 val discX = pad + itemW * (if (rtl) (n - 1 - pos) else pos)
-                Box(Modifier.offset(x = discX).width(itemW).fillMaxHeight().padding(vertical = 5.dp)
+                Box(Modifier.absoluteOffset(x = discX).width(itemW).fillMaxHeight().padding(vertical = 5.dp)
                     .clip(RoundedCornerShape(50)).background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.07f)))))
                 Row(Modifier.fillMaxSize().padding(horizontal = pad), verticalAlignment = Alignment.CenterVertically) {
                     dests.forEachIndexed { i, d ->
@@ -311,6 +324,10 @@ private fun DockBar(tab: Int, folded: Boolean, modifier: Modifier, onUnfold: () 
                     }
                 }
             }
+            // round button: fades in at the end of the fold
+            val ballAlpha = ((f - 0.55f) / 0.45f).coerceIn(0f, 1f)
+            if (ballAlpha > 0f) Icon(dests[tab].icon, tr(dests[tab].en, dests[tab].ar), tint = Color.White,
+                modifier = Modifier.align(Alignment.Center).size(24.dp).graphicsLayer { alpha = ballAlpha; val k = 0.7f + 0.3f * ballAlpha; scaleX = k; scaleY = k })
         }
     }
 }
