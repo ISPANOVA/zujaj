@@ -1,5 +1,10 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.smrh.zujaj.widget.WidgetUpdater
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.rounded.Close
@@ -178,10 +183,24 @@ fun HomeScreen(nav: Nav) {
             }
         }
     } else {
-        Box(Modifier.fillMaxSize()) {
+        // scrolling down folds the dock into a small round button at the bottom left; scrolling up opens it again
+        var folded by remember { mutableStateOf(false) }
+        LaunchedEffect(tab) { folded = false }
+        val watch = remember {
+            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                var acc = 0f
+                override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    val dy = available.y
+                    if ((dy < 0 && acc > 0) || (dy > 0 && acc < 0)) acc = 0f
+                    acc += dy
+                    if (acc < -24 * density) folded = true else if (acc > 18 * density) folded = false
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().nestedScroll(watch)) {
             content()
-            // labels follow the app language even when it changes while this screen is open
-            key(ver, Prefs.uiLang) { DockBar(tab, Modifier.align(Alignment.BottomCenter)) { tab = it } }
+            key(ver, Prefs.uiLang) { DockBar(tab, folded, Modifier.align(Alignment.BottomCenter), onUnfold = { folded = false }) { tab = it } }
         }
     }
 }
@@ -220,41 +239,76 @@ private fun NavRail(tab: Int, onTab: (Int) -> Unit) {
     }
 }
 
+/**
+ * The floating dock: icons only on a dark capsule, a soft light disc behind the chosen one. Slide a finger along it
+ * and the disc follows, ticking as it passes each icon; let go to open that one. When folded (while scrolling down)
+ * it shrinks to one round button with the current icon at the bottom left; tap it to open the dock again.
+ */
 @Composable
-private fun DockBar(tab: Int, modifier: Modifier, onTab: (Int) -> Unit) {
-    val accent = LocalAccent.current
+private fun DockBar(tab: Int, folded: Boolean, modifier: Modifier, onUnfold: () -> Unit, onTab: (Int) -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    // floating capsule; the selected destination opens into a pill with its label
+    val n = dests.size
+    val itemW = 60.dp; val barH = 64.dp; val pad = 6.dp
+    val barW = itemW * n + pad * 2
+    // finger position while scrubbing (index as a float); null when not touching
+    var drag by remember { mutableStateOf<Float?>(null) }
+    var hover by remember { mutableIntStateOf(tab) }
+    val target = drag ?: tab.toFloat()
+    val pos by androidx.compose.animation.core.animateFloatAsState(target,
+        if (drag != null) androidx.compose.animation.core.spring(stiffness = 2200f) else androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 500f), label = "disc")
+    val width by androidx.compose.animation.core.animateDpAsState(if (folded) 56.dp else barW, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 420f), label = "w")
+    val height by androidx.compose.animation.core.animateDpAsState(if (folded) 56.dp else barH, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 420f), label = "h")
+    val rtl = Prefs.isRtlUi
+    val dark = Color(0xFF0E0E11)
     Box(
         modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Z.bg.copy(alpha = 0.85f), Z.bg)))
-            .navigationBarsPadding().padding(top = 22.dp, bottom = 10.dp),
-        contentAlignment = Alignment.Center,
+            .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 10.dp),
+        // folded: bottom left (like the reference) in every language; open: centred
+        contentAlignment = if (folded) androidx.compose.ui.AbsoluteAlignment.CenterLeft else Alignment.Center,
     ) {
-        Row(
-            Modifier.shadow(if (Z.light) 10.dp else 18.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
+        Box(
+            Modifier.width(width).height(height)
+                .shadow(18.dp, RoundedCornerShape(50), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(50))
-                .background(Z.surface.copy(alpha = 0.97f))
-                .border(1.dp, Z.tint(0.09f), RoundedCornerShape(50))
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // every destination keeps its label (no layout jump); the chosen one gets a coloured pill behind its icon
-            dests.forEachIndexed { i, d ->
-                val sel = i == tab
-                val pill by androidx.compose.animation.animateColorAsState(if (sel) accent.copy(alpha = 0.22f) else Color.Transparent, Motion.color(), label = "db")
-                val fg by androidx.compose.animation.animateColorAsState(if (sel) accent else Z.sub, Motion.color(), label = "df")
-                Column(
-                    Modifier.width(64.dp).clip(RoundedCornerShape(22.dp)).clickable { Haptics.tick(ctx); onTab(i) }.padding(vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(Modifier.width(48.dp).height(30.dp).clip(RoundedCornerShape(50)).background(pill), contentAlignment = Alignment.Center) {
-                        Icon(d.icon, null, tint = fg, modifier = Modifier.size(22.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFF1A1A1F), dark)))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(50))
+                .then(if (folded) Modifier.clickable { Haptics.tick(ctx); onUnfold() } else Modifier.pointerInput(n, rtl) {
+                    val w = itemW.toPx(); val p = pad.toPx()
+                    fun idx(x: Float): Float { val f = ((x - p) / w - 0.5f).coerceIn(0f, n - 1f); return if (rtl) (n - 1f - f) else f }
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        drag = idx(down.position.x); hover = kotlin.math.round(drag!!).toInt()
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val c = ev.changes.firstOrNull() ?: break
+                            if (!c.pressed) break
+                            drag = idx(c.position.x)
+                            val h = kotlin.math.round(drag!!).toInt()
+                            if (h != hover) { hover = h; Haptics.tick(ctx) }
+                            c.consume()
+                        }
+                        val chosen = hover
+                        drag = null
+                        if (chosen != tab) { Haptics.tick(ctx); onTab(chosen) }
                     }
-                    Spacer(Modifier.height(3.dp))
-                    Text(tr(d.en, d.ar), fontSize = 11.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, color = fg, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
+                }),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            if (folded) {
+                Icon(dests[tab].icon, tr(dests[tab].en, dests[tab].ar), tint = Color.White, modifier = Modifier.align(Alignment.Center).size(24.dp))
+            } else {
+                // the light disc (moves with the finger)
+                val discX = pad + itemW * (if (rtl) (n - 1 - pos) else pos)
+                Box(Modifier.offset(x = discX).width(itemW).fillMaxHeight().padding(vertical = 5.dp)
+                    .clip(RoundedCornerShape(50)).background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.07f)))))
+                Row(Modifier.fillMaxSize().padding(horizontal = pad), verticalAlignment = Alignment.CenterVertically) {
+                    dests.forEachIndexed { i, d ->
+                        val near = 1f - kotlin.math.abs(pos - i).coerceAtMost(1f)
+                        Box(Modifier.width(itemW).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Icon(d.icon, tr(d.en, d.ar), tint = lerp(Color.White.copy(alpha = 0.62f), Color.White, near),
+                                modifier = Modifier.size(24.dp).graphicsLayer { val k = 1f + 0.12f * near; scaleX = k; scaleY = k })
+                        }
+                    }
                 }
             }
         }

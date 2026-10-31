@@ -68,6 +68,7 @@ class PinReceiver : BroadcastReceiver() {
         if (id == -1) return
         Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it); com.smrh.zujaj.remote.Stats.widgetAdded(it.styleId) }
         runCatching { WidgetUpdater.update(context, id) }
+        ClockService.ensure(context)
         // the app shows its own "added" sheet when it is open; otherwise a short toast
         val style = Prefs.widgetConfig(id)?.styleId ?: ""
         if (WidgetEvents.listening) WidgetEvents.added.value = id to style
@@ -196,7 +197,7 @@ class SystemEventsReceiver : BroadcastReceiver() {
                     }
                     Scheduler.drawnMinute = minute
                 } else any = WidgetUpdater.allIds(context).any { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(context, id, it) } == true }
-                if (any) Scheduler.minuteTick(context)
+                if (any) { Scheduler.minuteTick(context); ClockService.ensure(context) }
                 return
             }
             Scheduler.PRO_END -> { com.smrh.zujaj.billing.Billing.refreshPro(); WidgetUpdater.updateAll(context) }
@@ -268,6 +269,7 @@ object Scheduler {
         val req = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("zujaj_refresh", ExistingPeriodicWorkPolicy.KEEP, req)
         scheduleAlarms(ctx)
+        ClockService.ensure(ctx)
         // re-arm the minute tick if the chain broke (process killed by the phone)
         if (WidgetUpdater.allIds(ctx).any { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(ctx, id, it) } == true }) minuteTick(ctx)
     }
