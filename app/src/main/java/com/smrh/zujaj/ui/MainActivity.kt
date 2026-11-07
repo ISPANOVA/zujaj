@@ -202,7 +202,7 @@ open class MainActivity : ComponentActivity() {
                     Root(nav)
                     CrashReportDialog()
                     RewardedInterIntro()
-                    if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) AppGates(nav)
+                    if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) { AppGates(nav); LocationAsk() }
                     if (configureId == AppWidgetManager.INVALID_APPWIDGET_ID) OnboardingScreen()
                 }
             }
@@ -442,5 +442,26 @@ fun WidgetAddedHost(nav: Nav) {
             Text(tr("Fine-tune this one", "عدّل دي"), color = LocalAccent.current, fontWeight = FontWeight.Bold)
         }
         androidx.compose.material3.TextButton(onClick = { close() }, modifier = Modifier.fillMaxWidth()) { Text(tr("Done", "تمام"), color = Z.sub) }
+    }
+}
+
+/** Right after the splash: ask for location (prayer times, weather and the city name need it) until it is allowed. */
+@Composable
+private fun LocationAsk() {
+    if (com.smrh.zujaj.security.Guard.isTest) return
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    if (com.smrh.zujaj.data.LocationRepo.permitted(ctx)) return
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        if (r.values.any { it }) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            if (runCatching { com.smrh.zujaj.data.LocationRepo.detect(ctx) }.getOrDefault(false)) {
+                runCatching { com.smrh.zujaj.widget.Scheduler.refreshWeatherIfNeeded(ctx, force = true) }
+                com.smrh.zujaj.widget.WidgetUpdater.updateAll(ctx)
+                com.smrh.zujaj.widget.Scheduler.scheduleAlarms(ctx)
+            }
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(900)   // let the splash finish
+        launcher.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION))
     }
 }
