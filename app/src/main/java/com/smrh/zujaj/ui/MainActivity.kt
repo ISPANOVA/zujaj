@@ -171,6 +171,13 @@ open class MainActivity : ComponentActivity() {
         runCatching { WallMatch.follow(this) }
         if (savedInstanceState == null) {
             com.smrh.zujaj.remote.Stats.opened()
+            // fill in a missing city name (or a first location) right away, then redraw with it
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                if (runCatching { com.smrh.zujaj.data.LocationRepo.refreshQuietly(applicationContext) }.getOrDefault(false)) {
+                    runCatching { com.smrh.zujaj.widget.Scheduler.refreshWeatherIfNeeded(applicationContext, force = true) }
+                    com.smrh.zujaj.widget.WidgetUpdater.updateAll(applicationContext)
+                }
+            }
             // seasonal sets from the control panel
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { runCatching { com.smrh.zujaj.remote.RemoteSets.load() } }
         }

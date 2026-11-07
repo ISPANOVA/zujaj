@@ -63,6 +63,13 @@ object LocationRepo {
 
     /** Background refresh (boot, periodic work): only in auto mode, only when we may, only when moved or unnamed. */
     fun refreshQuietly(ctx: Context): Boolean {
+        // a place we have coordinates for but no name (the phone's geocoder failed before): name it now, in any mode
+        if (Prefs.hasLocation && Prefs.cityName.isBlank()) {
+            val n = cityOf(ctx, Prefs.lat, Prefs.lng)
+            if (n != null) { Prefs.saveLocation(Prefs.lat, Prefs.lng, n, Prefs.autoLocation); return true }
+        }
+        // location permission given but never detected: detect once
+        if (!Prefs.hasLocation && permitted(ctx)) return detect(ctx)
         if (!Prefs.autoLocation || !permitted(ctx)) return false
         val loc = lastKnown(ctx) ?: return false
         val moved = !Prefs.hasLocation || km(Prefs.lat, Prefs.lng, loc.latitude, loc.longitude) > 3f

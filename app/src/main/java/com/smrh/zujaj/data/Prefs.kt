@@ -75,8 +75,9 @@ object Prefs {
     var lng: Double
         get() = str("lng", "31.2357").toDouble()
         set(v) = put("lng", v)
+    /** The place's name. With no location set yet, prayer times use Cairo, so the name says Cairo too. */
     var cityName: String
-        get() = str("city", "")
+        get() = str("city", "").ifBlank { if (!hasLocation) (if (isArabicUi) "القاهرة" else "Cairo") else "" }
         set(v) = put("city", v)
     var hasLocation: Boolean
         get() = sp.getBoolean("has_loc", false)
