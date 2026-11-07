@@ -209,13 +209,26 @@ class RenderCtx(
         // "Small text" size from the editor applies to labels / dates / captions everywhere
         val sz = if (size < 15 * u && cfg.size3 != 100) size * cfg.size3 / 100f else size
         val p = paint(color, sz, font, align, spacing)
-        if (maxW > 0) {
+        // never run past the widget's edge, whatever text size the user chose
+        val room = edgeRoom(x, align)
+        val limit = if (maxW > 0) minOf(maxW, room) else room
+        if (limit > 0) {
             val mw = p.measureText(s)
-            if (mw > maxW) p.textSize = p.textSize * maxW / mw
+            if (mw > limit) p.textSize = p.textSize * limit / mw
         }
         val fm = p.fontMetrics
         canvas.drawText(s, x, cy - (fm.ascent + fm.descent) / 2f, p)
         return p.measureText(s)
+    }
+
+    /** Width available from x to the widget's edge(s) for this alignment, keeping a small margin. */
+    fun edgeRoom(x: Float, align: Paint.Align): Float {
+        val m = 2 * u
+        return when (align) {
+            Paint.Align.LEFT -> w - m - x
+            Paint.Align.RIGHT -> x - m
+            else -> 2 * minOf(x - m, w - m - x)
+        }.coerceAtLeast(8 * u)
     }
 
     /** Text using its real glyph bounds to centre (better for big numerals). */
@@ -226,7 +239,8 @@ class RenderCtx(
         }
         val s = withTashkeel(s0, font)
         val p = paint(color, size, font, Paint.Align.LEFT, spacing)
-        fitPaint(p, s, maxW, maxH)
+        val room = edgeRoom(cx, Paint.Align.CENTER)
+        fitPaint(p, s, if (maxW > 0) minOf(maxW, room) else room, maxH)
         val b = android.graphics.Rect()
         p.getTextBounds(s, 0, s.length, b)
         val width = p.measureText(s)
@@ -317,9 +331,11 @@ class RenderCtx(
         fun widest(pp: Paint): Float = if (!numeric) pp.measureText(measureStr)
             else ('0'..'9').maxOf { d -> pp.measureText(measureStr.map { if (it.isDigit()) d else it }.joinToString("")) }
         var sz = size
-        if (maxW > 0) {
+        val room = edgeRoom(cx, align)
+        val lim = if (maxW > 0) minOf(maxW, room) else room
+        if (lim > 0) {
             val mw = widest(paint(size = sz, font = f, spacing = spacing))
-            if (mw > maxW) sz *= maxW / mw
+            if (mw > lim) sz *= lim / mw
         }
         if (maxH > 0) {
             val b = android.graphics.Rect()

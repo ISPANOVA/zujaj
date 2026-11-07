@@ -30,10 +30,25 @@ object LocationRepo {
             .maxByOrNull { it.time }
     }
 
-    private fun cityOf(ctx: Context, lat: Double, lng: Double): String? = runCatching {
+    /** Place name: the phone's own geocoder first (in the app's language), then a free online lookup when the phone has none. */
+    private fun cityOf(ctx: Context, lat: Double, lng: Double): String? = phoneCity(ctx, lat, lng) ?: webCity(lat, lng)
+
+    private fun phoneCity(ctx: Context, lat: Double, lng: Double): String? = runCatching {
+        if (!Geocoder.isPresent()) return null
+        val loc = if (Prefs.isArabicUi) java.util.Locale("ar") else java.util.Locale.getDefault()
         @Suppress("DEPRECATION")
-        Geocoder(ctx).getFromLocation(lat, lng, 1)?.firstOrNull()?.let { it.locality ?: it.subAdminArea ?: it.adminArea }
+        Geocoder(ctx, loc).getFromLocation(lat, lng, 1)?.firstOrNull()?.let { it.locality ?: it.subAdminArea ?: it.subLocality ?: it.adminArea }
     }.getOrNull()?.takeIf { it.isNotBlank() }
+
+    /** BigDataCloud's free client reverse-geocoder (no key; only the coordinates are sent). */
+    private fun webCity(lat: Double, lng: Double): String? = runCatching {
+        val lang = if (Prefs.isArabicUi) "ar" else "en"
+        val u = java.net.URL("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=%.4f&longitude=%.4f&localityLanguage=%s".format(java.util.Locale.US, lat, lng, lang))
+        val c = (u.openConnection() as java.net.HttpURLConnection).apply { connectTimeout = 6000; readTimeout = 6000 }
+        val body = c.inputStream.bufferedReader().use { it.readText() }
+        val j = org.json.JSONObject(body)
+        listOf("city", "locality", "principalSubdivision").map { j.optString(it) }.firstOrNull { it.isNotBlank() }
+    }.getOrNull()
 
     private fun km(aLat: Double, aLng: Double, bLat: Double, bLng: Double): Float {
         val out = FloatArray(1); Location.distanceBetween(aLat, aLng, bLat, bLng, out); return out[0] / 1000f

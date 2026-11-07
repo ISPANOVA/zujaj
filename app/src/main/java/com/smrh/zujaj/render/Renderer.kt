@@ -80,8 +80,11 @@ object Renderer {
         // 2) the design at its own proportions, without its own card
         val pad = 6f
         val availW = wDp - 2 * pad; val availH = hDp - 2 * pad
+        // lean towards the slot's shape (up to ~1.6×) so a resized widget fills its space instead of shrinking into the middle
+        val lean = kotlin.math.ln(slot / aspect).coerceIn(-0.47f, 0.47f)
+        val want = aspect * kotlin.math.exp(lean)
         val rw: Float; val rh: Float
-        if (availW / availH > aspect) { rh = availH; rw = availH * aspect } else { rw = availW; rh = availW / aspect }
+        if (availW / availH > want) { rh = availH; rw = availH * want } else { rw = availW; rh = availW / want }
         val inner = render(ctx, bgCtx.cfg.copy(bg = false, dayTint = false), rw, rh, false, scale, bake = bake)
         val ox = (bw - inner.bitmap.width) / 2f
         val oy = (bh - inner.bitmap.height) / 2f

@@ -17,7 +17,7 @@ object WeatherR {
         return WeatherRepo.cached(c.lat, c.lng) ?: WeatherRepo.sample2.copy(city = c.name, symbol = "cloudy")
     }
 
-    private fun city(r: RenderCtx, w: Weather) = w.city.ifBlank { r.t("My location", "موقعي") }
+    private fun city(r: RenderCtx, w: Weather) = w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.ifBlank { r.t("My location", "موقعي") }
     private fun temp(r: RenderCtx, t: Double) = r.n(WeatherRepo.fmt(t))
 
     fun compactBanner(r: RenderCtx) {

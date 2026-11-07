@@ -113,8 +113,12 @@ object WidgetUpdater {
         val cfg = configFor(ctx, id)
         val style = Catalog.byId(cfg.styleId) ?: return
         val (wDp, hDp) = sizeDp(ctx, id, style.shape)
-        val views = build(ctx, id, cfg, style, wDp, hDp)
-        mgr.updateAppWidget(id, views)
+        // a failed update must never leave the host without views (some hosts then hide the widget for hours):
+        // retry once at a smaller size, which also keeps the picture under the host's memory limit
+        val views = runCatching { build(ctx, id, cfg, style, wDp, hDp) }.recoverCatching { build(ctx, id, cfg, style, wDp * 0.7f, hDp * 0.7f) }.getOrNull() ?: return
+        runCatching { mgr.updateAppWidget(id, views) }.onFailure {
+            runCatching { mgr.updateAppWidget(id, build(ctx, id, cfg, style, wDp * 0.7f, hDp * 0.7f)) }
+        }
     }
 
     /** Lock-screen hosts don't load app fonts, so Arabic-Indic digits must be drawn into the image. */
@@ -123,12 +127,12 @@ object WidgetUpdater {
             .getInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, -1) == AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD
     }.getOrDefault(false)
 
-    /** True when the phone's own clock digits differ from what this widget wants and the host ignores our fonts. */
-    fun needsBake(ctx: Context, id: Int, cfg: WidgetConfig): Boolean {
-        val wantArabic = cfg.numerals == com.smrh.zujaj.model.Numerals.ARABIC
-        val systemArabic = runCatching { android.icu.text.DecimalFormatSymbols.getInstance(android.icu.util.ULocale.getDefault()).digits[0] != '0' }.getOrDefault(false)
-        return wantArabic != systemArabic && isKeyguard(ctx, id)
-    }
+    /**
+     * Lock-screen hosts (Samsung and others) ignore the app's fonts, so a live clock there falls back to the
+     * phone's default font and its own digits. On the lock screen the time is therefore always drawn into the
+     * picture (in the chosen font) and kept on the minute by ClockService.
+     */
+    fun needsBake(ctx: Context, id: Int, cfg: WidgetConfig): Boolean = isKeyguard(ctx, id)
 
     /** Widgets whose time is drawn into the picture and redrawn every minute. */
     fun bakes(ctx: Context, id: Int, cfg: WidgetConfig): Boolean =

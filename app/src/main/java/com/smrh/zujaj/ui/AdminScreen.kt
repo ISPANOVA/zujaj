@@ -926,7 +926,7 @@ private fun PopupAdmin() {
         if (uri != null) {
             // shrink to 720 px and JPEG, so the whole pop-up stays a small document
             val b64 = runCatching {
-                val src = ctx.contentResolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+                val src = com.smrh.zujaj.remote.Walls.readPicked(ctx, uri)!!
                 val k = minOf(1f, 720f / maxOf(src.width, src.height))
                 val bmp = android.graphics.Bitmap.createScaledBitmap(src, (src.width * k).toInt(), (src.height * k).toInt(), true)
                 val out = java.io.ByteArrayOutputStream(); bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 78, out)
@@ -1021,7 +1021,7 @@ private fun SetEditor(start: WidgetSet, onClose: () -> Unit) {
         if (uri != null) {
             // phone-shaped photo, max 1080 px tall, JPEG — keeps the set document well under Firestore's 1 MB
             val b64 = runCatching {
-                val src = ctx.contentResolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+                val src = com.smrh.zujaj.remote.Walls.readPicked(ctx, uri)!!
                 val k = minOf(1f, 1080f / maxOf(src.width, src.height))
                 val bmp = android.graphics.Bitmap.createScaledBitmap(src, (src.width * k).toInt(), (src.height * k).toInt(), true)
                 var q2 = 80; var bytes: ByteArray

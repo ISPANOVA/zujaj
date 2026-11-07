@@ -25,6 +25,8 @@ class ClockService : Service() {
     private val rx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             Prefs.init(c)
+            // screen on: redraw at once (also brings back lock-screen widgets a host may have dropped)
+            if (i.action == Intent.ACTION_SCREEN_ON || i.action == Intent.ACTION_USER_PRESENT) Scheduler.drawnMinute = -1
             if (!redraw(c)) stopSelf()
         }
     }
@@ -62,6 +64,7 @@ class ClockService : Service() {
         private const val CHANNEL = "clock_keeper"
         @Volatile var running = false
 
+        /** Widgets whose time is a picture: gradient clocks, and every lock-screen widget (lock screens ignore app fonts). */
         private fun bakedIds(ctx: Context) = WidgetUpdater.allIds(ctx).filter { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(ctx, id, it) } == true }
 
         /** Redraws the gradient clocks that show a past minute. Returns false when there are none on the home screen. */

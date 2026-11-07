@@ -6,7 +6,6 @@
 -keepclassmembers class com.smrh.zujaj.** { *** Companion; }
 -keepclasseswithmembers class com.smrh.zujaj.** { kotlinx.serialization.KSerializer serializer(...); }
 -keep class com.batoulapps.adhan.** { *; }
--keep class com.android.billingclient.** { *; }
 
 # Harder to reverse-engineer: flatten packages, rename aggressively, strip debug logging.
 -repackageclasses 'z'

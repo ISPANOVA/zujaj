@@ -120,7 +120,7 @@ object Moments3R {
         Glyphs.weather(r.canvas, w.cond, w.night, wnX, weatherRc.top + R * 0.55f, R * 1.15f, color = false)
         val wx = if (ar) weatherRc.right - pad else weatherRc.left + pad
         val wal = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
-        r.text(w.city.ifBlank { r.t("My city", "مدينتي") }, wx, weatherRc.top + 22 * u, 12 * u * r.s2, sub, r.sans, wal, maxW = half - 2 * R - 40 * u)
+        r.text(w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.ifBlank { r.t("My city", "مدينتي") }, wx, weatherRc.top + 22 * u, 12 * u * r.s2, sub, r.sans, wal, maxW = half - 2 * R - 40 * u)
         r.text(Kit.temp(r, w.temp), wx, weatherRc.top + topH * 0.55f, 34 * u * r.s1, ink, r.sansBold, wal)
         r.text(WeatherRepo.condName(w.cond, ar), wx, weatherRc.top + topH * 0.75f, 13 * u * r.s2, ink, r.sansMed, wal, maxW = half - 2 * pad)
         r.text(Kit.temp(r, w.lo) + " / " + Kit.temp(r, w.hi), wx, weatherRc.top + topH * 0.89f, 11 * u * r.s2, sub, r.sans, wal)
@@ -345,7 +345,7 @@ object Moments3R {
         val tx = if (ar) r.w - pad else pad
         val al = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
         val h = card.height()
-        r.text(w.city.ifBlank { r.t("My city", "مدينتي") }, tx, card.top + 18 * u, 11 * u * r.s2, withAlpha(r.c1, 200), r.sans, al, maxW = r.w - 2 * R - 34 * u)
+        r.text(w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.ifBlank { r.t("My city", "مدينتي") }, tx, card.top + 18 * u, 11 * u * r.s2, withAlpha(r.c1, 200), r.sans, al, maxW = r.w - 2 * R - 34 * u)
         r.text(Kit.temp(r, w.temp), tx, card.top + h * 0.56f, 32 * u * r.s1, r.c1, r.sansBold, al)
         r.text(WeatherRepo.condName(w.cond, ar), tx, card.top + h * 0.75f, 12 * u * r.s2, r.c1, r.sansMed, al, maxW = r.w - 2 * pad)
         r.text(Kit.temp(r, w.lo) + " / " + Kit.temp(r, w.hi), tx, card.top + h * 0.89f, 10.5f * u * r.s2, withAlpha(r.c1, 200), r.sans, al)
