@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.padding
@@ -445,12 +446,15 @@ fun WidgetAddedHost(nav: Nav) {
     }
 }
 
-/** Right after the splash: ask for location (prayer times, weather and the city name need it) until it is allowed. */
+/**
+ * Once, after onboarding: a short explanation, then the system location prompt (prayer times, weather and the
+ * city name need it). Never asked again by itself after the first answer; Settings → Location stays available.
+ */
 @Composable
 private fun LocationAsk() {
     if (com.smrh.zujaj.security.Guard.isTest) return
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    if (com.smrh.zujaj.data.LocationRepo.permitted(ctx)) return
+    var show by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r.values.any { it }) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             if (runCatching { com.smrh.zujaj.data.LocationRepo.detect(ctx) }.getOrDefault(false)) {
@@ -461,7 +465,21 @@ private fun LocationAsk() {
         }
     }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(900)   // let the splash finish
-        launcher.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION))
+        if (Prefs.getString("loc_asked") == "1" || com.smrh.zujaj.data.LocationRepo.permitted(ctx)) return@LaunchedEffect
+        kotlinx.coroutines.delay(1200)
+        while (!Onboarding.done()) kotlinx.coroutines.delay(400)
+        kotlinx.coroutines.delay(400)
+        show = true
+    }
+    if (!show) return
+    fun close() { Prefs.setString("loc_asked", "1"); show = false }
+    ZDialog(Icons.Rounded.LocationOn, tr("Prayer times for your city", "مواقيت الصلاة لمدينتك"),
+        tr("Zujaj uses your approximate location only to get your city's prayer times, weather and name. It stays on your phone.",
+            "زجاج بيستخدم موقعك التقريبي بس عشان مواقيت الصلاة والطقس واسم مدينتك يبقوا مظبوطين. موقعك بيفضل على تليفونك."),
+        iconColor = Color(0xFF13B5A8), onDismiss = { close() }) {
+        PrimaryButton(tr("Allow location", "اسمح بالموقع"), Modifier.fillMaxWidth()) {
+            close(); launcher.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION))
+        }
+        androidx.compose.material3.TextButton(onClick = { close() }, modifier = Modifier.fillMaxWidth()) { Text(tr("Not now", "مش دلوقتي"), color = Z.sub) }
     }
 }

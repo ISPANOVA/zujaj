@@ -53,7 +53,7 @@ class ClockService : Service() {
         // every start through startForegroundService must be answered with startForeground
         runCatching { if (Build.VERSION.SDK_INT >= 34) startForeground(NOTE_ID, notification(this), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(NOTE_ID, notification(this)) }
         running = true
-        if (!redraw(this)) { running = false; stopSelf() }
+        if (!needed() || !redraw(this)) { running = false; stopSelf() }
         return START_STICKY
     }
 
@@ -63,6 +63,15 @@ class ClockService : Service() {
         private const val NOTE_ID = 7301
         private const val CHANNEL = "clock_keeper"
         @Volatile var running = false
+
+        /**
+         * Only phones that freeze apps in the background need the keeper (and its notification); elsewhere
+         * (Samsung, Pixel, Motorola, Nokia…) the 5-second alarm keeps the time on the minute by itself.
+         */
+        fun needed(): Boolean {
+            val m = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
+            return listOf("realme", "oppo", "oneplus", "xiaomi", "redmi", "poco", "vivo", "iqoo", "huawei", "honor", "infinix", "tecno", "itel", "meizu").any { it in m }
+        }
 
         /** Widgets whose time is a picture: gradient clocks, and every lock-screen widget (lock screens ignore app fonts). */
         private fun bakedIds(ctx: Context) = WidgetUpdater.allIds(ctx).filter { id -> Prefs.widgetConfig(id)?.let { WidgetUpdater.bakes(ctx, id, it) } == true }
@@ -81,7 +90,7 @@ class ClockService : Service() {
 
         /** Starts the keeper when a gradient clock is on the home screen (allowed from the background because the app is battery-unrestricted). */
         fun ensure(ctx: Context) = runCatching {
-            if (running || bakedIds(ctx).isEmpty()) return@runCatching
+            if (running || !needed() || bakedIds(ctx).isEmpty()) return@runCatching
             val i = Intent(ctx, ClockService::class.java)
             if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
         }

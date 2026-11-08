@@ -156,13 +156,19 @@ private fun ignoringBattery(ctx: android.content.Context): Boolean = runCatching
 @Composable
 fun BatteryIntro() {
     val ctx = LocalContext.current
-    // required: the app can't be used until the battery is set to Unrestricted (re-checked every time the app opens)
+    // Asked only when it matters: a widget whose time the app redraws itself (gradient clocks, lock-screen widgets)
+    // is on the screen and the battery isn't Unrestricted yet. Never on first launch, never blocking.
     if (com.smrh.zujaj.security.Guard.isTest) return
     var done by remember { mutableStateOf(false) }
     if (done) return
-    // wait until the splash has gone
+    val added by com.smrh.zujaj.widget.WidgetEvents.added.collectAsState()
     var ready by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(1700); while (!Onboarding.done()) delay(400); delay(500); ready = true }
+    LaunchedEffect(added) {
+        if (added != null) return@LaunchedEffect          // wait until the "Added" sheet is closed
+        delay(1200); while (!Onboarding.done()) delay(400)
+        val needs = com.smrh.zujaj.widget.WidgetUpdater.allIds(ctx).any { id -> Prefs.widgetConfig(id)?.let { com.smrh.zujaj.widget.WidgetUpdater.bakes(ctx, id, it) } == true }
+        ready = needs && !ignoringBattery(ctx) && Prefs.getString("bat_later_day") != java.time.LocalDate.now().toString()
+    }
     if (!ready) return
     val oem = remember { com.smrh.zujaj.widget.Oem.autoStartIntent(ctx) != null }
     var battOk by remember { mutableStateOf(ignoringBattery(ctx)) }
@@ -178,7 +184,8 @@ fun BatteryIntro() {
     LaunchedEffect(battOk) { if (battOk && (Prefs.getString("bat_intro") == "1" || !oem)) finish() }
     if (battOk && (Prefs.getString("bat_intro") == "1" || !oem)) return
     val gold = Color(0xFFE7B75F)
-    androidx.compose.ui.window.Dialog(onDismissRequest = { }, properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+    fun later() { Prefs.setString("bat_later_day", java.time.LocalDate.now().toString()); done = true }
+    androidx.compose.ui.window.Dialog(onDismissRequest = { later() }) {
         Column(
             Modifier.clip(RoundedCornerShape(30.dp))
                 .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1E1A10), Z.surface, Z.surface)))
@@ -209,9 +216,8 @@ fun BatteryIntro() {
                 }
             }
             Spacer(Modifier.height(20.dp))
-            PrimaryButton(if (battOk) tr("Done", "تمام") else tr("Set the battery to Unrestricted first", "خلّي البطارية «بدون قيود» الأول"), Modifier.fillMaxWidth()) { finish() }
-            if (!battOk) Text(tr("Required — Zujaj can't keep your clocks on time without it.", "إجباري — من غيره زجاج مش هيقدر يخلّي الساعة مظبوطة."),
-                color = Z.sub, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+            PrimaryButton(if (battOk) tr("Done", "تمام") else tr("Set the battery to Unrestricted", "خلّي البطارية «بدون قيود»"), Modifier.fillMaxWidth()) { finish() }
+            if (!battOk) TextButton(onClick = { later() }) { Text(tr("Later", "بعدين"), color = Z.sub, fontSize = 13.sp) }
         }
     }
 }

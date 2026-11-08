@@ -184,17 +184,30 @@ object Billing {
         return r.responseCode == BillingClient.BillingResponseCode.OK
     }
 
+    /**
+     * Stats count a purchase once per purchase token (Google re-delivers the same purchase on restores and
+     * reinstalls), and never count test purchases (license testers and promo codes carry no "GPA." order id).
+     */
+    private fun countOnce(p: Purchase, kind: String) {
+        val token = p.purchaseToken.takeLast(24)
+        val seen = Prefs.getString("counted_buys").split(",").filter { it.isNotBlank() }
+        if (token in seen) return
+        Prefs.setString("counted_buys", (seen.takeLast(40) + token).joinToString(","))
+        if (p.orderId?.startsWith("GPA.") != true) return
+        com.smrh.zujaj.remote.Stats.purchase(kind)
+    }
+
     private fun onPurchases(result: BillingResult, purchases: List<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> purchases?.forEach {
                 if (it.purchaseState == Purchase.PurchaseState.PURCHASED && genuine(it)) {
                     acknowledge(it)
                     if (it.products.any { p -> p in WALL_IDS }) {
-                        Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"; com.smrh.zujaj.remote.Stats.purchase("wall")
+                        Prefs.purchasedWall = true; refreshWall(); _message.value = "wall_ok"; countOnce(it, "wall")
                     } else {
                         Prefs.proPlan = it.products.firstOrNull() ?: ""
                         setPro(true)
-                        _message.value = "pro_ok"; com.smrh.zujaj.remote.Stats.purchase("pro")
+                        _message.value = "pro_ok"; countOnce(it, "pro")
                     }
                 } else if (it.purchaseState == Purchase.PurchaseState.PENDING) {
                     _message.value = "pending"

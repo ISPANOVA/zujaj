@@ -203,7 +203,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
     // an interstitial may follow only after the user finished (added a widget) and leaves the editor
     var appliedOnce by remember { mutableStateOf(false) }
     val actForAd = ctx as? Activity
-    DisposableEffect(Unit) { onDispose { if (appliedOnce && actForAd != null) com.smrh.zujaj.ads.AdPolicy.atBreak(actForAd) } }
+    // no full-screen ad after adding a widget (it came at the happiest moment and drove people away)
     if (askExact) ZDialog(Icons.Rounded.Schedule, tr("Keep the clock exact", "خلّي الساعة مظبوطة بالثانية"),
         tr("Allow \"Alarms & reminders\" so this widget changes right on the minute, together with your phone's clock.",
             "اسمح بـ «المنبهات والتذكيرات» عشان الويدجت دي تتغير مع ساعة التليفون بالظبط من غير تأخير."),
