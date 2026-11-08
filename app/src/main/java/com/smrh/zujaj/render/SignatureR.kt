@@ -124,7 +124,7 @@ object SignatureR {
         val ms = r.now.toInstant().toEpochMilli()
         val age = moonAge(ms)
         val wide = r.w > r.h * 1.4f
-        val R = minOf(r.h * (if (wide) 0.36f else 0.3f), r.w * 0.3f)
+        val R = if (wide) minOf(r.h * 0.36f, r.w * 0.3f) else minOf(r.h * 0.25f, r.w * 0.3f)
         val cx = if (wide) (if (r.ar) r.w - r.pad - R - 10 * r.u else r.pad + R + 10 * r.u) else r.w / 2
         val cy = if (wide) r.h / 2 else r.pad + R + 8 * r.u
         // glow, dark disc, then the lit part: a half-disc plus or minus an ellipse (the terminator)
@@ -241,7 +241,7 @@ object SignatureR {
         c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = RadialGradient(r.w / 2, r.h / 2, maxOf(r.w, r.h) * 0.7f, 0xFF10261F.toInt(), 0xFF050C0A.toInt(), Shader.TileMode.CLAMP) })
         val (bearing, km) = qibla(Prefs.lat, Prefs.lng)
         val wide = r.w > r.h * 1.4f
-        val R = minOf(r.h * 0.4f, (if (wide) r.w * 0.28f else r.w * 0.38f))
+        val R = if (wide) minOf(r.h * 0.4f, r.w * 0.28f) else minOf(r.h * 0.31f, r.w * 0.36f)
         val cx = if (wide) (if (r.ar) r.w - r.pad - R - 8 * r.u else r.pad + R + 8 * r.u) else r.w / 2
         val cy = if (wide) r.h / 2 else r.pad + R + 6 * r.u
         val gold = 0xFFD9B26B.toInt()

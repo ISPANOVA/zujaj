@@ -1120,6 +1120,7 @@ private fun StarterCard(list: List<WidgetStyle>, gut: androidx.compose.ui.unit.D
 /** "A new widget is here": once per announcement from the control panel, with a button straight to it. */
 @Composable
 private fun PromoHost(nav: Nav) {
+    if (com.smrh.zujaj.security.Guard.isTest) return
     val flags by Flags.flags.collectAsState()
     val list = flags.promo.mapNotNull { id -> Flags.visible().firstOrNull { it.id == id } }
     var seen by remember { mutableStateOf(Prefs.getString("promo_seen")) }
