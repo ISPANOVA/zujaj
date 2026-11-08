@@ -1,5 +1,6 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.absoluteOffset
@@ -371,6 +372,7 @@ fun collection(key: String): List<WidgetStyle> {
         "free" -> all.filter { !Flags.isPro(it) }
         "saved" -> all.filter { Prefs.favorites.contains(it.id) }
         "all" -> all
+        "promo" -> Flags.flags.value.promo.mapNotNull { id -> all.firstOrNull { it.id == id } }
         else -> all.filter { it.cat.name == key }
     }
 }
@@ -381,6 +383,7 @@ fun collectionTitle(key: String): String = when (key) {
     "free" -> tr("Free", "مجاني")
     "saved" -> tr("Saved", "المفضلة")
     "all" -> tr("All widgets", "كل الويدجت")
+    "promo" -> Flags.flags.value.promoTitle.ifBlank { tr("New widgets", "ويدجت جديدة") }
     else -> Cat.valueOf(key).let { if (Prefs.isArabicUi) it.ar else it.en }
 }
 
@@ -558,6 +561,7 @@ fun DiscoverTab(nav: Nav) {
     val greet = when (hour) { in 5..11 -> tr("Good morning", "صباح الخير"); in 12..16 -> tr("Good afternoon", "طاب يومك"); else -> tr("Good evening", "مساء الخير") }
     // the built-in announcement pop-ups are gone; announcements now come from the control panel (Popup)
     AnnouncementHost(nav)
+    PromoHost(nav)
 
     val ctxHome = androidx.compose.ui.platform.LocalContext.current
     val list = remember(chip, flags, ver) { tidy(collection(chip)) }
@@ -1110,5 +1114,33 @@ private fun StarterCard(list: List<WidgetStyle>, gut: androidx.compose.ui.unit.D
             com.smrh.zujaj.widget.WidgetEvents.queue.addAll(list.drop(1).map { it.id })
             pin(ctx, list.first().defaultConfig(), list.first().shape)
         }
+    }
+}
+
+/** "A new widget is here": once per announcement from the control panel, with a button straight to it. */
+@Composable
+private fun PromoHost(nav: Nav) {
+    val flags by Flags.flags.collectAsState()
+    val list = flags.promo.mapNotNull { id -> Flags.visible().firstOrNull { it.id == id } }
+    var seen by remember { mutableStateOf(Prefs.getString("promo_seen")) }
+    var ready by remember { mutableStateOf(false) }
+    LaunchedEffect(flags.promoId) { delay(1500); while (!Onboarding.done()) delay(500); ready = true }
+    if (!ready || list.isEmpty() || flags.promoId == 0L || seen == flags.promoId.toString()) return
+    fun close() { Prefs.setString("promo_seen", flags.promoId.toString()); seen = flags.promoId.toString() }
+    ZDialog(Icons.Rounded.AutoAwesome, flags.promoTitle.ifBlank { tr("New widget just landed", "ويدجت جديدة نزلت دلوقتي") },
+        list.joinToString("  ·  ") { it.name(Prefs.isArabicUi) }, onDismiss = { close() }) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            list.take(2).forEach { st ->
+                Box(Modifier.weight(1f).height(110.dp).clip(RoundedCornerShape(Rad.m)).background(Backdrops.brush(1)).padding(8.dp), contentAlignment = Alignment.Center) {
+                    WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1.8f)
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        PrimaryButton(tr("Discover now", "اكتشف الآن"), Modifier.fillMaxWidth()) {
+            close()
+            if (list.size == 1) nav.go(Screen.Editor(list.first().id)) else nav.go(Screen.Category("promo"))
+        }
+        TextButton(onClick = { close() }) { Text(tr("Later", "بعدين"), color = Z.sub) }
     }
 }

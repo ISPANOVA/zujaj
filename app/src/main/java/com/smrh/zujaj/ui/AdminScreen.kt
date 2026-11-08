@@ -1,5 +1,7 @@
 package com.smrh.zujaj.ui
 
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -178,6 +180,7 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.Wallpaper to tr("Sets", "السِتات"),
             Icons.Rounded.BarChart to tr("Stats", "الإحصائيات"),
             Icons.Rounded.Image to tr("Wallpapers", "الخلفيات"),
+            Icons.Rounded.NewReleases to tr("New widget", "ويدجت جديدة"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -207,6 +210,7 @@ fun AdminScreen(nav: Nav) {
                 8 -> SetsAdmin()
                 9 -> StatsAdmin()
                 10 -> WallsAdmin()
+                11 -> PromoAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -1238,6 +1242,60 @@ private fun WallsAdmin() {
                     }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("✓", color = Color(0xFF3DDC97), fontWeight = FontWeight.Bold, fontSize = 18.sp) }
                     TextButton(onClick = { confirm = w }, contentPadding = PaddingValues(horizontal = 6.dp)) { Icon(Icons.Rounded.Delete, null, tint = Color(0xFFE5484D)) }
                 }
+            }
+        }
+    }
+}
+
+// =============================================================================== "new widget" announcement
+@Composable
+private fun PromoAdmin() {
+    val ctx = LocalContext.current
+    val flags by Flags.flags.collectAsState()
+    var picked by remember(flags.promoId) { mutableStateOf(flags.promo) }
+    var title by remember(flags.promoId) { mutableStateOf(flags.promoTitle) }
+    var q by remember { mutableStateOf("") }
+    val live = flags.promo.isNotEmpty() && flags.promoId != 0L
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text(tr("Pick the widget(s) to announce. Everyone sees a “New widget” pop-up once when they open the app, with a button that takes them to it.",
+                "اختار الويدجت اللي عايز تعلن عنها. كل واحد هيشوف رسالة «ويدجت جديدة» مرة واحدة لما يفتح التطبيق، وفيها زرار يوديه عليها."), color = Z.sub, fontSize = 13.sp)
+            if (live) Text(tr("Live now: ", "شغال دلوقتي: ") + flags.promo.mapNotNull { Catalog.byId(it)?.name(Prefs.isArabicUi) }.joinToString(" · "),
+                color = Color(0xFF3DDC97), fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+        }
+        item { ZField(title, { title = it.take(60) }, tr("Title (optional) — e.g. New for Ramadan", "العنوان (اختياري) — مثلاً جديد لرمضان")) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryButton(tr("Announce", "اعلن"), Modifier.weight(1f)) {
+                    if (picked.isEmpty()) { Toast.makeText(ctx, tr("Pick at least one widget", "اختار ويدجت واحدة على الأقل"), Toast.LENGTH_SHORT).show(); return@PrimaryButton }
+                    AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                        val r = runCatching { Flags.setPromo(picked, title.trim()) }
+                        Toast.makeText(ctx, if (r.isSuccess) tr("Announced ✓ Everyone sees it once", "اتعلن ✓ كل واحد هيشوفه مرة") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                    }
+                }
+                if (live) TextButton(onClick = {
+                    AdminWork.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { Flags.setPromo(emptyList(), "") }
+                        Toast.makeText(ctx, if (r.isSuccess) tr("Stopped", "اتوقف") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show() }
+                }) { Text(tr("Stop", "وقّفه"), color = Color(0xFFE5484D)) }
+            }
+        }
+        item { ZField(q, { q = it }, tr("Search widgets", "ابحث عن ويدجت"), Icons.Rounded.Search) }
+        val list = Catalog.all.filter { q.isBlank() || com.smrh.zujaj.catalog.WidgetSearch.matches(it, q) || it.id.contains(q, true) }
+            .sortedByDescending { it.id in picked }.take(60)
+        items(list, key = { it.id }) { st ->
+            val on = st.id in picked
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.m)).background(if (on) LocalAccent.current.copy(alpha = 0.14f) else Z.surface)
+                .border(1.dp, if (on) LocalAccent.current else Z.line, RoundedCornerShape(Rad.m))
+                .clickable { picked = if (on) picked - st.id else picked + st.id }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(120.dp).height(64.dp).clip(RoundedCornerShape(Rad.s)).background(Backdrops.brush(1)).padding(4.dp), contentAlignment = Alignment.Center) {
+                    WidgetPreview(st.defaultConfig(), Modifier.fillMaxWidth(), density = 1.2f)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(st.name(Prefs.isArabicUi), fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(sizeLabel(st.shape), color = Z.sub, fontSize = 12.sp)
+                }
+                if (on) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current)
             }
         }
     }

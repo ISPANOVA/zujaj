@@ -409,6 +409,16 @@ object Catalog {
         WidgetStyle("w_hours_days", Cat.WEATHER, "Hours & Days", "ساعات وأيام", W, isNew = true, upd = wU) { Weather2R.hoursDays(it) },
         WidgetStyle("w_now_ahead", Cat.WEATHER, "Now & Days Ahead", "الآن والأيام الجاية", W, pro = true, isNew = true, upd = wU) { Weather2R.nowAhead(it) },
         WidgetStyle("w_horizon", Cat.WEATHER, "Horizon", "الأفق", W, isNew = true, feats = setOf(Feat.ACCENT), upd = wU + pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { Prayer2R.horizon(it) },
+        // ------------------------------------------------------------------ SIGNATURE (new: sky, moon, beads, qibla, leaf, tracker)
+        WidgetStyle("sig_sky", Cat.PRAYER, "Prayer Sky", "سماء الصلاة", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFFFD36B.toInt()) }) { SignatureR.sky(it) },
+        WidgetStyle("sig_sky_l", Cat.PRAYER, "Prayer Sky · Large", "سماء الصلاة · كبيرة", L, pro = true, isNew = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFFFD36B.toInt()) }) { SignatureR.sky(it) },
+        WidgetStyle("sig_moon", Cat.ISLAMIC, "Real Moon", "الهلال الحقيقي", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFE7C77A.toInt()) }) { SignatureR.moon(it) },
+        WidgetStyle("sig_moon_s", Cat.ISLAMIC, "Real Moon · Small", "الهلال الحقيقي · صغير", S, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFE7C77A.toInt()) }) { SignatureR.moon(it) },
+        WidgetStyle("sig_beads", Cat.ISLAMIC, "Prayer Beads", "المسبحة", S, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = setOf(Upd.NONE), defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { SignatureR.beads(it) },
+        WidgetStyle("sig_qibla", Cat.ISLAMIC, "Qibla Compass", "بوصلة القبلة", S, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFD9B26B.toInt()) }) { SignatureR.compass(it) },
+        WidgetStyle("sig_qibla_w", Cat.ISLAMIC, "Qibla Compass · Wide", "بوصلة القبلة · عريضة", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFFD9B26B.toInt()) }) { SignatureR.compass(it) },
+        WidgetStyle("sig_leaf", Cat.DATE, "Daily Leaf", "ورقة اليوم", Shape.TALL, isNew = true, popular = true, defaults = { it.copy(bg = false) }) { SignatureR.leaf(it) },
+        WidgetStyle("sig_tracker", Cat.PRAYER, "Prayer Tracker", "متابعة الصلوات", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt()) }) { SignatureR.tracker(it) },
         // ------------------------------------------------------------------ ISLAMIC (athkar — switch morning/evening by themselves)
         WidgetStyle("athkar_card", Cat.ISLAMIC, "Morning & Evening Athkar", "أذكار الصباح والمساء", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt()) }) { AthkarR.card(it) },
         WidgetStyle("athkar_small", Cat.ISLAMIC, "Athkar Ring", "حلقة الأذكار", S, isNew = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt()) }) { AthkarR.small(it) },

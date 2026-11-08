@@ -67,6 +67,10 @@ data class CatalogFlags(
     val featured: List<String> = emptyList(),
     /** "Most added" row on the home page, published by the admin from the stats. */
     val top: List<String> = emptyList(),
+    /** "New widget" announcement chosen in the control panel: shown once per [promoId] when the app opens. */
+    val promo: List<String> = emptyList(),
+    val promoId: Long = 0,
+    val promoTitle: String = "",
     /** Lock the app for free users who block ads (AdGuard, private DNS, …). */
     val adblockLock: Boolean = true,
 )
@@ -141,6 +145,9 @@ object Flags {
                 adUnlockDays = snap.getLong("adUnlockDays")?.toInt() ?: 3,
                 featured = (snap.get("featured") as? List<String>) ?: emptyList(),
                 top = (snap.get("top") as? List<String>) ?: emptyList(),
+                promo = (snap.get("promo") as? List<String>) ?: emptyList(),
+                promoId = snap.getLong("promoId") ?: 0,
+                promoTitle = snap.getString("promoTitle") ?: "",
                 adblockLock = snap.getBoolean("adblockLock") ?: true,
             )
             com.smrh.zujaj.security.Guard.remoteCerts = f.certs.toSet()
@@ -167,6 +174,10 @@ object Flags {
 
     /** Admin: the home page's "Most added" row. */
     suspend fun setTop(ids: List<String>) { doc().update("top", ids).await() }
+    /** Admin: announce new widgets (a fresh id makes everyone see it once); an empty list stops it. */
+    suspend fun setPromo(ids: List<String>, title: String) {
+        doc().update(mapOf("promo" to ids, "promoTitle" to title, "promoId" to if (ids.isEmpty()) 0L else System.currentTimeMillis())).await()
+    }
 
     // ---------------- admin ----------------
     fun auth(): FirebaseAuth? = if (enabled) FirebaseAuth.getInstance() else null
@@ -199,6 +210,7 @@ object Flags {
             "adUnlockDays" to f.adUnlockDays,
             "featured" to f.featured,
             "top" to f.top,
+            "promo" to f.promo, "promoId" to f.promoId, "promoTitle" to f.promoTitle,
             "adblockLock" to f.adblockLock,
             "updatedAt" to System.currentTimeMillis(),
         )

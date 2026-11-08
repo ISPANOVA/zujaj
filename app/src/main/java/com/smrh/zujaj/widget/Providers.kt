@@ -108,6 +108,17 @@ class ActionReceiver : BroadcastReceiver() {
                 if (khatma) android.widget.Toast.makeText(context, if (Prefs.isArabicUi) "ختمة مباركة ✓" else "Khatma complete ✓", android.widget.Toast.LENGTH_LONG).show()
                 WidgetUpdater.update(context, id)
             }
+            "pray" -> {
+                val i = arg.toIntOrNull() ?: return
+                if (com.smrh.zujaj.render.PrayerTrack.toggle(i)) vibrate(context)
+                // every tracker on the screen shows the same day
+                WidgetUpdater.allIds(context).filter { Prefs.widgetConfig(it)?.styleId == "sig_tracker" }.forEach { WidgetUpdater.update(context, it) }
+            }
+            "leaf" -> {
+                val cfg = Prefs.widgetConfig(id) ?: return
+                Prefs.saveWidgetConfig(id, cfg.copy(counter = cfg.counter + 1))
+                WidgetUpdater.update(context, id)
+            }
             "athkar" -> {
                 val cfg = Prefs.widgetConfig(id) ?: return
                 val (next, finishedOne) = com.smrh.zujaj.render.Athkar.tap(cfg)
@@ -125,6 +136,8 @@ class ActionReceiver : BroadcastReceiver() {
                 }.let { c -> if (cmd == "tasbeeh" && arg == "inc") { val d = LocalDate.now().toEpochDay(); if (d in c.days) c else c.copy(days = (c.days + d).takeLast(400)) } else c }
                 Prefs.saveWidgetConfig(id, next)
                 if (cmd == "tasbeeh" && arg == "inc" && next.goal > 0 && next.counter % next.goal == 0) vibrate(context)
+                // prayer beads: a short buzz at every 33
+                else if (cmd == "tasbeeh" && arg == "inc" && next.styleId == "sig_beads" && next.counter % 33 == 0) vibrate(context)
                 WidgetUpdater.update(context, id)
             }
             "habit" -> {

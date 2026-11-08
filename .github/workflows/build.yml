@@ -36,7 +36,13 @@ jobs:
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon :app:testDebugUnitTest --tests '*RenderAllTest*' --tests 'com.smrh.zujaj.UiShotsTest' --tests '*NavTest*' --tests '*BackScrollTest*' --tests '*WidgetTapTest*' --tests '*WallLibraryTest*' 2>&1 | tee test.log
+          mkdir -p app/build/previews
+          # one test class at a time, each with its own time limit, so one stuck test can't eat the whole job
+          for t in RenderAllTest WallLibraryTest NavTest WidgetTapTest BackScrollTest UiShotsTest; do
+            start=$(date +%s)
+            if timeout 14m ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "com.smrh.zujaj.$t" >> test.log 2>&1; then r=ok; else r="failed-or-timeout($?)"; fi
+            echo "$t $r $(( $(date +%s) - start ))s" | tee -a app/build/previews/timing.txt
+          done
 
       - name: Restore upload key from secrets
         env:
