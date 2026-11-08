@@ -28,6 +28,12 @@ object SignatureR {
     }
     private fun mix(a: Int, b: Int, t: Float) = RenderCtx.mix(a, b, t.coerceIn(0f, 1f))
 
+    /** Default look markers: while the user keeps these, the widget paints its own live sky / paper. Any change → their own background. */
+    const val SKY_KEY = 0xFF070B1E.toInt()
+    const val PAPER = 0xFFF6F0E2.toInt()
+    fun skyAuto(r: RenderCtx) = r.cfg.bg && r.cfg.fill == com.smrh.zujaj.model.Fill.GRADIENT && r.cfg.bgColor == SKY_KEY
+    fun leafPaper(r: RenderCtx) = r.cfg.bg && r.cfg.fill == com.smrh.zujaj.model.Fill.SOLID && r.cfg.bgColor == PAPER
+
     // =========================================================================================== 1 · Prayer sky
     /** A window on the sky: its colours follow the real time, the sun (or moon) travels an arc with the prayers on it. */
     fun sky(r: RenderCtx) {
@@ -52,12 +58,13 @@ object SignatureR {
             now < isha -> lerp2(dusk, night, (now - set) / (isha - set).toFloat().coerceAtLeast(1f))
             else -> night
         }
-        val isNight = now < rise || now > set
+        val isNight = now < fajr || now > isha
         c.save(); c.clipPath(clip(r))
-        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = LinearGradient(0f, 0f, 0f, r.h, sky[0], sky[1], Shader.TileMode.CLAMP) })
+        val live = skyAuto(r)
+        if (live) c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = LinearGradient(0f, 0f, 0f, r.h, sky[0], sky[1], Shader.TileMode.CLAMP) })
         // stars, fading in at dusk and out at dawn
         val starA = when { now < fajr || now > isha -> 1f; now < rise -> 1f - (now - fajr) / (rise - fajr).toFloat(); now > set -> (now - set) / (isha - set).toFloat(); else -> 0f }.coerceIn(0f, 1f)
-        if (starA > 0.02f) {
+        if (live && starA > 0.02f) {
             val rnd = java.util.Random(7)
             repeat(60) { r.circle(rnd.nextFloat() * r.w, rnd.nextFloat() * r.h * 0.7f, (0.5f + rnd.nextFloat() * 1.3f) * r.u, withAlpha(0xFFFFFFFF.toInt(), (starA * (90 + rnd.nextInt(150))).toInt())) }
         }
@@ -68,14 +75,14 @@ object SignatureR {
         c.drawArc(arcRect, 180f, 180f, false, r.strokePaint(withAlpha(0xFFFFFFFF.toInt(), 70), 1.4f * r.u).apply { pathEffect = android.graphics.DashPathEffect(floatArrayOf(4 * r.u, 4 * r.u), 0f) })
         c.drawLine(r.pad, base, r.w - r.pad, base, r.strokePaint(withAlpha(0xFFFFFFFF.toInt(), 50), 1f * r.u))
         fun pos(ms: Long): Pair<Float, Float> {
-            val k = ((ms - rise) / (set - rise).toFloat()).coerceIn(0f, 1f)
+            val k = ((ms - fajr) / (isha - fajr).toFloat()).coerceIn(0f, 1f)
             val a = PI * (1 - k)
             val cx = (left + right) / 2; val rx = (right - left) / 2; val ry = base - top
             return (cx + (rx * cos(a)).toFloat()) to (base - (ry * sin(a)).toFloat())
         }
         // prayer marks on the arc (dhuhr, asr) and at its ends (sunrise, maghrib)
         val nextKey = d.next.key
-        for (i in listOf(1, 2, 3, 4)) {
+        for (i in 0..5) {
             val p = d.list[i]; val (x, y) = pos(p.time)
             val on = p.key == nextKey
             r.circle(x, y, (if (on) 4.5f else 3f) * r.u, if (on) r.accent else withAlpha(0xFFFFFFFF.toInt(), 200))
@@ -88,8 +95,8 @@ object SignatureR {
             c.drawCircle(x, y, 26 * r.u, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(x, y, 26 * r.u, 0x88FFE7A0.toInt(), 0x00FFE7A0, Shader.TileMode.CLAMP) })
             r.circle(x, y, 9 * r.u, 0xFFFFE07A.toInt())
         } else {
-            val nightStart = if (now > set) set else set - 86_400_000L
-            val nightEnd = if (now > set) rise + 86_400_000L else rise
+            val nightStart = if (now > isha) isha else isha - 86_400_000L
+            val nightEnd = if (now > isha) fajr + 86_400_000L else fajr
             val k = ((now - nightStart) / (nightEnd - nightStart).toFloat()).coerceIn(0f, 1f)
             val a = PI * (1 - k)
             val x = (left + right) / 2 + ((right - left) / 2 * cos(a)).toFloat(); val y = base - ((base - top) * sin(a)).toFloat()
@@ -118,7 +125,6 @@ object SignatureR {
     fun moon(r: RenderCtx) {
         val c = r.canvas
         c.save(); c.clipPath(clip(r))
-        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = RadialGradient(r.w * 0.3f, r.h * 0.4f, maxOf(r.w, r.h), 0xFF1B1E33.toInt(), 0xFF05060C.toInt(), Shader.TileMode.CLAMP) })
         val rnd = java.util.Random(3)
         repeat(40) { r.circle(rnd.nextFloat() * r.w, rnd.nextFloat() * r.h, (0.5f + rnd.nextFloat()) * r.u, withAlpha(0xFFFFFFFF.toInt(), 60 + rnd.nextInt(120))) }
         val ms = r.now.toInstant().toEpochMilli()
@@ -187,7 +193,6 @@ object SignatureR {
     fun beads(r: RenderCtx) {
         val c = r.canvas
         c.save(); c.clipPath(clip(r))
-        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = RadialGradient(r.w / 2, r.h / 2, maxOf(r.w, r.h) * 0.75f, 0xFF2A1A12.toInt(), 0xFF0E0806.toInt(), Shader.TileMode.CLAMP) })
         val n = 33
         val count = r.cfg.counter
         val cur = count % n
@@ -238,7 +243,6 @@ object SignatureR {
     fun compass(r: RenderCtx) {
         val c = r.canvas
         c.save(); c.clipPath(clip(r))
-        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = RadialGradient(r.w / 2, r.h / 2, maxOf(r.w, r.h) * 0.7f, 0xFF10261F.toInt(), 0xFF050C0A.toInt(), Shader.TileMode.CLAMP) })
         val (bearing, km) = qibla(Prefs.lat, Prefs.lng)
         val wide = r.w > r.h * 1.4f
         val R = if (wide) minOf(r.h * 0.4f, r.w * 0.28f) else minOf(r.h * 0.31f, r.w * 0.36f)
@@ -319,12 +323,15 @@ object SignatureR {
         val c = r.canvas
         val d: LocalDate = r.today
         val n = d.toEpochDay().toInt()
-        val paper = 0xFFF6F0E2.toInt(); val ink = 0xFF2A2420.toInt(); val red = 0xFFB3261E.toInt()
+        val paperMode = leafPaper(r)
+        val paper = PAPER; val ink = if (paperMode) 0xFF2A2420.toInt() else r.cfg.color1; val red = if (paperMode) 0xFFB3261E.toInt() else r.accent
         val rad = Renderer.cornerPx(r)
-        // a little stack of torn sheets behind, then today's sheet
-        c.drawRoundRect(RectF(r.pad * 0.6f + 4 * r.u, 6 * r.u, r.w - r.pad * 0.6f + 2 * r.u, r.h), rad, rad, r.fillPaint(0xFFDCD3BF.toInt()))
-        val sheet = RectF(r.pad * 0.6f, 0f, r.w - r.pad * 0.6f, r.h - 4 * r.u)
-        c.drawRoundRect(sheet, rad, rad, r.fillPaint(paper))
+        val sheet = if (paperMode) RectF(r.pad * 0.6f, 0f, r.w - r.pad * 0.6f, r.h - 4 * r.u) else RectF(0f, 0f, r.w, r.h)
+        if (paperMode) {
+            // a little stack of torn sheets behind, then today's sheet
+            c.drawRoundRect(RectF(r.pad * 0.6f + 4 * r.u, 6 * r.u, r.w - r.pad * 0.6f + 2 * r.u, r.h), rad, rad, r.fillPaint(0xFFDCD3BF.toInt()))
+            c.drawRoundRect(sheet, rad, rad, r.fillPaint(paper))
+        }
         // red band with the Gregorian month, and the binding holes
         val band = sheet.height() * 0.17f
         c.save(); c.clipRect(sheet.left, sheet.top, sheet.right, sheet.top + band)
@@ -339,7 +346,7 @@ object SignatureR {
         val h = Calendars.hijri(d)
         r.text(Calendars.dayName(d, true) + "  ·  " + r.n(h.day) + " " + Calendars.hijriMonth(h.month, true) + " " + r.n(h.year),
             sheet.centerX(), numY + sheet.height() * (if (tall) 0.13f else 0.17f), 9.5f * r.u * r.s2, red, F.CAIRO_BOLD, Paint.Align.CENTER, maxW = sheet.width() - 16 * r.u)
-        c.drawLine(sheet.left + 14 * r.u, numY + sheet.height() * (if (tall) 0.19f else 0.24f), sheet.right - 14 * r.u, numY + sheet.height() * (if (tall) 0.19f else 0.24f), r.strokePaint(0x332A2420, 1f * r.u))
+        c.drawLine(sheet.left + 14 * r.u, numY + sheet.height() * (if (tall) 0.19f else 0.24f), sheet.right - 14 * r.u, numY + sheet.height() * (if (tall) 0.19f else 0.24f), r.strokePaint(withAlpha(ink, 51), 1f * r.u))
         // tap flips between the verse/hadith and a saying
         val showWisdom = (r.cfg.counter % 2) == 1
         val top = numY + sheet.height() * (if (tall) 0.22f else 0.27f)
@@ -359,7 +366,6 @@ object SignatureR {
     fun tracker(r: RenderCtx) {
         val c = r.canvas
         c.save(); c.clipPath(clip(r))
-        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = LinearGradient(0f, 0f, r.w, r.h, 0xFF0F1A2E.toInt(), 0xFF162A3F.toInt(), Shader.TileMode.CLAMP) })
         val d = Kit.day(r)
         val now = r.now.toInstant().toEpochMilli()
         val bits = PrayerTrack.bits()

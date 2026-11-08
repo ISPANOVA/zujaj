@@ -313,7 +313,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
             Box(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp).sharedWidget(style.id).clip(RoundedCornerShape(30.dp))
                     .background(if (stage == 99 && wallBrush != null) wallBrush else Backdrops.brush(stage))
-                    .padding(top = 26.dp, bottom = 46.dp, start = if (style.shape == Shape.SMALL) 84.dp else 22.dp, end = if (style.shape == Shape.SMALL) 84.dp else 22.dp),
+                    .padding(top = 26.dp, bottom = 46.dp, start = when (style.shape) { Shape.SMALL -> 84.dp; Shape.TALL -> 110.dp; else -> 22.dp }, end = when (style.shape) { Shape.SMALL -> 84.dp; Shape.TALL -> 110.dp; else -> 22.dp }),
                 contentAlignment = Alignment.Center,
             ) {
                 WidgetPreview(if (showOriginal) original else cfg, Modifier.fillMaxWidth()
