@@ -58,7 +58,7 @@ object SignatureR {
             now < isha -> lerp2(dusk, night, (now - set) / (isha - set).toFloat().coerceAtLeast(1f))
             else -> night
         }
-        val isNight = now < fajr || now > isha
+        val isNight = now < rise || now > set
         c.save(); c.clipPath(clip(r))
         val live = skyAuto(r)
         if (live) c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = LinearGradient(0f, 0f, 0f, r.h, sky[0], sky[1], Shader.TileMode.CLAMP) })
@@ -80,15 +80,6 @@ object SignatureR {
             val cx = (left + right) / 2; val rx = (right - left) / 2; val ry = base - top
             return (cx + (rx * cos(a)).toFloat()) to (base - (ry * sin(a)).toFloat())
         }
-        // prayer marks on the arc (dhuhr, asr) and at its ends (sunrise, maghrib)
-        val nextKey = d.next.key
-        for (i in 0..5) {
-            val p = d.list[i]; val (x, y) = pos(p.time)
-            val on = p.key == nextKey
-            r.circle(x, y, (if (on) 4.5f else 3f) * r.u, if (on) r.accent else withAlpha(0xFFFFFFFF.toInt(), 200))
-            if (on) r.circle(x, y, 9 * r.u, withAlpha(r.accent, 60))
-            r.text(Kit.pName(r, p), x, y - 11 * r.u, 8.5f * r.u, if (on) r.accent else withAlpha(0xFFFFFFFF.toInt(), 220), r.sansBold, Paint.Align.CENTER)
-        }
         // the sun by day, the moon by night (riding the same arc from sunset to the next sunrise)
         if (!isNight) {
             val (x, y) = pos(now)
@@ -101,6 +92,15 @@ object SignatureR {
             val a = PI * (1 - k)
             val x = (left + right) / 2 + ((right - left) / 2 * cos(a)).toFloat(); val y = base - ((base - top) * sin(a)).toFloat()
             Glyphs.moon(c, x, y, 20 * r.u, 0xFFF4EBD0.toInt())
+        }
+        // prayer marks on the arc (dhuhr, asr) and at its ends (sunrise, maghrib)
+        val nextKey = d.next.key
+        for (i in 0..5) {
+            val p = d.list[i]; val (x, y) = pos(p.time)
+            val on = p.key == nextKey
+            r.circle(x, y, (if (on) 4.5f else 3f) * r.u, if (on) r.accent else withAlpha(0xFFFFFFFF.toInt(), 200))
+            if (on) r.circle(x, y, 9 * r.u, withAlpha(r.accent, 60))
+            r.text(Kit.pName(r, p), x, y - 11 * r.u, 8.5f * r.u, 0xFFFFFFFF.toInt(), r.sansBold, Paint.Align.CENTER)
         }
         // the ground: a soft dark band, then the next prayer and its countdown
         c.drawRect(0f, base, r.w, r.h, Paint().apply { shader = LinearGradient(0f, base, 0f, r.h, withAlpha(0xFF000000.toInt(), 70), withAlpha(0xFF000000.toInt(), 150), Shader.TileMode.CLAMP) })
@@ -326,12 +326,8 @@ object SignatureR {
         val paperMode = leafPaper(r)
         val paper = PAPER; val ink = if (paperMode) 0xFF2A2420.toInt() else r.cfg.color1; val red = if (paperMode) 0xFFB3261E.toInt() else r.accent
         val rad = Renderer.cornerPx(r)
-        val sheet = if (paperMode) RectF(r.pad * 0.6f, 0f, r.w - r.pad * 0.6f, r.h - 4 * r.u) else RectF(0f, 0f, r.w, r.h)
-        if (paperMode) {
-            // a little stack of torn sheets behind, then today's sheet
-            c.drawRoundRect(RectF(r.pad * 0.6f + 4 * r.u, 6 * r.u, r.w - r.pad * 0.6f + 2 * r.u, r.h), rad, rad, r.fillPaint(0xFFDCD3BF.toInt()))
-            c.drawRoundRect(sheet, rad, rad, r.fillPaint(paper))
-        }
+        val sheet = RectF(0f, 0f, r.w, r.h)
+        c.save(); c.clipPath(clip(r))
         // red band with the Gregorian month, and the binding holes
         val band = sheet.height() * 0.17f
         c.save(); c.clipRect(sheet.left, sheet.top, sheet.right, sheet.top + band)
@@ -359,6 +355,7 @@ object SignatureR {
             r.text("حكمة اليوم", box.centerX(), box.top + 6 * r.u, 8 * r.u, red, F.CAIRO_BOLD, Paint.Align.CENTER)
             r.paragraph(wisdom[Math.floorMod(n, wisdom.size)], RectF(box.left, box.top + 14 * r.u, box.right, box.bottom), 12 * r.u * r.s2, ink, F.CAIRO_BOLD, android.text.Layout.Alignment.ALIGN_CENTER, 1.2f)
         }
+        c.restore()
         r.hit(RectF(0f, 0f, r.w, r.h), HitAction.Cmd("leaf", "flip"))
     }
 
