@@ -23,6 +23,12 @@ class WidgetTapTest {
         .setAction("zujaj.EDIT_$id").putExtra(MainActivity.EXTRA_EDIT_WIDGET, id)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
+    // Robolectric runs Choreographer frame callbacks at once by default, with the clock standing still, so an
+    // endless animation (the app has a few: shimmer, stars, live widgets) would spin forever inside setup().
+    // Paused, frames only come as the test advances the clock — like a real screen.
+    @org.junit.Before fun pauseFrames() { org.robolectric.shadows.ShadowChoreographer.setPaused(true) }
+    @org.junit.After fun resumeFrames() { org.robolectric.shadows.ShadowChoreographer.setPaused(false) }
+
     private fun settle() { repeat(20) { ShadowLooper.idleMainLooper(100, java.util.concurrent.TimeUnit.MILLISECONDS) } }
 
     @Test fun coldStartFromWidgetEdit() {
