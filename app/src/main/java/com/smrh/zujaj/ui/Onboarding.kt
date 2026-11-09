@@ -193,7 +193,7 @@ private fun LookPage() {
         }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf(Triple(1, tr("Dark", "غامق"), Icons.Rounded.DarkMode), Triple(2, tr("Light", "فاتح"), Icons.Rounded.LightMode), Triple(0, tr("Auto", "تلقائي"), Icons.Rounded.PhoneAndroid))
+            listOf(Triple(1, tr("Dark", "غامق"), Icons.Rounded.DarkMode), Triple(3, tr("Pure black", "أسود خالص"), Icons.Rounded.DarkMode))
                 .forEach { (m, label, icon) ->
                     val on = Z.mode() == m
                     val bw by animateDpAsState(if (on) 2.dp else 1.dp, label = "bw")
@@ -202,8 +202,8 @@ private fun LookPage() {
                         .clickable { Haptics.tick(ctx); Prefs.setString("theme_mode", m.toString()); Z.refresh(ctx) }.padding(vertical = 14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally) {
                         // tiny phone mock in that look
-                        val dark = m == 1 || (m == 0 && !Z.light)
-                        Box(Modifier.size(52.dp, 84.dp).clip(RoundedCornerShape(12.dp)).background(if (dark) Color(0xFF0B0B12) else Color(0xFFF3F2F7))
+                        val dark = true
+                        Box(Modifier.size(52.dp, 84.dp).clip(RoundedCornerShape(12.dp)).background(if (m == 3) Color(0xFF000000) else Color(0xFF0B0B12))
                             .border(1.dp, Z.line, RoundedCornerShape(12.dp)).padding(7.dp)) {
                             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Box(Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(5.dp)).background(accent))

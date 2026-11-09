@@ -57,14 +57,10 @@ object Z {
     }.getOrDefault(false)
 
     /** 0 = follow the phone, 1 = dark, 2 = light, 3 = pure black. */
-    fun mode() = Prefs.getString("theme_mode", "1").toIntOrNull() ?: 1
+    fun mode() = if (Prefs.getString("theme_mode", "1") == "3") 3 else 1
     fun refresh(ctx: android.content.Context) {
         black = mode() == 3
-        light = when (mode()) {
-            2 -> true
-            0 -> (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) != android.content.res.Configuration.UI_MODE_NIGHT_YES
-            else -> false
-        }
+        light = false   // light look removed: the app is always dark (or pure black)
     }
 
     val manrope = FontFamily(

@@ -288,7 +288,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                     Prefs.appLanguage = it; WidgetUpdater.updateAll(ctx)
                 }
                 Divider()
-                ChoiceRow(tr("Appearance", "المظهر"), Z.mode(), listOf(1 to tr("Dark", "غامق"), 3 to tr("Pure black (AMOLED)", "أسود خالص (AMOLED)"), 2 to tr("Light", "فاتح"), 0 to tr("Like the phone", "زي التليفون")), Icons.Rounded.DarkMode, purple) {
+                ChoiceRow(tr("Appearance", "المظهر"), Z.mode(), listOf(1 to tr("Dark", "غامق"), 3 to tr("Pure black (AMOLED)", "أسود خالص (AMOLED)")), Icons.Rounded.DarkMode, purple) {
                     Prefs.setString("theme_mode", it.toString()); Z.refresh(ctx)
                 }
                 Divider()
