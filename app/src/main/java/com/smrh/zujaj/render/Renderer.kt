@@ -102,6 +102,7 @@ object Renderer {
                 is LiveClock -> l.copy(rect = l.rect.off())
                 is LiveChrono -> l.copy(rect = l.rect.off())
                 is LiveAnalog -> l.copy(rect = l.rect.off())
+                is LiveSpin -> l.copy(rect = l.rect.off())
             }
         }
         val hits = inner.hits.map { it.copy(rect = it.rect.off()) }

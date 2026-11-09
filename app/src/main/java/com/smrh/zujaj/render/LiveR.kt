@@ -293,14 +293,6 @@ object LiveR {
         val c = r.canvas; val R = min(z.width(), z.height()) * 0.2f * scale
         val col = r.accent
         glow(c, cx, cy, R * (3.1f + 0.3f * wave(t)), col, 0.45f * amt(r).coerceAtMost(1.2f))
-        c.save(); c.rotate(t * 30f, cx, cy)
-        for (i in 0 until 12) {
-            val l = if (i % 2 == 0) R * 0.75f else R * 0.5f
-            c.save(); c.rotate(i * 30f, cx, cy)
-            c.drawRoundRect(RectF(cx - R * 0.07f, cy - R * 1.28f - l, cx + R * 0.07f, cy - R * 1.28f), R * 0.07f, R * 0.07f, r.fillPaint(a(mix(col, Color.WHITE, 0.3f), 0.85f)))
-            c.restore()
-        }
-        c.restore()
         sphere(c, cx, cy, R, mix(col, 0xFFFFE08A.toInt(), 0.4f), 0xFFFFF6D8.toInt())
     }
 
@@ -656,8 +648,8 @@ object LiveR {
     fun galaxy(r: RenderCtx, z: RectF, t: Float) {
         val c = r.canvas; val cx = z.centerX(); val cy = z.centerY(); val R = min(z.width(), z.height()) * 0.46f
         glow(c, cx, cy, R, r.accent, 0.35f * amt(r))
-        val g = rnd(61); val n = (160 * amt(r)).toInt()
-        c.save(); c.scale(1f, 0.55f, cx, cy); c.rotate(t * 90f, cx, cy)
+        val g = rnd(61); val n = 0
+        c.save()
         repeat(n) {
             val arm = it % 4; val d = g.nextFloat().let { q -> q * q } * R
             val th = d / R * 4.2f + arm * PI.toFloat() / 2 + (g.nextFloat() - 0.5f) * 0.45f
@@ -748,10 +740,6 @@ object LiveR {
             style = Paint.Style.STROKE; strokeWidth = 6 * r.u; strokeCap = Paint.Cap.ROUND
             shader = android.graphics.SweepGradient(cx, cy, intArrayOf(r.cfg.accent2, r.accent, r.cfg.accent2), null)
         })
-        for (k in 0 until 6) {
-            val th = ((k + t) / 6f) * TAU - PI.toFloat() / 2
-            r.circle(cx + R * cos(th), cy + R * sin(th), 1.4f * r.u, a(Color.WHITE, 0.6f))
-        }
         val hd = 360f * f - 90f; val hx = cx + R * cos(Math.toRadians(hd.toDouble())).toFloat(); val hy = cy + R * sin(Math.toRadians(hd.toDouble())).toFloat()
         glow(c, hx, hy, (9 + 4 * wave(t)) * r.u, r.accent, 0.9f)
         r.circle(hx, hy, 3 * r.u, Color.WHITE)
@@ -1051,7 +1039,7 @@ object LiveR {
         })
         c.drawPath(starPath(cx, cy, R, R * 0.82f, 16), r.strokePaint(a(gold, 0.9f), 1.4f * r.u))
         c.drawCircle(cx, cy, R * 0.74f, r.strokePaint(a(gold, 0.5f), 0.9f * r.u))
-        val rot = t * PI.toFloat() / 4
+        val rot = 0f
         c.drawPath(starPath(cx, cy, R * 0.68f, R * 0.4f, 8, rot), Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(cx - R, cy - R, cx + R, cy + R, mix(gold, Color.WHITE, 0.35f), mix(gold, Color.BLACK, 0.35f), Shader.TileMode.CLAMP)
         })
@@ -1200,6 +1188,51 @@ object LiveR {
                 }
             }
             Cond.SNOW -> { cloudsWide(r, t, false, 3); snow(r, t) }
+        }
+    }
+
+    // ========================================================================================== SMOOTH SPINNERS
+    /**
+     * A shape the launcher itself spins at the screen's refresh rate (60–120 Hz): an indeterminate ProgressBar
+     * placed over the widget. Under an animation (BASE) it is handed to the widget as a live slot; for a still
+     * picture (lock screen, motion off) the same shape is simply drawn in place.
+     */
+    fun spin(r: RenderCtx, kind: String, cx: Float, cy: Float, half: Float, color: Int) {
+        val rect = RectF(cx - half, cy - half, cx + half, cy + half)
+        if ((LiveFx.mode.get() ?: LiveFx.ALL) == LiveFx.BASE) { r.lives += LiveSpin(rect, kind, color); return }
+        val id = spinRes(kind) ?: return
+        val d = r.context.getDrawable(id)?.mutate() ?: return
+        d.setTint(color); d.setBounds(rect.left.toInt(), rect.top.toInt(), rect.right.toInt(), rect.bottom.toInt()); d.draw(r.canvas)
+    }
+    fun spinRes(kind: String): Int? = when (kind) {
+        "rays" -> com.smrh.zujaj.R.drawable.v_spin_rays; "star8" -> com.smrh.zujaj.R.drawable.v_spin_star8
+        "gyro" -> com.smrh.zujaj.R.drawable.v_spin_gyro; "dots" -> com.smrh.zujaj.R.drawable.v_spin_dots
+        "sparks" -> com.smrh.zujaj.R.drawable.v_spin_sparks; "galaxy" -> com.smrh.zujaj.R.drawable.v_spin_galaxy
+        else -> null
+    }
+    /** Milliseconds per full turn, as in res/drawable/spin_*.xml (for the in-app preview). */
+    fun spinPeriod(kind: String) = when (kind) { "rays" -> 30000; "star8" -> 36000; "gyro" -> 14000; "dots" -> 16000; "sparks" -> 40000; else -> 30000 }
+
+    fun sunRays(r: RenderCtx, cx: Float, cy: Float, scale: Float, z: RectF = zone(r)) {
+        val R = min(z.width(), z.height()) * 0.2f * scale
+        spin(r, "rays", cx, cy, R * 2.05f, a(mix(r.accent, Color.WHITE, 0.3f), 0.85f))
+    }
+    fun crescentSparks(r: RenderCtx, cx: Float, cy: Float, scale: Float, z: RectF = zone(r)) {
+        val R = min(z.width(), z.height()) * 0.27f * scale
+        spin(r, "sparks", cx, cy, R * 1.75f, a(Color.WHITE, 0.75f))
+    }
+    fun rosetteRing(r: RenderCtx) { val z = zone(r); val R = min(z.width(), z.height()) * 0.44f; spin(r, "star8", z.centerX(), z.centerY(), R * 0.8f, a(r.cfg.accent2, 0.95f)) }
+    fun galaxySpin(r: RenderCtx) { val z = zone(r); val R = min(z.width(), z.height()) * 0.46f; spin(r, "galaxy", z.centerX(), z.centerY(), R, a(mix(r.accent, Color.WHITE, 0.25f), 0.95f)) }
+    fun ringDots(r: RenderCtx) { val z = zone(r); val R = min(z.width(), z.height()) * 0.42f; spin(r, "dots", z.centerX(), z.centerY(), R * 1.087f, a(Color.WHITE, 0.7f)) }
+
+    /** The smooth parts of a weather scene (sun rays by day, sparks round the moon at night). */
+    fun weatherSpins(r: RenderCtx) {
+        val w = Kit.weather(r); val night = w.night || isNight(r); val z = zone(r)
+        val sx = z.centerX(); val sy = z.top + z.height() * 0.38f
+        when (w.cond) {
+            Cond.CLEAR -> if (night) crescentSparks(r, sx, sy, 0.8f) else sunRays(r, sx, sy, 0.95f)
+            Cond.PARTLY -> if (night) crescentSparks(r, sx, sy, 0.7f) else sunRays(r, sx, sy, 0.8f)
+            else -> {}
         }
     }
 }

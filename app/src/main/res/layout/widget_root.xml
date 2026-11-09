@@ -36,6 +36,66 @@
         <ImageView android:id="@+id/lv_28" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
         <ImageView android:id="@+id/lv_29" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
     </ViewFlipper>
+    <FrameLayout android:id="@+id/sp_rays_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_rays_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_rays" android:indeterminateDuration="30000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_rays_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_rays_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_rays" android:indeterminateDuration="30000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_star8_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_star8_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_star8" android:indeterminateDuration="36000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_star8_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_star8_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_star8" android:indeterminateDuration="36000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_gyro_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_gyro_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_gyro" android:indeterminateDuration="14000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_gyro_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_gyro_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_gyro" android:indeterminateDuration="14000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_dots_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_dots_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_dots" android:indeterminateDuration="16000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_dots_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_dots_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_dots" android:indeterminateDuration="16000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_sparks_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_sparks_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_sparks" android:indeterminateDuration="40000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_sparks_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_sparks_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_sparks" android:indeterminateDuration="40000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_galaxy_0_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_galaxy_0" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_galaxy" android:indeterminateDuration="30000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
+    <FrameLayout android:id="@+id/sp_galaxy_1_w" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+        <ProgressBar android:id="@+id/sp_galaxy_1" android:layout_width="match_parent" android:layout_height="match_parent" android:indeterminate="true" android:indeterminateOnly="true"
+            android:indeterminateDrawable="@drawable/spin_galaxy" android:indeterminateDuration="30000" android:indeterminateBehavior="repeat"
+            android:minWidth="0dp" android:minHeight="0dp" android:maxWidth="4000dp" android:maxHeight="4000dp" />
+    </FrameLayout>
     <FrameLayout android:id="@+id/an_wrap" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
         <AnalogClock android:id="@+id/an_clock" android:layout_width="match_parent" android:layout_height="match_parent"
             android:dial="@drawable/dial_blank" android:hand_hour="@drawable/hand_hour" android:hand_minute="@drawable/hand_minute" />

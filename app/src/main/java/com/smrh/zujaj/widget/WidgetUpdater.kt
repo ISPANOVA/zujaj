@@ -144,6 +144,7 @@ object WidgetUpdater {
         Slots.hits.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setOnClickPendingIntent(v, null) }
         rv.setViewVisibility(R.id.an_wrap, View.GONE)
         rv.setViewVisibility(R.id.live, View.GONE)
+        Slots.spins.values.forEach { l -> l.forEach { (w, _) -> rv.setViewVisibility(w, View.GONE) } }
         Slots.frames.forEach { rv.setImageViewBitmap(it, null) }
         rv.setViewVisibility(R.id.fx, View.GONE)
         rv.setImageViewBitmap(R.id.fx, null)
@@ -287,6 +288,15 @@ object WidgetUpdater {
                     rv.setTextColor(v, live.color)
                     rv.setTextViewTextSize(v, TypedValue.COMPLEX_UNIT_PX, live.sizePx * k)
                     rv.setInt(v, "setGravity", live.gravity)
+                }
+                is com.smrh.zujaj.render.LiveSpin -> {
+                    val list = Slots.spins[live.kind] ?: continue
+                    val n = used.getOrDefault(live.kind, 0)
+                    if (n >= list.size) continue
+                    used[live.kind] = n + 1
+                    val (wrap, v) = list[n]
+                    place(wrap, live.rect.left, live.rect.top, live.rect.right, live.rect.bottom)
+                    if (Build.VERSION.SDK_INT >= 31) rv.setColorStateList(v, "setIndeterminateTintList", android.content.res.ColorStateList.valueOf(live.color))
                 }
                 is LiveAnalog -> {
                     place(R.id.an_wrap, live.rect.left, live.rect.top, live.rect.right, live.rect.bottom)

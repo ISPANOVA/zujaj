@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Live widgets: shape spun smoothly by the launcher (see spin_*.xml). Generated. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:fillColor="#FFE3C07A" android:pathData="M93.60,50.00 a2.40,2.40 0 1,0 4.80,0 a2.40,2.40 0 1,0 -4.80,0 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M71.40,89.84 a1.60,1.60 0 1,0 3.20,0 a1.60,1.60 0 1,0 -3.20,0 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M24.60,89.84 a2.40,2.40 0 1,0 4.80,0 a2.40,2.40 0 1,0 -4.80,0 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M2.40,50.00 a1.60,1.60 0 1,0 3.20,0 a1.60,1.60 0 1,0 -3.20,0 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M24.60,10.16 a2.40,2.40 0 1,0 4.80,0 a2.40,2.40 0 1,0 -4.80,0 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M71.40,10.16 a1.60,1.60 0 1,0 3.20,0 a1.60,1.60 0 1,0 -3.20,0 Z" />
+</vector>

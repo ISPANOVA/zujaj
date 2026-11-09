@@ -106,6 +106,8 @@ data class LiveChrono(
 ) : Live()
 
 data class LiveAnalog(override val rect: RectF, val hands: HandStyle, val zone: String?) : Live()
+/** A shape the launcher spins smoothly (an indeterminate ProgressBar); [kind] names the drawable. */
+data class LiveSpin(override val rect: RectF, val kind: String, val color: Int) : Live()
 
 sealed class HitAction {
     data class App(val app: AppRef) : HitAction()

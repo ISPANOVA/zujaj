@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Live widgets: shape spun smoothly by the launcher (see spin_*.xml). Generated. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:fillColor="#FFE3C07A" android:pathData="M81.50,51.80 L99.00,50.99 L99.00,49.01 L81.50,48.20 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M76.38,67.31 L86.74,72.36 L87.73,70.64 L78.18,64.19 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M64.19,78.18 L73.64,92.93 L75.36,91.94 L67.31,76.38 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M48.20,81.50 L49.01,93.00 L50.99,93.00 L51.80,81.50 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M32.69,76.38 L24.64,91.94 L26.36,92.93 L35.81,78.18 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M21.82,64.19 L12.27,70.64 L13.26,72.36 L23.62,67.31 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M18.50,48.20 L1.00,49.01 L1.00,50.99 L18.50,51.80 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M23.62,32.69 L13.26,27.64 L12.27,29.36 L21.82,35.81 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M35.81,21.82 L26.36,7.07 L24.64,8.06 L32.69,23.62 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M51.80,18.50 L50.99,7.00 L49.01,7.00 L48.20,18.50 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M67.31,23.62 L75.36,8.06 L73.64,7.07 L64.19,21.82 Z" />
+    <path android:fillColor="#FFE3C07A" android:pathData="M78.18,35.81 L87.73,29.36 L86.74,27.64 L76.38,32.69 Z" />
+</vector>

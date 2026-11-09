@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.UnfoldMore
@@ -429,10 +430,18 @@ object PreviewCache {
         val key = key(cfg, density, stamp)
         cache.get(key)?.let { return it }
         val st = Catalog.byId(cfg.styleId)!!
-        val b = Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = density).bitmap
+        val res = Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = density)
+        val b = res.bitmap
+        val sp = res.lives.filterIsInstance<com.smrh.zujaj.render.LiveSpin>()
+        if (sp.isNotEmpty()) spinCache.put(key, sp.map { Spin(it.kind, it.rect.left / b.width, it.rect.top / b.height, it.rect.width() / b.width, it.rect.height() / b.height, it.color) })
         cache.put(key, b)
         return b
     }
+
+    /** Smooth spinners of a live widget (fractions of the picture), found while rendering it. */
+    class Spin(val kind: String, val x: Float, val y: Float, val w: Float, val h: Float, val color: Int)
+    private val spinCache = LruCache<String, List<Spin>>(200)
+    fun spins(cfg: WidgetConfig, density: Float, stamp: Long): List<Spin> = spinCache.get(key(cfg, density, stamp)) ?: emptyList()
 
     /** The moving layer of a live widget: [LiveFx.FRAMES] small frames, cached like the pictures. */
     private val frameCache = object : LruCache<String, List<Bitmap>>(40 * 1024 * 1024) {
@@ -490,6 +499,22 @@ fun WidgetPreview(cfg: WidgetConfig, modifier: Modifier = Modifier, density: Flo
     Box(modifier.aspectRatio(st.shape.dw / st.shape.dh)) {
         bmp?.let { Image(it, null, Modifier.fillMaxSize()) }
         frames?.getOrNull(idx)?.let { Image(it, null, Modifier.fillMaxSize(), filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium) }
+        if (moving && bmp != null) {
+            val spins = remember(bmp) { com.smrh.zujaj.render.LiveFx.with(mode, 0f) { PreviewCache.spins(cfg, density, tick) } }
+            if (spins.isNotEmpty()) {
+                val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin")
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+                    spins.forEach { s ->
+                        val res = com.smrh.zujaj.render.LiveR.spinRes(s.kind) ?: return@forEach
+                        val deg by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(
+                            androidx.compose.animation.core.tween(com.smrh.zujaj.render.LiveR.spinPeriod(s.kind), easing = androidx.compose.animation.core.LinearEasing)), label = s.kind)
+                        Image(androidx.compose.ui.res.painterResource(res), null,
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color(s.color)),
+                            modifier = Modifier.offset(maxWidth * s.x, maxHeight * s.y).size(maxWidth * s.w, maxHeight * s.h).graphicsLayer { rotationZ = deg })
+                    }
+                }
+            }
+        }
     }
 }
 
