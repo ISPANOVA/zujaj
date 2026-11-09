@@ -52,7 +52,9 @@ class WidgetTapTest {
         val c = Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java)).setup()
         settle()
         c.newIntent(editIntent(6)); settle()
-        c.recreate(); settle()
+        // recreate by hand (Robolectric's recreate() needs a focused window, which a paused frame clock never gives)
+        val b = android.os.Bundle(); c.saveInstanceState(b).pause().stop().destroy()
+        Robolectric.buildActivity(AppActivity::class.java, Intent(ctx(), AppActivity::class.java)).setup(b); settle()
     }
 
     /** Android closed the app in the background; a widget tap brings it back with the old saved state. */
