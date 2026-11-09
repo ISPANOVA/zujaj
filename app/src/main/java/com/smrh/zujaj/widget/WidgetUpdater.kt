@@ -143,8 +143,32 @@ object WidgetUpdater {
         Slots.chronos.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setChronometer(v, 0L, null, false) }
         Slots.hits.forEach { (w, v) -> rv.setViewVisibility(w, View.GONE); rv.setOnClickPendingIntent(v, null) }
         rv.setViewVisibility(R.id.an_wrap, View.GONE)
+        rv.setViewVisibility(R.id.live, View.GONE)
+        Slots.frames.forEach { rv.setImageViewBitmap(it, null) }
         rv.setViewVisibility(R.id.fx, View.GONE)
         rv.setImageViewBitmap(R.id.fx, null)
+    }
+
+    /**
+     * Draws the 12 frames of a live widget's moving layer. They are kept small (the host allows about
+     * 1.5 screens of pixels for all of a widget's pictures) — the effects are soft glows and particles,
+     * so a lower resolution doesn't show, while all text stays in the sharp still picture underneath.
+     */
+    private fun setFrames(ctx: Context, rv: RemoteViews, cfg: WidgetConfig, wDp: Float, hDp: Float, baseBytes: Int) {
+        val dm = ctx.resources.displayMetrics
+        val limit = dm.widthPixels.toLong() * dm.heightPixels * 4 * 3 / 2
+        val budget = (limit * 0.7 - baseBytes).coerceAtLeast(1_200_000.0)
+        val perFramePx = budget / com.smrh.zujaj.render.LiveFx.FRAMES / 4
+        val fd = kotlin.math.sqrt(perFramePx / (wDp * hDp)).toFloat().coerceIn(0.6f, minOf(dm.density, 2f))
+        val n = com.smrh.zujaj.render.LiveFx.FRAMES
+        for (i in 0 until n) {
+            val b = com.smrh.zujaj.render.LiveFx.with(com.smrh.zujaj.render.LiveFx.FX_ONLY, i / n.toFloat()) {
+                Renderer.renderFitted(ctx, cfg, wDp, hDp, density = fd).bitmap
+            }
+            rv.setImageViewBitmap(Slots.frames[i], b)
+        }
+        rv.setInt(R.id.live, "setFlipInterval", com.smrh.zujaj.render.LiveFx.interval(cfg.liveSpeed))
+        rv.setViewVisibility(R.id.live, View.VISIBLE)
     }
 
     /** The widget blurred behind a dark veil, a crown and "Pro ended — tap to renew". */
@@ -197,7 +221,11 @@ object WidgetUpdater {
         // the design (e.g. a wide design in a square lock-screen slot) it is drawn at its own
         // proportions, as big as possible, centred in the slot.
         val bake = needsBake(ctx, id, cfg) || style.bakeTime(cfg)
-        val res = Renderer.renderFitted(ctx, cfg, wDp, hDp, bake = bake)
+        // live widgets: a still picture underneath, the moving layer as frames in a ViewFlipper on top
+        // (not on the lock screen, where hosts don't animate: there the still picture includes the effect)
+        val live = style.fx != null && cfg.motion && !isKeyguard(ctx, id) && !Flags.locked(style)
+        val res = if (live) com.smrh.zujaj.render.LiveFx.with(com.smrh.zujaj.render.LiveFx.BASE, 0f) { Renderer.renderFitted(ctx, cfg, wDp, hDp, bake = bake) }
+            else Renderer.renderFitted(ctx, cfg, wDp, hDp, bake = bake)
         if (bake) Scheduler.minuteTick(ctx)
         val k = density / res.scale // bitmap px → device px
         val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
@@ -214,6 +242,7 @@ object WidgetUpdater {
             return rv
         }
         rv.setImageViewBitmap(R.id.bg, res.bitmap)
+        if (live) setFrames(ctx, rv, cfg, wDp, hDp, res.bitmap.byteCount)
         val wPx = (wDp * density).toInt()
         val hPx = (hDp * density).toInt()
 

@@ -45,11 +45,15 @@ object Renderer {
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         val rc = RenderCtx(ctx, bmp, style, tinted(ctx, cfg, style, bmp, scale, data), preview, scale, data)
         rc.bakeLive = bake
-        drawBackground(rc)
+        val mode = LiveFx.mode.get() ?: LiveFx.ALL
+        if (mode != LiveFx.FX_ONLY) drawBackground(rc)
         val save = rc.canvas.save()
         rc.fxClip = Path().roundRect(RectF(0f, 0f, rc.w, rc.h), cornerPx(rc))
         rc.canvas.clipPath(rc.fxClip!!)
-        runCatching { style.draw(rc) }.onFailure { e ->
+        runCatching {
+            if (mode != LiveFx.FX_ONLY) style.draw(rc)
+            if (mode != LiveFx.BASE) style.fx?.invoke(rc, LiveFx.phase.get() ?: 0f)
+        }.onFailure { e ->
             rc.text("⚠ ${e.javaClass.simpleName}", rc.w / 2, rc.h / 2, 12 * rc.u, Color.WHITE, F.SANS, Paint.Align.CENTER)
         }
         rc.canvas.restoreToCount(save)
@@ -76,7 +80,7 @@ object Renderer {
         val bw = max(1, (wDp * scale).toInt()); val bh = max(1, (hDp * scale).toInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         val bgCtx = RenderCtx(ctx, bmp, style, tinted(ctx, cfg, style, bmp, scale, RenderData()), false, scale)
-        drawBackground(bgCtx)
+        if (LiveFx.mode.get() != LiveFx.FX_ONLY) drawBackground(bgCtx)
         // 2) the design at its own proportions, without its own card
         val pad = 6f
         val availW = wDp - 2 * pad; val availH = hDp - 2 * pad

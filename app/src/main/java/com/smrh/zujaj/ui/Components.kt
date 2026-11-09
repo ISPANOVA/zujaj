@@ -46,6 +46,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -421,7 +422,7 @@ object PreviewCache {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
-    private fun key(cfg: WidgetConfig, density: Float, stamp: Long) = "${cfg.hashCode()}|$density|$stamp|${Prefs.version.value}"
+    private fun key(cfg: WidgetConfig, density: Float, stamp: Long) = "${cfg.hashCode()}|$density|$stamp|${Prefs.version.value}|${com.smrh.zujaj.render.LiveFx.mode.get() ?: 0}"
     /** Already-rendered bitmap, so a screen coming back (Back) shows its widgets on the very first frame. */
     fun peek(cfg: WidgetConfig, density: Float, stamp: Long): Bitmap? = cache.get(key(cfg, density, stamp))
     fun get(ctx: android.content.Context, cfg: WidgetConfig, density: Float, stamp: Long): Bitmap {
@@ -431,6 +432,25 @@ object PreviewCache {
         val b = Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = density).bitmap
         cache.put(key, b)
         return b
+    }
+
+    /** The moving layer of a live widget: [LiveFx.FRAMES] small frames, cached like the pictures. */
+    private val frameCache = object : LruCache<String, List<Bitmap>>(40 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: List<Bitmap>) = value.sumOf { it.byteCount }.coerceAtLeast(1)
+    }
+    fun peekFrames(cfg: WidgetConfig, density: Float): List<Bitmap>? = frameCache.get("${cfg.hashCode()}|$density|${Prefs.version.value}")
+    fun frames(ctx: android.content.Context, cfg: WidgetConfig, density: Float): List<Bitmap> {
+        val key = "${cfg.hashCode()}|$density|${Prefs.version.value}"
+        frameCache.get(key)?.let { return it }
+        val st = Catalog.byId(cfg.styleId)!!
+        val n = com.smrh.zujaj.render.LiveFx.FRAMES
+        val l = (0 until n).map { i ->
+            com.smrh.zujaj.render.LiveFx.with(com.smrh.zujaj.render.LiveFx.FX_ONLY, i / n.toFloat()) {
+                Renderer.render(ctx, cfg, st.shape.dw, st.shape.dh, preview = true, density = density).bitmap
+            }
+        }
+        frameCache.put(key, l)
+        return l
     }
 }
 
@@ -452,11 +472,24 @@ fun WidgetPreview(cfg: WidgetConfig, modifier: Modifier = Modifier, density: Flo
     val st = Catalog.byId(cfg.styleId) ?: return
     val ver by Prefs.version.collectAsState()
     val tick = rememberTicker(if (live && cfg.seconds) 1000L else 30_000L)
-    val bmp by produceState(remember { PreviewCache.peek(cfg, density, tick)?.asImageBitmap() }, cfg, tick, ver, density) {
-        value = withContext(Dispatchers.Default) { runCatching { PreviewCache.get(ctx, cfg, density, tick).asImageBitmap() }.getOrNull() }
+    // live widgets animate here too: the still part, then the moving frames on top (still in tests / reduced motion)
+    val moving = st.fx != null && cfg.motion && !Motion.reduced && !com.smrh.zujaj.security.Guard.isTest
+    val mode = if (moving) com.smrh.zujaj.render.LiveFx.BASE else com.smrh.zujaj.render.LiveFx.ALL
+    val bmp by produceState(remember { com.smrh.zujaj.render.LiveFx.with(mode, 0f) { PreviewCache.peek(cfg, density, tick) }?.asImageBitmap() }, cfg, tick, ver, density, moving) {
+        value = withContext(Dispatchers.Default) { runCatching { com.smrh.zujaj.render.LiveFx.with(mode, 0f) { PreviewCache.get(ctx, cfg, density, tick) }.asImageBitmap() }.getOrNull() }
+    }
+    val fd = (density * 0.75f).coerceAtMost(2f)
+    val frames by produceState(if (moving) PreviewCache.peekFrames(cfg, fd)?.map { it.asImageBitmap() } else null, cfg, ver, fd, moving) {
+        value = if (!moving) null else withContext(Dispatchers.Default) { runCatching { PreviewCache.frames(ctx, cfg, fd).map { it.asImageBitmap() } }.getOrNull() }
+    }
+    var idx by remember { mutableIntStateOf(0) }
+    if (moving) LaunchedEffect(cfg.liveSpeed) {
+        val step = com.smrh.zujaj.render.LiveFx.interval(cfg.liveSpeed).toLong()
+        while (true) { delay(step); idx = (idx + 1) % com.smrh.zujaj.render.LiveFx.FRAMES }
     }
     Box(modifier.aspectRatio(st.shape.dw / st.shape.dh)) {
         bmp?.let { Image(it, null, Modifier.fillMaxSize()) }
+        frames?.getOrNull(idx)?.let { Image(it, null, Modifier.fillMaxSize(), filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium) }
     }
 }
 

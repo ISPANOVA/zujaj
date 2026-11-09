@@ -121,6 +121,10 @@ data class WidgetConfig(
     val event: String = "",
     /** Prayer & weather: background colours follow the time of day. */
     val dayTint: Boolean = false,
+    /** Live widgets: animation on/off, speed (0 slow · 1 normal · 2 fast) and how much effect (0 subtle · 1 normal · 2 rich). */
+    val motion: Boolean = true,
+    val liveSpeed: Int = 1,
+    val liveFx: Int = 1,
 ) {
     fun toJson(): String = json.encodeToString(this)
 

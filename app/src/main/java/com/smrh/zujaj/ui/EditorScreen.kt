@@ -538,6 +538,15 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     Divider(); RowBase(tr("Secondary", "التاني")) { ColorDot(cfg.color2) { colorTarget = 2 } }
                     if (Feat.ACCENT in f) { Divider(); RowBase(tr("Accent", "لون مميز")) { ColorDot(cfg.accent) { colorTarget = 3 } } }
                 }
+                if (style.fx != null) Section(tr("Motion", "الحركة")) {
+                    SwitchRow(tr("Animation", "الحركة شغالة"), cfg.motion, tr("Off = a still picture (saves a little battery)", "لو قفلتها تبقى صورة ثابتة (بتوفر شوية بطارية)")) { cfg = cfg.copy(motion = it) }
+                    if (cfg.motion) {
+                        Divider(); ChoiceRow(tr("Speed", "السرعة"), cfg.liveSpeed, listOf(0 to tr("Calm", "هادية"), 1 to tr("Normal", "عادية"), 2 to tr("Fast", "سريعة"))) { cfg = cfg.copy(liveSpeed = it) }
+                    }
+                    Divider(); ChoiceRow(tr("Effects", "كمية المؤثرات"), cfg.liveFx, listOf(0 to tr("Subtle", "خفيفة"), 1 to tr("Normal", "عادية"), 2 to tr("Rich", "كتير"))) { cfg = cfg.copy(liveFx = it) }
+                    Divider(); RowBase(tr("Glow colour", "لون التوهج")) { ColorDot(cfg.accent) { colorTarget = 3 } }
+                    Divider(); RowBase(tr("Second effect colour", "لون المؤثر التاني")) { ColorDot(cfg.accent2) { colorTarget = 5 } }
+                }
                 if (style.cat == com.smrh.zujaj.catalog.Cat.PRAYER || style.cat == com.smrh.zujaj.catalog.Cat.WEATHER) Section(tr("Time of day", "حسب الوقت")) {
                     SwitchRow(tr("Colours follow the time of day", "الألوان تتغير مع الوقت"), cfg.dayTint,
                         tr("Dawn, day, sunset and night colours on their own", "ألوان الفجر والنهار والمغرب والليل لوحدها")) { cfg = cfg.copy(dayTint = it) }

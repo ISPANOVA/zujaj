@@ -48,6 +48,7 @@ enum class Shape(val cols: Int, val rows: Int, val dw: Float, val dh: Float) {
 }
 
 enum class Cat(val en: String, val ar: String, val tags: String = "") {
+    LIVE("Live", "لايف", "live animated moving motion 3d animation لايف متحرك متحركه حركة حركه ثري دي"),
     CALLI("Calligraphy", "الخط العربي", "calligraphy thuluth arabic day kufi خط عربي ثلث كوفي يوم مزخرف"),
     CLOCK("Clock", "ساعات", "clock time watch analog hour ساعه ساعة وقت الوقت عقارب"),
     DIGITAL("Digital", "رقمية", "clock time digital hour ساعه ساعة رقمي رقميه الوقت"),
@@ -90,6 +91,8 @@ class WidgetStyle(
     val defaults: (WidgetConfig) -> WidgetConfig = { it },
     /** Time drawn into the picture (redrawn each minute) — e.g. for gradient digits. */
     val bakeTime: (WidgetConfig) -> Boolean = { false },
+    /** Live widgets: the moving layer, drawn for a phase 0..1 that loops seamlessly. */
+    val fx: ((RenderCtx, Float) -> Unit)? = null,
     val draw: (RenderCtx) -> Unit,
 ) {
     fun name(ar: Boolean) = if (ar) this.ar else en
@@ -140,7 +143,7 @@ object Catalog {
     private fun glass(c: WidgetConfig) = c.copy(fill = Fill.GLASS, texture = Texture.OFF)
     private fun aurora(c: WidgetConfig) = c.copy(fill = Fill.AURORA, bgColor = 0xFF0E0E16.toInt(), bgColor2 = 0xFF4C3BCF.toInt(), accent = 0xFFE8478B.toInt())
 
-    val all: List<WidgetStyle> = listOf(
+    val all: List<WidgetStyle> = LiveCatalog.styles + listOf(
         // ------------------------------------------------------------------ CLOCK
         WidgetStyle("clock_dots", Cat.CLOCK, "Clock Dots", "ساعة النقاط", S, popular = true, feats = clockF, upd = none) { ClockR.dots(it) },
         WidgetStyle("clock_fill", Cat.CLOCK, "Clock Fill", "ساعة ممتلئة", S, feats = clockF, upd = none) { ClockR.fill(it) },
