@@ -436,7 +436,7 @@ fun WidgetAddedHost(nav: Nav) {
         st?.let { (if (Prefs.isArabicUi) it.ar else it.en) }, iconColor = Color(0xFF3DDC97), onDismiss = { close() }) {
         val cfg = Prefs.widgetConfig(id)
         if (cfg != null) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Backdrops.brush(1)).padding(16.dp), contentAlignment = Alignment.Center) {
-            WidgetPreview(cfg, if (st?.shape == com.smrh.zujaj.catalog.Shape.SMALL) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth(), density = 2f)
+            WidgetPreview(cfg, when (st?.shape) { com.smrh.zujaj.catalog.Shape.SMALL -> Modifier.fillMaxWidth(0.5f); com.smrh.zujaj.catalog.Shape.TALL -> Modifier.fillMaxWidth(0.36f); else -> Modifier.fillMaxWidth() }, density = 2f)
         }
         PrimaryButton(tr("Add another widget", "ضيف ويدجت تانية"), Modifier.fillMaxWidth()) { close(); nav.reset(Screen.Home) }
         androidx.compose.material3.TextButton(onClick = { close(); nav.go(Screen.Editor(styleId, id)) }, modifier = Modifier.fillMaxWidth()) {
