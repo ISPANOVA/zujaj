@@ -351,6 +351,7 @@ fun catIcon(c: Cat): ImageVector = when (c) {
     Cat.QUOTES -> Icons.Rounded.FormatQuote
     Cat.TOOLS -> Icons.Rounded.Tune
     Cat.CALLI -> Icons.Rounded.Brush
+    Cat.LIVE -> Icons.Rounded.AutoAwesome
     Cat.HABITS -> Icons.Rounded.TaskAlt
     Cat.NOTES -> Icons.Rounded.StickyNote2
     Cat.FOCUS -> Icons.Rounded.HourglassBottom
