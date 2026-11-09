@@ -31,16 +31,24 @@ jobs:
 
       - name: Render previews (Robolectric)
         id: previews
-        if: contains(github.event.head_commit.message, '[previews]')
+        if: contains(github.event.head_commit.message, '[previews]') || contains(github.event.head_commit.message, '[tests]')
         continue-on-error: true
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
           set -o pipefail
           chmod +x gradlew
           mkdir -p app/build/previews
           # one test class at a time, each with its own time limit, so one stuck test can't eat the whole job
-          for t in RenderAllTest WallLibraryTest NavTest WidgetTapTest BackScrollTest UiShotsTest; do
+          list="RenderAllTest WallLibraryTest NavTest WidgetTapTest BackScrollTest UiShotsTest"; limit=14m; dumpAt=780
+          # "[tests]" = only the app-flow tests, quickly, with a thread dump if one gets stuck
+          case "$MSG" in *"[tests]"*) list="WidgetTapTest BackScrollTest NavTest"; limit=7m; dumpAt=380;; esac
+          for t in $list; do
             start=$(date +%s)
-            if timeout 14m ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "com.smrh.zujaj.$t" >> test.log 2>&1; then r=ok; else r="failed-or-timeout($?)"; fi
+            ( sleep $dumpAt; for p in $(pgrep -f GradleWorkerMain); do jstack $p > app/build/previews/jstack-$t-$p.txt 2>&1; done ) & dump=$!
+            if timeout $limit ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "com.smrh.zujaj.$t" >> test.log 2>&1; then r=ok; else r="failed-or-timeout($?)"; fi
+            kill $dump 2>/dev/null || true
+            find app/build/test-results -name "TEST-*.xml" -exec cp {} app/build/previews/ \; 2>/dev/null || true
             echo "$t $r $(( $(date +%s) - start ))s" | tee -a app/build/previews/timing.txt
           done
 
