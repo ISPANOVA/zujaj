@@ -470,5 +470,5 @@ object Catalog {
     )
 
     private val map = all.associateBy { it.id }
-    fun byId(id: String) = map[id]
+    fun byId(id: String) = map[id] ?: if (id.startsWith("live_")) map["live_p_mihrab"] else null
 }

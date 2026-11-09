@@ -478,7 +478,7 @@ fun WidgetPreview(cfg: WidgetConfig, modifier: Modifier = Modifier, density: Flo
     val bmp by produceState(remember { com.smrh.zujaj.render.LiveFx.with(mode, 0f) { PreviewCache.peek(cfg, density, tick) }?.asImageBitmap() }, cfg, tick, ver, density, moving) {
         value = withContext(Dispatchers.Default) { runCatching { com.smrh.zujaj.render.LiveFx.with(mode, 0f) { PreviewCache.get(ctx, cfg, density, tick) }.asImageBitmap() }.getOrNull() }
     }
-    val fd = (density * 0.75f).coerceAtMost(2f)
+    val fd = (density * 0.6f).coerceAtMost(1.6f)
     val frames by produceState(if (moving) PreviewCache.peekFrames(cfg, fd)?.map { it.asImageBitmap() } else null, cfg, ver, fd, moving) {
         value = if (!moving) null else withContext(Dispatchers.Default) { runCatching { PreviewCache.frames(ctx, cfg, fd).map { it.asImageBitmap() } }.getOrNull() }
     }

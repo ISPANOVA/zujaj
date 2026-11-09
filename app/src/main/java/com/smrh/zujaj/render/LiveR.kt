@@ -72,7 +72,7 @@ object LiveR {
     private fun glow(c: Canvas, x: Float, y: Float, rad: Float, color: Int, alpha: Float) {
         if (rad <= 0f || alpha <= 0f) return
         c.drawCircle(x, y, rad, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(x, y, rad, intArrayOf(a(color, alpha), a(color, alpha * 0.35f), 0), floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
+            shader = RadialGradient(x, y, rad, intArrayOf(a(color, alpha * 0.75f), a(color, alpha * 0.22f), 0), floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
         })
     }
 
@@ -120,13 +120,13 @@ object LiveR {
             val path = Path(); val steps = 28
             for (i in 0..steps) {
                 val x = r.w * i / steps
-                val y = base + amp * sin(x / r.w * TAU * (1 + k * 0.5f) + t * TAU + k * 1.7f) + amp * 0.4f * sin(x / r.w * TAU * 2.3f - t * TAU)
+                val y = base + amp * sin(x / r.w * TAU * (1 + k * 0.5f) + 0.6f * sin(t * TAU) + k * 1.7f) + amp * 0.4f * sin(x / r.w * TAU * 2.3f - 0.5f * sin(t * TAU + k))
                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
             val band = r.h * (0.16f + 0.06f * amt(r))
             c.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE; strokeWidth = band; strokeCap = Paint.Cap.ROUND
-                shader = LinearGradient(0f, base - band, 0f, base + band, intArrayOf(0, a(cols[k], 0.22f), 0), null, Shader.TileMode.CLAMP)
+                shader = LinearGradient(0f, base - band, 0f, base + band, intArrayOf(0, a(cols[k], 0.14f), 0), null, Shader.TileMode.CLAMP)
             })
         }
     }
@@ -149,8 +149,8 @@ object LiveR {
         for (i in 0 until cols) {
             val x = (i + 0.5f) / cols * r.w + (g.nextFloat() - 0.5f) * r.w / cols
             val off = g.nextFloat(); val s = (6 + g.nextFloat() * 12) * r.u; val col = if (i % 2 == 0) r.accent else r.cfg.accent2
-            var y = r.h + gap - ((t + off) % 1f) * gap
-            while (y > -gap) { glow(r.canvas, x, y, s * 1.6f, col, 0.18f); r.circle(x, y, s * 0.6f, a(col, 0.12f)); y -= gap }
+            var y = g.nextFloat() * gap + 6 * r.u * sin((t + off) * TAU)
+            while (y < r.h + gap) { glow(r.canvas, x + 4 * r.u * cos((t + off) * TAU), y, s * 1.6f, col, 0.1f + 0.05f * w01(t, 1, off)); y += gap }
         }
     }
 
@@ -178,12 +178,12 @@ object LiveR {
     }
 
     fun meteors(r: RenderCtx, t: Float, seed: Long = 13) {
-        val g = rnd(seed); val n = count(r, 3)
+        val g = rnd(seed); val n = 1
         repeat(n) {
             val ph = g.nextFloat(); val x0 = r.w * (0.3f + g.nextFloat() * 0.8f); val y0 = -r.h * 0.1f + g.nextFloat() * r.h * 0.3f
             val p = (t + ph) % 1f
-            if (p < 0.5f) {
-                val q = p / 0.5f; val dx = -r.w * 0.55f * q; val dy = r.h * 0.45f * q
+            if (p < 0.3f) {
+                val q = p / 0.3f; val dx = -r.w * 0.55f * q; val dy = r.h * 0.45f * q
                 val hx = x0 + dx; val hy = y0 + dy; val tail = 30 * r.u
                 r.canvas.drawLine(hx, hy, hx + tail, hy - tail * 0.82f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     strokeWidth = 1.6f * r.u; strokeCap = Paint.Cap.ROUND
@@ -199,7 +199,7 @@ object LiveR {
         repeat(count(r, 14)) {
             val x = g.nextFloat() * r.w; val y = g.nextFloat() * r.h; val ph = g.nextFloat()
             val b = w01(t, 1, ph).let { it * it * it }
-            if (b > 0.05f) star4(r.canvas, x, y, (2 + 5 * b) * r.u, a(if (g.nextBoolean()) r.accent else Color.WHITE, b))
+            if (b > 0.05f) star4(r.canvas, x, y, (2 + 4 * b) * r.u, a(if (g.nextBoolean()) r.accent else Color.WHITE, b * 0.7f))
         }
     }
 
@@ -218,7 +218,7 @@ object LiveR {
     }
 
     fun wind(r: RenderCtx, t: Float, seed: Long = 23) {
-        val g = rnd(seed); val n = count(r, 6); val gap = r.w * 0.9f
+        val g = rnd(seed); val n = count(r, 5); val gap = r.w * 0.45f
         repeat(n) {
             val y = r.h * (0.12f + g.nextFloat() * 0.76f); val off = g.nextFloat(); val len = r.w * (0.18f + g.nextFloat() * 0.15f)
             var x = -gap + ((t + off) % 1f) * gap
@@ -226,7 +226,7 @@ object LiveR {
                 val p = Path().apply { moveTo(x, y); cubicTo(x + len * 0.3f, y - 5 * r.u, x + len * 0.7f, y + 5 * r.u, x + len, y) }
                 r.canvas.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.STROKE; strokeWidth = 1.4f * r.u; strokeCap = Paint.Cap.ROUND
-                    shader = LinearGradient(x, y, x + len, y, intArrayOf(0, a(Color.WHITE, 0.4f), 0), null, Shader.TileMode.CLAMP)
+                    shader = LinearGradient(x, y, x + len, y, intArrayOf(0, a(Color.WHITE, 0.22f), 0), null, Shader.TileMode.CLAMP)
                 })
                 x += gap
             }
@@ -238,14 +238,14 @@ object LiveR {
         val rad = Renderer.cornerPx(r); val inset = 2.2f * r.u
         val path = Path().apply { addRoundRect(RectF(inset, inset, r.w - inset, r.h - inset), rad - inset, rad - inset, Path.Direction.CW) }
         val per = android.graphics.PathMeasure(path, false).length
-        val seg = per / 4f
+        val seg = per / 8f
         fun pass(width: Float, alpha: Float, col: Int) = r.canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE; strokeWidth = width; strokeCap = Paint.Cap.ROUND; color = a(col, alpha)
             pathEffect = android.graphics.DashPathEffect(floatArrayOf(seg * 0.45f, seg * 0.55f), -t * seg)
         })
-        pass(9 * r.u, 0.12f * amt(r), r.accent); pass(4.5f * r.u, 0.3f, r.accent); pass(1.6f * r.u, 0.95f, mix(r.accent, Color.WHITE, 0.5f))
+        pass(8 * r.u, 0.07f * amt(r), r.accent); pass(4 * r.u, 0.16f, r.accent); pass(1.4f * r.u, 0.6f, mix(r.accent, Color.WHITE, 0.35f))
         r.canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE; strokeWidth = 1.6f * r.u; color = a(r.cfg.accent2, 0.6f)
+            style = Paint.Style.STROKE; strokeWidth = 1.6f * r.u; color = a(r.cfg.accent2, 0.35f)
             pathEffect = android.graphics.DashPathEffect(floatArrayOf(seg * 0.2f, seg * 0.8f), -t * seg + seg * 0.5f)
         })
     }
@@ -257,7 +257,7 @@ object LiveR {
         val rx = R * 1.75f; val ry = R * 0.42f
         glow(c, cx, cy, R * 2.2f, r.accent, 0.3f * amt(r))
         fun moon(i: Int, front: Boolean) {
-            val th = (t / 4f + i / 4f) * TAU
+            val th = (t / 6f + i / 6f) * TAU
             val s = sin(th); if ((s > 0) != front) return
             val mx = cx + rx * 1.12f * cos(th); val my = cy + ry * 1.12f * s
             c.save(); c.rotate(-16f, cx, cy)
@@ -271,7 +271,7 @@ object LiveR {
         c.save(); c.rotate(-16f, cx, cy)
         c.drawArc(RectF(cx - rx, cy - ry, cx + rx, cy + ry), 180f, 180f, false, ring)
         c.restore()
-        for (i in 0 until 4) moon(i, false)
+        for (i in 0 until 6) moon(i, false)
         sphere(c, cx, cy, R, r.accent)
         // drifting cloud bands on the ball, clipped to it (they move one band spacing per loop)
         c.save(); c.clipPath(Path().apply { addCircle(cx, cy, R, Path.Direction.CW) })
@@ -285,7 +285,7 @@ object LiveR {
         c.save(); c.rotate(-16f, cx, cy)
         c.drawArc(RectF(cx - rx, cy - ry, cx + rx, cy + ry), 0f, 180f, false, ring)
         c.restore()
-        for (i in 0 until 4) moon(i, true)
+        for (i in 0 until 6) moon(i, true)
     }
 
     /** A sun with slowly turning rays (12 rays → one ray spacing per loop) and a breathing glow. */
@@ -442,8 +442,8 @@ object LiveR {
         glow(c, cx, cy, R * 1.3f, r.accent, 0.35f * amt(r))
         val cols = intArrayOf(r.accent, r.cfg.accent2, mix(r.c1, r.accent, 0.4f))
         for (k in 0 until 3) {
-            val ry = R * abs(cos((t + k / 3f) * PI.toFloat()))
-            c.save(); c.rotate(k * 60f, cx, cy)
+            val ry = R * (0.32f + 0.08f * sin((t + k / 3f) * TAU))
+            c.save(); c.rotate(k * 60f + t * 60f, cx, cy)
             c.drawOval(RectF(cx - R, cy - max(ry, 1f), cx + R, cy + max(ry, 1f)), Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE; strokeWidth = 2.6f * r.u
                 shader = LinearGradient(cx, cy - R, cx, cy + R, a(cols[k], 0.95f), a(cols[k], 0.35f), Shader.TileMode.CLAMP)
@@ -569,7 +569,9 @@ object LiveR {
             c.drawLine(cx, cy - R + 3 * r.u, cx, cy - R + 3 * r.u + l, r.strokePaint(a(r.c1, if (i % 9 == 0) 0.9f else 0.35f), 1.2f * r.u))
             c.restore()
         }
-        val ang = bearing + 5f * wave(t)
+        c.drawPath(starPath(cx, cy, R * 0.62f, R * 0.26f, 8), r.fillPaint(a(r.cfg.accent2, 0.14f)))
+        c.drawPath(starPath(cx, cy, R * 0.62f, R * 0.26f, 8), r.strokePaint(a(r.cfg.accent2, 0.45f), 0.9f * r.u))
+        val ang = bearing + 4f * wave(t)
         c.save(); c.rotate(ang, cx, cy)
         val n = Path().apply { moveTo(cx, cy - R * 0.78f); lineTo(cx + R * 0.1f, cy); lineTo(cx, cy + R * 0.12f); lineTo(cx - R * 0.1f, cy); close() }
         glow(c, cx, cy - R * 0.55f, R * 0.4f, r.accent, 0.5f)
@@ -608,9 +610,9 @@ object LiveR {
         val c = r.canvas
         val cols = intArrayOf(r.accent, r.cfg.accent2, mix(r.c1, r.accent, 0.3f))
         val g = rnd(53)
-        for (k in 0 until 3) {
+        for (k in 0 until 2) {
             val bx = area.left + area.width() * (0.2f + g.nextFloat() * 0.6f); val by = area.top + area.height() * (0.2f + g.nextFloat() * 0.45f)
-            val p = (t + k / 3f) % 1f
+            val p = (t + k / 2f) % 1f
             val R = min(area.width(), area.height()) * (0.28f + 0.1f * g.nextFloat())
             val n = count(r, 14)
             if (p < 0.18f) {
@@ -655,10 +657,10 @@ object LiveR {
         val c = r.canvas; val cx = z.centerX(); val cy = z.centerY(); val R = min(z.width(), z.height()) * 0.46f
         glow(c, cx, cy, R, r.accent, 0.35f * amt(r))
         val g = rnd(61); val n = (160 * amt(r)).toInt()
-        c.save(); c.scale(1f, 0.55f, cx, cy); c.rotate(t * 180f, cx, cy)
+        c.save(); c.scale(1f, 0.55f, cx, cy); c.rotate(t * 90f, cx, cy)
         repeat(n) {
-            val arm = it % 2; val d = g.nextFloat().let { q -> q * q } * R
-            val th = d / R * 4.2f + arm * PI.toFloat() + (g.nextFloat() - 0.5f) * 0.5f
+            val arm = it % 4; val d = g.nextFloat().let { q -> q * q } * R
+            val th = d / R * 4.2f + arm * PI.toFloat() / 2 + (g.nextFloat() - 0.5f) * 0.45f
             val x = cx + d * cos(th); val y = cy + d * sin(th)
             val col = mix(r.cfg.accent2, r.accent, d / R)
             r.circle(x, y, (0.6f + g.nextFloat() * 1.2f) * r.u * (1.3f - d / R), a(col, 0.4f + 0.6f * (1 - d / R)))
@@ -985,4 +987,219 @@ object LiveR {
         return now < d.list[1].time || now > d.list[4].time
     }
     fun qiblaBearing(): Float = SignatureR.qibla(Prefs.lat, Prefs.lng).first.toFloat()
+
+    // ========================================================================================== ISLAMIC ART
+    /** An n-point star polygon (alternating outer / inner radius). */
+    fun starPath(cx: Float, cy: Float, R: Float, inner: Float, n: Int, rot: Float = 0f): Path = Path().apply {
+        for (i in 0 until n * 2) {
+            val rr = if (i % 2 == 0) R else inner
+            val th = rot + i * PI.toFloat() / n - PI.toFloat() / 2
+            val x = cx + rr * cos(th); val y = cy + rr * sin(th)
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+
+    /** Khatam lattice: 8-point stars with the small crosses between them, as in old mosque tiles. */
+    fun pattern(r: RenderCtx, area: RectF, color: Int, alpha: Float, cell: Float = 34 * r.u) {
+        val c = r.canvas; val p = r.strokePaint(a(color, alpha), 0.9f * r.u)
+        c.save(); c.clipRect(area)
+        var y = area.top - cell; var row = 0
+        while (y < area.bottom + cell) {
+            var x = area.left - cell + (if (row % 2 == 0) 0f else 0f)
+            while (x < area.right + cell) {
+                c.drawPath(starPath(x, y, cell * 0.42f, cell * 0.3f, 8, PI.toFloat() / 8), p)
+                c.drawPath(starPath(x, y, cell * 0.2f, cell * 0.14f, 8, PI.toFloat() / 8), p)
+                c.drawPath(starPath(x + cell / 2, y + cell / 2, cell * 0.16f, cell * 0.07f, 4), p)
+                x += cell
+            }
+            y += cell; row++
+        }
+        c.restore()
+    }
+
+    /** A pointed (ogee) arch — the mihrab — with a double gold frame and a warm light at its top. */
+    fun mihrabPath(rect: RectF): Path = Path().apply {
+        val cx = rect.centerX(); val spring = rect.top + rect.height() * 0.38f; val w = rect.width()
+        moveTo(rect.left, rect.bottom); lineTo(rect.left, spring)
+        cubicTo(rect.left, rect.top + rect.height() * 0.12f, cx - w * 0.12f, rect.top + rect.height() * 0.08f, cx, rect.top)
+        cubicTo(cx + w * 0.12f, rect.top + rect.height() * 0.08f, rect.right, rect.top + rect.height() * 0.12f, rect.right, spring)
+        lineTo(rect.right, rect.bottom); close()
+    }
+
+    fun mihrab(r: RenderCtx, rect: RectF) {
+        val c = r.canvas; val gold = r.cfg.accent2
+        val path = mihrabPath(rect)
+        c.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, rect.top, 0f, rect.bottom, a(mix(r.accent, Color.BLACK, 0.55f), 0.55f), a(Color.BLACK, 0.35f), Shader.TileMode.CLAMP)
+        })
+        c.save(); c.clipPath(path); pattern(r, rect, gold, 0.12f, rect.width() * 0.34f); c.restore()
+        c.drawPath(path, r.strokePaint(a(gold, 0.9f), 1.6f * r.u))
+        val inset = rect.width() * 0.07f
+        c.drawPath(mihrabPath(RectF(rect.left + inset, rect.top + inset * 1.6f, rect.right - inset, rect.bottom)), r.strokePaint(a(gold, 0.45f), 0.9f * r.u))
+        // a small star at the apex
+        c.drawPath(starPath(rect.centerX(), rect.top - rect.width() * 0.06f, rect.width() * 0.06f, rect.width() * 0.03f, 8), r.fillPaint(gold))
+    }
+
+    /** A rosette: 16-point outer star, 8-point inner one turning slowly (45° per loop), gold on dark. */
+    fun rosette(r: RenderCtx, z: RectF, t: Float) {
+        val c = r.canvas; val cx = z.centerX(); val cy = z.centerY(); val R = min(z.width(), z.height()) * 0.44f
+        val gold = r.cfg.accent2
+        glow(c, cx, cy, R * 1.25f, r.accent, 0.22f + 0.06f * wave(t))
+        c.drawPath(starPath(cx, cy, R, R * 0.82f, 16), Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(cx, cy, R, a(mix(gold, Color.BLACK, 0.6f), 0.5f), a(mix(gold, Color.BLACK, 0.3f), 0.25f), Shader.TileMode.CLAMP)
+        })
+        c.drawPath(starPath(cx, cy, R, R * 0.82f, 16), r.strokePaint(a(gold, 0.9f), 1.4f * r.u))
+        c.drawCircle(cx, cy, R * 0.74f, r.strokePaint(a(gold, 0.5f), 0.9f * r.u))
+        val rot = t * PI.toFloat() / 4
+        c.drawPath(starPath(cx, cy, R * 0.68f, R * 0.4f, 8, rot), Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(cx - R, cy - R, cx + R, cy + R, mix(gold, Color.WHITE, 0.35f), mix(gold, Color.BLACK, 0.35f), Shader.TileMode.CLAMP)
+        })
+        c.drawPath(starPath(cx, cy, R * 0.4f, R * 0.28f, 8, -rot + PI.toFloat() / 8), r.fillPaint(mix(r.cfg.bgColor, Color.BLACK, 0.3f)))
+        c.drawPath(starPath(cx, cy, R * 0.4f, R * 0.28f, 8, -rot + PI.toFloat() / 8), r.strokePaint(gold, 1.1f * r.u))
+        sphere(c, cx, cy, R * 0.12f, r.accent)
+        // a glint running round the outer star
+        val gth = t * TAU; glow(c, cx + R * 0.9f * cos(gth), cy + R * 0.9f * sin(gth), R * 0.18f, Color.WHITE, 0.35f)
+    }
+
+    /** Mosque skyline along the bottom: domes and minarets, crescents on top (still). */
+    fun skyline(r: RenderCtx, baseY: Float, color: Int) {
+        val c = r.canvas; val u = r.u; val w = r.w
+        val p = Path()
+        fun dome(cx: Float, rad: Float, body: Float) {
+            p.addRect(cx - rad * 1.1f, baseY - body, cx + rad * 1.1f, baseY + 2 * u, Path.Direction.CW)
+            p.addOval(RectF(cx - rad, baseY - body - rad * 1.5f, cx + rad, baseY - body + rad * 0.5f), Path.Direction.CW)
+            p.moveTo(cx - rad * 0.12f, baseY - body - rad * 1.35f); p.lineTo(cx, baseY - body - rad * 1.9f); p.lineTo(cx + rad * 0.12f, baseY - body - rad * 1.35f); p.close()
+        }
+        fun minaret(cx: Float, h: Float) {
+            p.addRect(cx - 3.2f * u, baseY - h, cx + 3.2f * u, baseY + 2 * u, Path.Direction.CW)
+            p.addRect(cx - 5 * u, baseY - h * 0.72f, cx + 5 * u, baseY - h * 0.68f, Path.Direction.CW)
+            p.moveTo(cx - 3.6f * u, baseY - h); p.lineTo(cx, baseY - h - 9 * u); p.lineTo(cx + 3.6f * u, baseY - h); p.close()
+        }
+        dome(w * 0.5f, 22 * u, 10 * u); dome(w * 0.32f, 12 * u, 6 * u); dome(w * 0.68f, 12 * u, 6 * u)
+        dome(w * 0.1f, 8 * u, 4 * u); dome(w * 0.9f, 8 * u, 4 * u)
+        minaret(w * 0.2f, 52 * u); minaret(w * 0.8f, 52 * u); minaret(w * 0.42f, 34 * u); minaret(w * 0.58f, 34 * u)
+        p.addRect(0f, baseY, w, baseY + 3 * u, Path.Direction.CW)
+        c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, baseY - 60 * u, 0f, baseY, mix(color, r.accent, 0.08f), color, Shader.TileMode.CLAMP) })
+    }
+
+    /** Warm windows along the skyline, glowing softly at different times. */
+    fun skylineLights(r: RenderCtx, baseY: Float, t: Float) {
+        val g = rnd(91)
+        for (i in 0 until 14) {
+            val x = r.w * (0.06f + i * 0.068f) + g.nextFloat() * 4 * r.u; val y = baseY - (3 + g.nextFloat() * 7) * r.u
+            val b = 0.45f + 0.55f * w01(t, 1, g.nextFloat())
+            glow(r.canvas, x, y, 6 * r.u, r.accent, 0.4f * b)
+            r.canvas.drawRoundRect(RectF(x - 1.3f * r.u, y - 2.4f * r.u, x + 1.3f * r.u, y + 2.4f * r.u), 1.3f * r.u, 1.3f * r.u, r.fillPaint(a(mix(r.accent, Color.WHITE, 0.3f), 0.5f + 0.45f * b)))
+        }
+    }
+
+    /** A rope of hanging stars and crescents across the top, each swinging gently. */
+    fun garland(r: RenderCtx, t: Float) {
+        val c = r.canvas; val gold = r.cfg.accent2; val sag = r.h * 0.1f
+        val rope = Path().apply { moveTo(-4 * r.u, 4 * r.u); quadTo(r.w / 2, 4 * r.u + sag * 2, r.w + 4 * r.u, 4 * r.u) }
+        c.drawPath(rope, r.strokePaint(a(gold, 0.6f), 1f * r.u))
+        val n = 7
+        for (i in 0 until n) {
+            val f = (i + 0.5f) / n; val x = r.w * f; val y = 4 * r.u + sag * 2 * 2 * f * (1 - f)
+            val len = (if (i % 2 == 0) 16f else 24f) * r.u; val ang = 6f * wave(t, 1, i * 0.13f)
+            c.save(); c.rotate(ang, x, y)
+            c.drawLine(x, y, x, y + len, r.strokePaint(a(gold, 0.6f), 0.8f * r.u))
+            val oy = y + len + 5 * r.u
+            glow(c, x, oy, 9 * r.u, r.accent, 0.3f + 0.15f * w01(t, 1, i * 0.21f))
+            if (i % 2 == 0) c.drawPath(starPath(x, oy, 5.5f * r.u, 2.6f * r.u, 8), r.fillPaint(gold))
+            else {
+                val l = c.saveLayer(x - 8 * r.u, oy - 8 * r.u, x + 8 * r.u, oy + 8 * r.u, null)
+                r.circle(x, oy, 5.5f * r.u, gold)
+                c.drawCircle(x + 2.6f * r.u, oy - 1.2f * r.u, 4.8f * r.u, Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR) })
+                c.restoreToCount(l)
+            }
+            c.restore()
+        }
+    }
+
+    /** Light falling through a mashrabiya screen: a soft beam that sways and dust motes drifting in it. */
+    fun beam(r: RenderCtx, t: Float, fromX: Float) {
+        val c = r.canvas; val sway = 0.06f * r.w * wave(t)
+        val p = Path().apply { moveTo(fromX - r.w * 0.06f, 0f); lineTo(fromX + r.w * 0.06f, 0f); lineTo(fromX + r.w * 0.28f + sway, r.h); lineTo(fromX - r.w * 0.12f + sway, r.h); close() }
+        c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, 0f, 0f, r.h, a(r.accent, 0.16f), 0, Shader.TileMode.CLAMP) })
+        val g = rnd(97)
+        repeat(count(r, 10)) {
+            val y = g.nextFloat() * r.h; val k = y / r.h; val x = fromX + (g.nextFloat() - 0.3f) * r.w * 0.2f * (0.3f + k) + sway * k + 5 * r.u * sin((t + g.nextFloat()) * TAU)
+            r.circle(x, y + 4 * r.u * cos((t + g.nextFloat()) * TAU), (0.6f + g.nextFloat()) * r.u, a(Color.WHITE, 0.25f + 0.35f * w01(t, 1, g.nextFloat())))
+        }
+    }
+
+    // ========================================================================================== WEATHER SCENES
+    /** True while the widget keeps its own scene background (the user hasn't picked another one). */
+    const val SCENE = 0xFF0B1730.toInt()
+    fun sceneOn(r: RenderCtx) = r.cfg.bg && r.cfg.bgColor == SCENE
+
+    /** The sky for the real weather and time of day, with far hills — painted under the text (still). */
+    fun skyScene(r: RenderCtx) {
+        if (!sceneOn(r)) return
+        val w = Kit.weather(r); val night = w.night || isNight(r)
+        val (top, bottom) = when (w.cond) {
+            Cond.CLEAR, Cond.PARTLY -> if (night) 0xFF0A1330.toInt() to 0xFF27305E.toInt() else 0xFF2D6CB5.toInt() to 0xFF8DC2E8.toInt()
+            Cond.CLOUDY, Cond.FOG -> if (night) 0xFF151B2B.toInt() to 0xFF2E3647.toInt() else 0xFF5D7390.toInt() to 0xFFA9B8C9.toInt()
+            Cond.RAIN, Cond.STORM -> if (night) 0xFF0E141F.toInt() to 0xFF26303F.toInt() else 0xFF3F4F63.toInt() to 0xFF7C8C9E.toInt()
+            Cond.SNOW -> if (night) 0xFF1A2236.toInt() to 0xFF3C4A66.toInt() else 0xFF8FA6C0.toInt() to 0xFFDCE6F0.toInt()
+        }
+        val c = r.canvas; val rad = Renderer.cornerPx(r)
+        c.save(); c.clipPath(Path().apply { addRoundRect(RectF(0f, 0f, r.w, r.h), rad, rad, Path.Direction.CW) })
+        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = LinearGradient(0f, 0f, 0f, r.h, top, bottom, Shader.TileMode.CLAMP) })
+        // a gentle dark veil on the text side so the words always read well
+        val veil = if (r.ar) LinearGradient(r.w, 0f, r.w * 0.35f, 0f, a(Color.BLACK, 0.28f), 0, Shader.TileMode.CLAMP) else LinearGradient(0f, 0f, r.w * 0.65f, 0f, a(Color.BLACK, 0.28f), 0, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, r.w, r.h, Paint().apply { shader = veil })
+        // two layers of hills
+        val h1 = Path().apply { moveTo(0f, r.h); lineTo(0f, r.h * 0.8f); cubicTo(r.w * 0.25f, r.h * 0.7f, r.w * 0.45f, r.h * 0.86f, r.w * 0.7f, r.h * 0.76f); cubicTo(r.w * 0.85f, r.h * 0.7f, r.w * 0.95f, r.h * 0.78f, r.w, r.h * 0.74f); lineTo(r.w, r.h); close() }
+        c.drawPath(h1, r.fillPaint(a(mix(bottom, Color.BLACK, 0.35f), 0.55f)))
+        val h2 = Path().apply { moveTo(0f, r.h); lineTo(0f, r.h * 0.9f); cubicTo(r.w * 0.3f, r.h * 0.82f, r.w * 0.6f, r.h * 0.96f, r.w, r.h * 0.86f); lineTo(r.w, r.h); close() }
+        c.drawPath(h2, r.fillPaint(a(mix(bottom, Color.BLACK, 0.55f), 0.7f)))
+        c.restore()
+    }
+
+    /** Soft, layered clouds across the whole sky, drifting a little back and forth. */
+    fun cloudsWide(r: RenderCtx, t: Float, dark: Boolean, n: Int = 4) {
+        val c = r.canvas; val g = rnd(101)
+        repeat(n) { i ->
+            val w0 = r.w * (0.28f + g.nextFloat() * 0.22f); val x = r.w * g.nextFloat() + (if (i % 2 == 0) 1 else -1) * r.w * 0.025f * wave(t, 1, i * 0.2f)
+            val y = r.h * (0.12f + g.nextFloat() * 0.4f)
+            val col = if (dark) mix(0xFF59657A.toInt(), Color.WHITE, 0.15f * i) else Color.WHITE
+            val al = (if (dark) 0.55f else 0.75f) * (0.6f + 0.4f * (i.toFloat() / n))
+            val p = Path().apply {
+                addCircle(x - w0 * 0.25f, y + w0 * 0.05f, w0 * 0.2f, Path.Direction.CW)
+                addCircle(x + w0 * 0.02f, y - w0 * 0.08f, w0 * 0.27f, Path.Direction.CW)
+                addCircle(x + w0 * 0.28f, y + w0 * 0.06f, w0 * 0.19f, Path.Direction.CW)
+                addRoundRect(RectF(x - w0 * 0.46f, y + w0 * 0.02f, x + w0 * 0.48f, y + w0 * 0.24f), w0 * 0.12f, w0 * 0.12f, Path.Direction.CW)
+            }
+            c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, y - w0 * 0.35f, 0f, y + w0 * 0.24f, a(col, al), a(mix(col, 0xFF7D8799.toInt(), 0.45f), al), Shader.TileMode.CLAMP) })
+        }
+    }
+
+    /** Everything that moves in a weather scene, chosen by the real weather. */
+    fun weatherScene(r: RenderCtx, t: Float) {
+        val w = Kit.weather(r); val night = w.night || isNight(r); val z = zone(r)
+        val sx = z.centerX(); val sy = z.top + z.height() * 0.38f
+        when (w.cond) {
+            Cond.CLEAR -> if (night) { stars(r, t); crescent(r, z, t, sx, sy, 0.8f) } else sun(r, z, t, sx, sy, 0.95f)
+            Cond.PARTLY -> { if (night) { stars(r, t); crescent(r, z, t, sx, sy, 0.7f) } else sun(r, z, t, sx, sy, 0.8f); cloudsWide(r, t, false, 3) }
+            Cond.CLOUDY -> cloudsWide(r, t, night, 5)
+            Cond.FOG -> {
+                cloudsWide(r, t, true, 3)
+                for (k in 0 until 4) {
+                    val y = r.h * (0.45f + k * 0.12f); val dx = wave(t, 1, k * 0.27f) * r.w * 0.04f
+                    r.canvas.drawRoundRect(RectF(-r.w * 0.1f + dx, y, r.w * 1.1f + dx, y + r.h * 0.05f), r.h * 0.03f, r.h * 0.03f, r.fillPaint(a(Color.WHITE, 0.16f)))
+                }
+            }
+            Cond.RAIN, Cond.STORM -> {
+                cloudsWide(r, t, true, 4); rainStreaks(r, t)
+                if (w.cond == Cond.STORM) {
+                    val f = ((t * 20f).toInt() == 3).let { if (it) 1f else 0f }
+                    if (f > 0f) r.canvas.drawRect(0f, 0f, r.w, r.h, r.fillPaint(a(Color.WHITE, 0.12f)))
+                }
+            }
+            Cond.SNOW -> { cloudsWide(r, t, false, 3); snow(r, t) }
+        }
+    }
 }
