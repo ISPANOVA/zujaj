@@ -181,6 +181,7 @@ fun AdminScreen(nav: Nav) {
             Icons.Rounded.BarChart to tr("Stats", "الإحصائيات"),
             Icons.Rounded.Image to tr("Wallpapers", "الخلفيات"),
             Icons.Rounded.NewReleases to tr("New widget", "ويدجت جديدة"),
+            Icons.Rounded.Campaign to tr("Notification", "إشعار للكل"),
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(tabs.size) { i ->
@@ -211,6 +212,7 @@ fun AdminScreen(nav: Nav) {
                 9 -> StatsAdmin()
                 10 -> WallsAdmin()
                 11 -> PromoAdmin()
+                12 -> CampaignAdmin()
                 else -> GeneralAdmin(user?.email ?: "", 2)
             }
         }
@@ -1250,6 +1252,49 @@ private fun WallsAdmin() {
 }
 
 // =============================================================================== "new widget" announcement
+/** A notification to every phone (once each), e.g. before Ramadan, opening a collection or a widget. */
+@Composable
+private fun CampaignAdmin() {
+    val ctx = LocalContext.current
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var open by remember { mutableStateOf("cat:ramadan") }
+    var days by remember { mutableIntStateOf(3) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(tr("Everyone with notifications on gets this once, within a few hours (when the app refreshes in the background).",
+            "كل اللي مفعّل الإشعارات هيوصله مرة واحدة، خلال كام ساعة (لما التطبيق يحدّث في الخلفية)."), color = Z.sub, fontSize = 13.sp)
+        Text(tr("Ready-made", "جاهز"), fontWeight = FontWeight.Bold)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ZChip(tr("Ramadan in 30 days", "رمضان بعد ٣٠ يوم"), false) { title = "رمضان بعد 30 يوم 🌙"; body = "جهّز شاشتك: فوانيس وإمساكية وعدّاد للفطار"; open = "cat:ramadan" }
+            ZChip(tr("Ramadan tomorrow", "رمضان بكرة"), false) { title = "رمضان كريم 🌙"; body = "ضيف الإمساكية وعدّاد الفطار على شاشتك"; open = "cat:ramadan" }
+            ZChip(tr("Eid", "العيد"), false) { title = "عيد مبارك 🎉"; body = "زيّن شاشتك بويدجت العيد"; open = "cat:ramadan" }
+            ZChip(tr("Live widgets", "ويدجت لايف"), false) { title = "ويدجت بتتحرك ✨"; body = "جرّب قسم لايف الجديد"; open = "cat:LIVE" }
+        }
+        ZField(title, { title = it.take(60) }, tr("Title", "العنوان"))
+        ZField(body, { body = it.take(140) }, tr("Text", "النص"))
+        Text(tr("Opens", "يفتح"), fontWeight = FontWeight.Bold)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("cat:ramadan" to tr("Ramadan & Eid", "رمضان والعيد"), "cat:LIVE" to tr("Live", "لايف"), "cat:new" to tr("New", "الجديد"), "home" to tr("Home", "الرئيسية"))
+                .forEach { (k, l) -> ZChip(l, open == k) { open = k } }
+        }
+        Text(tr("Send for", "يفضل يتبعت لمدة"), fontWeight = FontWeight.Bold)
+        Segmented(listOf(tr("1 day", "يوم"), tr("3 days", "٣ أيام"), tr("7 days", "أسبوع")), when (days) { 1 -> 0; 7 -> 2; else -> 1 }) { days = listOf(1, 3, 7)[it] }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PrimaryButton(tr("Send", "ابعت"), Modifier.weight(1f)) {
+                if (title.isBlank()) { Toast.makeText(ctx, tr("Write a title", "اكتب عنوان"), Toast.LENGTH_SHORT).show(); return@PrimaryButton }
+                AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                    val r = runCatching { com.smrh.zujaj.remote.Campaign.send(title.trim(), body.trim(), open, days) }
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Sent ✓ Phones get it within a few hours", "اتبعت ✓ هيوصل للموبايلات خلال كام ساعة") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                }
+            }
+            TextButton(onClick = {
+                AdminWork.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { com.smrh.zujaj.remote.Campaign.stop() }
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Stopped", "اتوقف") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show() }
+            }) { Text(tr("Stop", "وقّفه"), color = Color(0xFFE5484D)) }
+        }
+    }
+}
+
 @Composable
 private fun PromoAdmin() {
     val ctx = LocalContext.current

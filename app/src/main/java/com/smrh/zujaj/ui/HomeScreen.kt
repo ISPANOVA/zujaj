@@ -374,6 +374,7 @@ fun collection(key: String): List<WidgetStyle> {
         "saved" -> all.filter { Prefs.favorites.contains(it.id) }
         "all" -> all
         "promo" -> Flags.flags.value.promo.mapNotNull { id -> all.firstOrNull { it.id == id } }
+        "ramadan" -> all.filter { s -> s.id.startsWith("live_r_") || s.id.startsWith("live_e_") || s.id.contains("ramadan") || s.id.startsWith("sig_season") || s.id.startsWith("athkar") }
         else -> all.filter { it.cat.name == key }
     }
 }
@@ -385,7 +386,8 @@ fun collectionTitle(key: String): String = when (key) {
     "saved" -> tr("Saved", "المفضلة")
     "all" -> tr("All widgets", "كل الويدجت")
     "promo" -> Flags.flags.value.promoTitle.ifBlank { tr("New widgets", "ويدجت جديدة") }
-    else -> Cat.valueOf(key).let { if (Prefs.isArabicUi) it.ar else it.en }
+    "ramadan" -> tr("Ramadan & Eid", "رمضان والعيد")
+    else -> runCatching { Cat.valueOf(key) }.getOrNull()?.let { if (Prefs.isArabicUi) it.ar else it.en } ?: tr("Widgets", "ويدجت")
 }
 
 /** Size groups in the order they are shown: small first, big after. */

@@ -66,7 +66,7 @@ class PinReceiver : BroadcastReceiver() {
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         val token = intent.getStringExtra("token")
         if (id == -1) return
-        Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it); com.smrh.zujaj.remote.Stats.widgetAdded(it.styleId) }
+        Prefs.takePending(token)?.let { Prefs.saveWidgetConfig(id, it); com.smrh.zujaj.remote.Stats.widgetAdded(it.styleId); com.smrh.zujaj.ui.ReviewAsk.noteWidgetAdded() }
         runCatching { WidgetUpdater.update(context, id) }
         ClockService.ensure(context)
         // the app shows its own "added" sheet when it is open; otherwise a short toast
@@ -232,6 +232,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         Scheduler.refreshWeatherIfNeeded(applicationContext)
         runCatching { com.smrh.zujaj.data.Reminders.check(applicationContext) }
         runCatching { com.smrh.zujaj.data.Nudges.check(applicationContext) }
+        runCatching { com.smrh.zujaj.data.Nudges.campaign(applicationContext) }
         // Pro: re-check the code and the Play subscription every few hours (without opening the app)
         val now = System.currentTimeMillis()
         if (now - Prefs.getString("pro_check").toLongOrNull().let { it ?: 0L } > 3 * 3600_000L) {

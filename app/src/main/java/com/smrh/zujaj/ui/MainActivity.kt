@@ -3,6 +3,7 @@ package com.smrh.zujaj.ui
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
@@ -225,6 +226,14 @@ open class MainActivity : ComponentActivity() {
         Z.refresh(this)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // the rating sheet, a few seconds in, never over the "added" sheet or another dialog
+        window.decorView.postDelayed({
+            if (!isFinishing && com.smrh.zujaj.widget.WidgetEvents.added.value == null && ::nav.isInitialized && nav.top is Screen.Home) ReviewAsk.maybeAsk(this)
+        }, 5000)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         com.smrh.zujaj.CrashLog.lastIntent = "new: ${intent.action} ${intent.extras?.keySet()?.joinToString()}"
@@ -248,6 +257,7 @@ open class MainActivity : ComponentActivity() {
             if (Catalog.byId(cfg.styleId) != null) return Screen.Editor(cfg.styleId, edit)
         }
         val open = i.getStringExtra(EXTRA_OPEN).orEmpty()
+        if (open.startsWith("cat:")) return Screen.Category(open.removePrefix("cat:"))
         if (open.startsWith("style:")) Catalog.byId(open.removePrefix("style:"))?.let { return Screen.Editor(it.id) }
         if (open == "week_share") { runCatching { WeekShare.share(this) }; return Screen.Home }
         return when (open) {
@@ -442,6 +452,12 @@ fun WidgetAddedHost(nav: Nav) {
             WidgetPreview(cfg, when (st?.shape) { com.smrh.zujaj.catalog.Shape.SMALL -> Modifier.fillMaxWidth(0.5f); com.smrh.zujaj.catalog.Shape.TALL -> Modifier.fillMaxWidth(0.36f); else -> Modifier.fillMaxWidth() }, density = 2f)
         }
         PrimaryButton(tr("Add another widget", "ضيف ويدجت تانية"), Modifier.fillMaxWidth()) { close(); nav.reset(Screen.Home) }
+        if (cfg != null) {
+            val acc = LocalAccent.current
+            androidx.compose.material3.TextButton(onClick = { runCatching { ShareDesign.share(ctx, cfg, acc.toArgb()) } }, modifier = Modifier.fillMaxWidth()) {
+                Text(tr("Share it with friends", "شاركها مع صحابك"), color = Z.text, fontWeight = FontWeight.SemiBold)
+            }
+        }
         androidx.compose.material3.TextButton(onClick = { close(); nav.go(Screen.Editor(styleId, id)) }, modifier = Modifier.fillMaxWidth()) {
             Text(tr("Fine-tune this one", "عدّل دي"), color = LocalAccent.current, fontWeight = FontWeight.Bold)
         }

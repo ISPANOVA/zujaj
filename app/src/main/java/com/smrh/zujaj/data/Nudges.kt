@@ -43,6 +43,14 @@ object Nudges {
         }
     }
 
+    /** The control panel's campaign, once per phone. */
+    suspend fun campaign(ctx: Context) {
+        val c = runCatching { com.smrh.zujaj.remote.Campaign.get() }.getOrNull() ?: return
+        if (c.until in 1 until System.currentTimeMillis() || Prefs.getString("camp_seen") == c.id.toString() || c.title.isBlank()) return
+        Prefs.setString("camp_seen", c.id.toString())
+        notify(ctx, 4203, c.title, c.body, c.open.ifBlank { "home" })
+    }
+
     private fun notify(ctx: Context, id: Int, title: String, body: String, open: String) {
         if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         val nm = ctx.getSystemService(NotificationManager::class.java)
