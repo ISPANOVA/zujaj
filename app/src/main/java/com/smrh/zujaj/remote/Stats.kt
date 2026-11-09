@@ -39,6 +39,10 @@ object Stats {
     fun widgetAdded(styleId: String) = bump("added", "s_" + styleId.filter { it.isLetterOrDigit() || it == '_' }.take(40))
     fun wallpaperUsed() = bump("walls")
     fun purchase(kind: String) = bump(if (kind == "wall") "wall" else "pro")
+    /** Google Play promo codes (no "GPA." order id) — kept apart from paid subscriptions. */
+    fun promo(kind: String) = bump(if (kind == "wall") "wall_promo" else "pro_promo")
+    /** The app's own Pro codes, redeemed for the first time on this phone. */
+    fun redeemed() = bump("redeem")
 
     data class Day(val date: String, val values: Map<String, Long>)
     /** Admin only (rules enforce it): the last [days] days, oldest first. */

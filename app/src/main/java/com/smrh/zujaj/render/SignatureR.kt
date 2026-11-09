@@ -417,6 +417,18 @@ object PrayerTrack {
         if (Prefs.getString("pt_day").toLongOrNull() != today()) { Prefs.setString("pt_day", today().toString()); Prefs.setString("pt_bits", "0") }
     }
     fun bits(): Int { norm(); return Prefs.getString("pt_bits").toIntOrNull() ?: 0 }
+    /** Ticked prayers per day for the last two weeks ("day:bits,…"), for the weekly summary. */
+    private fun history(): Map<Long, Int> = Prefs.getString("pt_hist").split(",").mapNotNull {
+        val p = it.split(":"); val d = p.getOrNull(0)?.toLongOrNull(); val b = p.getOrNull(1)?.toIntOrNull()
+        if (d != null && b != null) d to b else null
+    }.toMap()
+    private fun record(day: Long, bits: Int) {
+        val h = history().toMutableMap(); h[day] = bits
+        Prefs.setString("pt_hist", h.filterKeys { it > day - 14 }.entries.sortedBy { it.key }.joinToString(",") { "${it.key}:${it.value}" })
+    }
+    /** Prayers ticked on each of the last 7 days (oldest first, today last). */
+    fun week(): List<Int> { val h = history(); val t = today(); return (6 downTo 0).map { Integer.bitCount((h[t - it] ?: 0) and 31) } }
+
     /** Full days in a row, ending today or yesterday. */
     fun streak(): Int {
         val last = Prefs.getString("pt_last").toLongOrNull() ?: return 0
@@ -428,6 +440,7 @@ object PrayerTrack {
         val now = before xor (1 shl i)
         Prefs.setString("pt_bits", now.toString())
         val t = today()
+        record(t, now)
         val last = Prefs.getString("pt_last").toLongOrNull() ?: 0L
         var s = Prefs.getString("pt_streak").toIntOrNull() ?: 0
         if (now == 31 && last != t) {

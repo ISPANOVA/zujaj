@@ -7,6 +7,7 @@ import android.util.LruCache
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -100,7 +101,42 @@ fun AppBackdrop(content: @Composable BoxScope.() -> Unit) {
             glow(Color(0xFF6C5CE7), 0.22f * k, size.width * 0.12f, -r * 0.18f, r * 1.05f)
             glow(accent, 0.07f * k, size.width * 0.92f, size.height * 1.04f, r * 0.9f)
         }
+        Stars(accent)
         content()
+    }
+}
+
+/**
+ * A quiet field of stars behind every screen: each one slowly brightens and fades on its own rhythm.
+ * White-ish on dark themes, a soft accent tint on light ones. Static under reduced motion and in tests.
+ * Only the draw phase reads the clock, so nothing above it recomposes.
+ */
+private class Star(val x: Float, val y: Float, val r: Float, val phase: Float, val speed: Float, val base: Float, val tint: Boolean)
+private val starField: List<Star> = java.util.Random(11).let { rnd ->
+    List(46) { Star(rnd.nextFloat(), rnd.nextFloat(), 0.6f + rnd.nextFloat() * 1.3f, rnd.nextFloat(), 0.05f + rnd.nextFloat() * 0.12f, 0.25f + rnd.nextFloat() * 0.5f, rnd.nextInt(4) == 0) }
+}
+
+@Composable
+private fun Stars(accent: Color) {
+    val still = Motion.reduced || com.smrh.zujaj.security.Guard.isTest
+    val t = if (still) null else androidx.compose.animation.core.rememberInfiniteTransition(label = "stars").animateFloat(
+        0f, 100f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(100_000, easing = androidx.compose.animation.core.LinearEasing)), label = "st")
+    val light = Z.light
+    val white = if (light) Color(0xFF3B3560) else Color.White
+    Canvas(Modifier.fillMaxSize()) {
+        val time = t?.value ?: 0f
+        val dp = density
+        for (s in starField) {
+            // a slow sine, sharpened so each star spends most of its time dim and briefly glints
+            val w = ((kotlin.math.sin((time * s.speed + s.phase) * 2f * Math.PI.toFloat()) + 1f) / 2f)
+            val glint = w * w * w
+            val a = (s.base * (0.35f + 0.65f * glint)) * (if (light) 0.45f else 0.8f)
+            val c = if (s.tint) accent else white
+            val cx = s.x * size.width; val cy = s.y * size.height
+            drawCircle(c.copy(alpha = a), radius = s.r * dp, center = Offset(cx, cy))
+            if (glint > 0.7f) drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a * 0.35f), Color.Transparent), center = Offset(cx, cy), radius = s.r * dp * 5f),
+                radius = s.r * dp * 5f, center = Offset(cx, cy))
+        }
     }
 }
 

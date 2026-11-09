@@ -231,6 +231,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         }
         Scheduler.refreshWeatherIfNeeded(applicationContext)
         runCatching { com.smrh.zujaj.data.Reminders.check(applicationContext) }
+        runCatching { com.smrh.zujaj.data.Nudges.check(applicationContext) }
         // Pro: re-check the code and the Play subscription every few hours (without opening the app)
         val now = System.currentTimeMillis()
         if (now - Prefs.getString("pro_check").toLongOrNull().let { it ?: 0L } > 3 * 3600_000L) {

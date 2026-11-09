@@ -247,7 +247,10 @@ open class MainActivity : ComponentActivity() {
             val cfg = WidgetUpdater.configFor(this, edit)
             if (Catalog.byId(cfg.styleId) != null) return Screen.Editor(cfg.styleId, edit)
         }
-        return when (i.getStringExtra(EXTRA_OPEN)) {
+        val open = i.getStringExtra(EXTRA_OPEN).orEmpty()
+        if (open.startsWith("style:")) Catalog.byId(open.removePrefix("style:"))?.let { return Screen.Editor(it.id) }
+        if (open == "week_share") { runCatching { WeekShare.share(this) }; return Screen.Home }
+        return when (open) {
             "tutorial" -> Screen.Tutorial
             "media_access" -> Screen.MediaAccess
             "paywall" -> Screen.Paywall

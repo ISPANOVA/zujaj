@@ -1127,7 +1127,7 @@ private fun StatsAdmin() {
             Stat(tr("Today", "النهارده"), (today["users"] ?: 0).toInt(), Z.text, Modifier.weight(1f))
             Stat(tr("New", "جديد"), sum("installs").toInt(), Color(0xFF3DDC97), Modifier.weight(1f))
             Stat(tr("Added", "اتضاف"), sum("added").toInt(), LocalAccent.current, Modifier.weight(1f))
-            Stat("Pro", (sum("pro") + sum("wall")).toInt(), Z.pro, Modifier.weight(1f))
+            Stat(tr("Paid", "مدفوع"), (sum("pro") + sum("wall")).toInt(), Z.pro, Modifier.weight(1f))
         }
         Text(tr("“Today” = phones that opened the app today. Other numbers are for the whole period.", "«النهارده» = عدد الموبايلات اللي فتحت التطبيق النهارده. الباقي للمدة كلها."), color = Z.sub, fontSize = 12.sp)
         // daily users as bars
@@ -1166,8 +1166,10 @@ private fun StatsAdmin() {
             RowBase(tr("App opens", "مرات فتح التطبيق")) { Text("${sum("opens")}") }
             Divider(); RowBase(tr("New installs", "تثبيتات جديدة")) { Text("${sum("installs")}") }
             Divider(); RowBase(tr("Widgets added", "ويدجت اتضافت")) { Text("${sum("added")}") }
-            Divider(); RowBase(tr("Pro purchases", "اشتراكات برو")) { Text("${sum("pro")}") }
+            Divider(); RowBase(tr("Pro purchases (paid)", "اشتراكات برو (مدفوعة)")) { Text("${sum("pro")}") }
             Divider(); RowBase(tr("Wallpaper purchases", "اشتراكات الخلفيات")) { Text("${sum("wall")}") }
+            Divider(); RowBase(tr("Pro codes redeemed (app codes)", "أكواد برو اتعملها ريديم (أكواد التطبيق)")) { Text("${sum("redeem")}") }
+            Divider(); RowBase(tr("Google Play promo codes", "أكواد برومو من جوجل بلاي")) { Text("${sum("pro_promo") + sum("wall_promo")}") }
             Divider(); RowBase(tr("Free wallpapers used", "خلفيات مجانية اتحطت")) { Text("${sum("walls")}") }
         }
         Text(tr("Counted anonymously from this version on; older versions don't report.", "العدّ بيبدأ من الإصدار ده ومن غير أي بيانات شخصية؛ الإصدارات القديمة مش بتبعت."), color = Z.sub, fontSize = 12.sp)

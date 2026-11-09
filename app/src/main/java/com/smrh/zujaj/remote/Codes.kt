@@ -128,6 +128,7 @@ object Codes {
             else RedeemResult.Fail(RedeemResult.Reason.OFFLINE)
         }
         if (result is RedeemResult.Ok) {
+            if (!result.restored) Stats.redeemed()
             apply(result.grants, result.until)
             Prefs.codeUsed = code
             Billing.refreshPro()

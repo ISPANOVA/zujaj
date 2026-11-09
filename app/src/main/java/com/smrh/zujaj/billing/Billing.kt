@@ -193,7 +193,7 @@ object Billing {
         val seen = Prefs.getString("counted_buys").split(",").filter { it.isNotBlank() }
         if (token in seen) return
         Prefs.setString("counted_buys", (seen.takeLast(40) + token).joinToString(","))
-        if (p.orderId?.startsWith("GPA.") != true) return
+        if (p.orderId?.startsWith("GPA.") != true) { com.smrh.zujaj.remote.Stats.promo(kind); return }
         com.smrh.zujaj.remote.Stats.purchase(kind)
     }
 
