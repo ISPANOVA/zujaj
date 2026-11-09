@@ -10,7 +10,7 @@ object LiveFx {
     const val FX_ONLY = 2
     val mode = ThreadLocal<Int>()
     val phase = ThreadLocal<Float>()
-    const val FRAMES = 20
+    const val FRAMES = 30
 
     inline fun <T> with(m: Int, p: Float, block: () -> T): T {
         val om = mode.get(); val op = phase.get()
@@ -19,5 +19,5 @@ object LiveFx {
     }
 
     /** Milliseconds per frame for the chosen speed. */
-    fun interval(speed: Int) = when (speed) { 0 -> 260; 2 -> 130; else -> 190 }
+    fun interval(speed: Int) = when (speed) { 0 -> 110; 2 -> 60; else -> 80 }
 }

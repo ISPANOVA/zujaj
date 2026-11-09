@@ -37,7 +37,7 @@ object LiveCatalog {
     ) = WidgetStyle(
         "live_$id", Cat.LIVE, en, ar, shape, pro = pro, isNew = true, popular = popular,
         feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = upd,
-        defaults = { it.copy(bg = true, fill = Fill.GRADIENT, bgColor = pal[0].toInt(), bgColor2 = pal[1].toInt(), accent = pal[2].toInt(), accent2 = pal[3].toInt(), color2 = 0xB3FFFFFF.toInt(), liveSpeed = 0) },
+        defaults = { it.copy(bg = true, fill = Fill.GRADIENT, bgColor = pal[0].toInt(), bgColor2 = pal[1].toInt(), accent = pal[2].toInt(), accent2 = pal[3].toInt(), color2 = 0xB3FFFFFF.toInt(), liveSpeed = 1) },
         fx = fx, draw = draw,
     )
 

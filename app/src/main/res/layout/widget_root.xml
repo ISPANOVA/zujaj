@@ -4,7 +4,7 @@
     android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent">
     <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent"
         android:scaleType="fitXY" android:contentDescription="@null" />
-    <ViewFlipper android:id="@+id/live" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" android:autoStart="true" android:flipInterval="190">
+    <ViewFlipper android:id="@+id/live" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" android:autoStart="true" android:flipInterval="80">
         <ImageView android:id="@+id/lv_0" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
         <ImageView android:id="@+id/lv_1" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
         <ImageView android:id="@+id/lv_2" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
@@ -25,6 +25,16 @@
         <ImageView android:id="@+id/lv_17" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
         <ImageView android:id="@+id/lv_18" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
         <ImageView android:id="@+id/lv_19" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_20" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_21" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_22" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_23" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_24" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_25" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_26" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_27" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_28" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
+        <ImageView android:id="@+id/lv_29" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null" />
     </ViewFlipper>
     <FrameLayout android:id="@+id/an_wrap" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
         <AnalogClock android:id="@+id/an_clock" android:layout_width="match_parent" android:layout_height="match_parent"
