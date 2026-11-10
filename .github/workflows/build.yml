@@ -31,7 +31,7 @@ jobs:
 
       - name: Render previews (Robolectric)
         id: previews
-        if: contains(github.event.head_commit.message, '[previews]') || contains(github.event.head_commit.message, '[tests]')
+        if: contains(github.event.head_commit.message, '[previews]') || contains(github.event.head_commit.message, '[tests]') || contains(github.event.head_commit.message, '[frames]')
         continue-on-error: true
         env:
           MSG: ${{ github.event.head_commit.message }}
@@ -42,6 +42,7 @@ jobs:
           # one test class at a time, each with its own time limit, so one stuck test can't eat the whole job
           list="RenderAllTest WallLibraryTest NavTest WidgetTapTest BackScrollTest UiShotsTest"; limit=14m; dumpAt=780
           # "[tests]" = only the app-flow tests, quickly, with a thread dump if one gets stuck
+          case "$MSG" in *"[frames]"*) list="LiveFramesTest"; limit=10m; dumpAt=580;; esac
           case "$MSG" in *"[tests]"*) list="WidgetTapTest BackScrollTest NavTest"; limit=7m; dumpAt=380;; esac
           for t in $list; do
             start=$(date +%s)
