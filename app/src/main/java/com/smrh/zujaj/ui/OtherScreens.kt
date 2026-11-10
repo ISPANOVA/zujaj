@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.ConfirmationNumber
@@ -501,6 +502,7 @@ fun PaywallScreen(nav: Nav) {
     val split = pane >= 840
     val benefits = listOf(
         Triple(Icons.Rounded.Widgets, tr("All ${Catalog.all.size}+ widgets", "كل الويدجت (${Catalog.all.size}+)"), tr("Clocks, prayer, media, calendar", "ساعات، صلاة، ميديا، تقويم")),
+        Triple(Icons.Rounded.Wallpaper, tr("Wallpapers included", "الخلفيات معاها"), tr("Depth effect, live clock, save & apply", "تأثير العمق، ساعة حيّة، حفظ وتطبيق")),
         Triple(Icons.Rounded.AutoAwesome, tr("Premium looks", "أشكال مميزة"), tr("Glass, aurora & textures", "زجاج، شفق وملمس")),
         Triple(Icons.Rounded.Block, tr("No ads", "من غير إعلانات"), tr("Clean, uninterrupted app", "تطبيق نضيف من غير مقاطعة")),
         Triple(Icons.Rounded.NewReleases, tr("New every month", "جديد كل شهر"), tr("Future drops included", "الإضافات الجاية معاك")),
@@ -513,7 +515,7 @@ fun PaywallScreen(nav: Nav) {
             }
             Spacer(Modifier.height(Sp.l))
             Text(tr("Zujaj Pro", "زجاج برو"), fontSize = if (split) 34.sp else 28.sp, fontWeight = FontWeight.ExtraBold, color = Z.text)
-            Text(tr("Every widget, every look, no ads.", "كل الويدجت، كل الأشكال، من غير إعلانات."), color = Z.sub, fontSize = 15.sp, modifier = Modifier.fillMaxWidth())
+            Text(tr("Widgets and wallpapers in one subscription, no ads.", "الويدجت والخلفيات في اشتراك واحد، ومن غير إعلانات."), color = Z.sub, fontSize = 15.sp, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(Sp.xl))
             // benefits as a checklist with one supporting line each: scannable, no card-in-card
             benefits.forEach { (icon, t, sub) ->

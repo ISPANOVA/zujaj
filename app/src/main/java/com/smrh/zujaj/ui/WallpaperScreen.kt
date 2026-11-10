@@ -1114,10 +1114,10 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
     val adVer by com.smrh.zujaj.ads.Ads.changes.collectAsState()
     val flags by com.smrh.zujaj.remote.Flags.flags.collectAsState()
     LaunchedEffect(Unit) { com.smrh.zujaj.ads.Ads.preload(ctx) }
-    val plans by com.smrh.zujaj.billing.Billing.wallPlans.collectAsState()
+    val plans by com.smrh.zujaj.billing.Billing.prices.collectAsState()
     val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
     var redeem by remember { mutableStateOf(false) }
-    var pick by remember { mutableStateOf(com.smrh.zujaj.billing.WALL_YEARLY) }
+    var pick by remember { mutableStateOf(com.smrh.zujaj.billing.Plan.YEARLY) }
     LaunchedEffect(owned) { if (owned) onDismiss() }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         var shown by remember { mutableStateOf(false) }
@@ -1135,13 +1135,13 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
                 Icon(Icons.Rounded.Wallpaper, null, tint = Z.pro, modifier = Modifier.size(34.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(tr("Unlock Wallpapers", "افتح الخلفيات"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(tr("Zujaj Pro", "زجاج برو"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text(tr("Apply your designs to the home & lock screen and save them to your photos.", "طبّق تصميماتك على الشاشة الرئيسية وشاشة القفل واحفظها في الصور."),
+            Text(tr("One subscription for everything: all Pro widgets and the wallpapers.", "اشتراك واحد لكل حاجة: كل ويدجت برو والخلفيات."),
                 color = Z.sub, textAlign = TextAlign.Center, fontSize = 14.sp)
             Spacer(Modifier.height(14.dp))
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Z.tint(0.04f)).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                listOf(tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
+                listOf(tr("Every Pro widget, Live ones included", "كل ويدجت برو، ومعاهم اللايف"), tr("Clock behind the subject (depth effect)", "الساعة ورا الشكل (تأثير العمق)"), tr("Live clock that keeps updating", "ساعة حيّة بتتحدث لوحدها"),
                     tr("Your designs saved to edit again", "تصميماتك محفوظة تعدّل عليها تاني")).forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Check, null, tint = Z.pro, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(10.dp)); Text(it, fontSize = 14.sp, color = Z.text)
@@ -1150,9 +1150,9 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
             val options = listOf(
-                Triple(com.smrh.zujaj.billing.WALL_MONTHLY, tr("Monthly", "شهري"), tr("Billed every month", "بيتجدد كل شهر")),
-                Triple(com.smrh.zujaj.billing.WALL_YEARLY, tr("Yearly", "سنوي"), tr("Billed every year", "بيتجدد كل سنة")),
-                Triple(com.smrh.zujaj.billing.WALL_PRODUCT, tr("Lifetime", "مدى الحياة"), tr("Pay once, yours forever", "تدفع مرة واحدة وتبقى ليك")),
+                Triple(com.smrh.zujaj.billing.Plan.MONTHLY, tr("Monthly", "شهري"), tr("Billed every month", "بيتجدد كل شهر")),
+                Triple(com.smrh.zujaj.billing.Plan.YEARLY, tr("Yearly", "سنوي"), tr("Billed every year", "بيتجدد كل سنة")),
+                Triple(com.smrh.zujaj.billing.Plan.LIFETIME, tr("Lifetime", "مدى الحياة"), tr("Pay once, yours forever", "تدفع مرة واحدة وتبقى ليك")),
             )
             options.forEach { (id, name, sub) ->
                 val on = pick == id
@@ -1174,7 +1174,7 @@ fun WallBuySheet(onReward: () -> Unit = {}, onDismiss: () -> Unit) {
             Spacer(Modifier.height(14.dp))
             PrimaryButton(tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
                 val a = ctx as? android.app.Activity
-                if (a == null || !com.smrh.zujaj.billing.Billing.buyWall(a, pick)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
+                if (a == null || !com.smrh.zujaj.billing.Billing.buy(a, pick)) Toast.makeText(ctx, tr("Google Play isn't ready — try again in a moment", "جوجل بلاي مش جاهز، جرب كمان شوية"), Toast.LENGTH_SHORT).show()
             }
             if (flags.adsOn && flags.adWallPerDay > 0) {
                 val left = remember(adVer) { com.smrh.zujaj.ads.Ads.left() }

@@ -144,7 +144,7 @@ object Prefs {
     var codeGrants: String
         get() = str("code_grants", "pro")
         set(v) = put("code_grants", v)
-    val wallOwned: Boolean get() = (purchasedWall || codeWallUntil > System.currentTimeMillis()) && !Guard.compromised()
+    val wallOwned: Boolean get() = (purchasedWall || codeWallUntil > System.currentTimeMillis() || isPro) && !Guard.compromised()
 
     var proPlan: String
         get() = str("pro_plan", "")

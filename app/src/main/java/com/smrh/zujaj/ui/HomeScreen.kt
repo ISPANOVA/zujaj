@@ -604,6 +604,7 @@ fun DiscoverTab(nav: Nav) {
                 }
             }
         }
+        if (!pro && Prefs.getString("merged_seen") != "1") item(key = "merged") { MergedBanner(gut, onClose = { Prefs.setString("merged_seen", "1") }) { nav.go(Screen.Paywall) } }
         if (com.smrh.zujaj.remote.Flags.freeNow(flags)) item(key = "free") { FreeBanner(flags.freeUntil, gut) }
         if (starter.isNotEmpty()) item(key = "starter") { StarterCard(starter, gut, nav) { starterOff = true } }
         if (flags.notice.isNotBlank() && !flags.noticeOnce) item(key = "notice") {
@@ -1146,5 +1147,51 @@ private fun PromoHost(nav: Nav) {
             if (list.size == 1) nav.go(Screen.Editor(list.first().id)) else nav.go(Screen.Category("promo"))
         }
         TextButton(onClick = { close() }) { Text(tr("Later", "بعدين"), color = Z.sub) }
+    }
+}
+
+
+/** Home-page notice: Pro and the wallpapers subscription are now one subscription. */
+@Composable
+private fun MergedBanner(gut: androidx.compose.ui.unit.Dp, onClose: () -> Unit, onSubscribe: () -> Unit) {
+    var gone by remember { mutableStateOf(false) }
+    androidx.compose.animation.AnimatedVisibility(!gone, exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = gut, vertical = 6.dp).clip(RoundedCornerShape(Rad.l))
+            .background(Brush.linearGradient(listOf(Color(0xFF2A2140), Color(0xFF3A2A1A))))
+            .border(1.dp, Z.pro.copy(alpha = 0.45f), RoundedCornerShape(Rad.l))) {
+            // a soft gold glow in the corner
+            Box(Modifier.matchParentSize().drawBehind {
+                val r = size.height * 1.4f
+                drawCircle(Brush.radialGradient(listOf(Color(0xFFE7B75F).copy(alpha = 0.22f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.9f, 0f), radius = r), radius = r, center = androidx.compose.ui.geometry.Offset(size.width * 0.9f, 0f))
+            })
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Z.pro.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.WorkspacePremium, null, tint = Z.pro, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("One subscription for everything", "اشتراك واحد لكل حاجة"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Text(tr("Pro now includes the wallpapers too", "برو بقى فيه الخلفيات كمان"), color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                    }
+                    Box(Modifier.size(30.dp).clip(CircleShape).clickable { gone = true; onClose() }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Close, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(tr("All Pro widgets", "كل ويدجت برو"), tr("Wallpapers", "الخلفيات"), tr("No ads", "من غير إعلانات")).forEach {
+                        Text("✓ $it", color = Color(0xFFE7C77A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.07f)).padding(horizontal = 9.dp, vertical = 4.dp))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(50))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFFE7B75F), Color(0xFFF2D28C))))
+                    .clickable(onClick = onSubscribe), contentAlignment = Alignment.Center) {
+                    Text(tr("Subscribe now", "اشترك الآن"), color = Color(0xFF1A140A), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                }
+            }
+        }
     }
 }
