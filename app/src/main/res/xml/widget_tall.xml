@@ -9,8 +9,8 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_loading"
-    android:previewImage="@drawable/preview_large"
+    android:previewImage="@drawable/preview_tall"
     android:description="@string/w_desc"
     android:widgetCategory="home_screen|keyguard"
     android:configure="com.smrh.zujaj.ui.ConfigureActivity"
-    android:widgetFeatures="reconfigurable|configuration_optional" />
+    android:widgetFeatures="reconfigurable" />

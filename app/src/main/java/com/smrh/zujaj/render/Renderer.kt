@@ -98,7 +98,9 @@ object Renderer {
         val want = aspect * kotlin.math.exp(lean)
         val rw: Float; val rh: Float
         if (availW / availH > want) { rh = availH; rw = availH * want } else { rw = availW; rh = availW / want }
-        val inner = render(ctx, bgCtx.cfg.copy(bg = false, dayTint = false), rw, rh, false, scale, bake = bake)
+        // designs that draw their own card (rose, night, photos…) keep it; for the rest the card is the full-size one above
+        val own = style.id in OWN_BG || style.id in PHOTO_BG || style.id.startsWith("rose_") || style.id.startsWith("dark_")
+        val inner = render(ctx, if (own) bgCtx.cfg.copy(dayTint = false) else bgCtx.cfg.copy(bg = false, dayTint = false), rw, rh, false, scale, bake = bake)
         val ox = (bw - inner.bitmap.width) / 2f
         val oy = (bh - inner.bitmap.height) / 2f
         Canvas(bmp).drawBitmap(inner.bitmap, ox, oy, Paint(Paint.FILTER_BITMAP_FLAG))

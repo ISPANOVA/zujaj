@@ -110,6 +110,9 @@ object WidgetUpdater {
 
     fun update(ctx: Context, id: Int) {
         val mgr = AppWidgetManager.getInstance(ctx)
+        // added by hand from the launcher's widget list (no design chosen yet): a "tap to choose" card,
+        // never a random design
+        if (Prefs.widgetConfig(id) == null && !Prefs.hasPending()) { runCatching { mgr.updateAppWidget(id, chooser(ctx, id)) }; return }
         val cfg = configFor(ctx, id)
         val style = Catalog.byId(cfg.styleId) ?: return
         val (wDp, hDp) = sizeDp(ctx, id, style.shape)
@@ -119,6 +122,49 @@ object WidgetUpdater {
         runCatching { mgr.updateAppWidget(id, views) }.onFailure {
             runCatching { mgr.updateAppWidget(id, build(ctx, id, cfg, style, wDp * 0.7f, hDp * 0.7f)) }
         }
+    }
+
+    /** "Tap to choose a widget": shown until a design is picked for a widget added from the launcher. */
+    private fun chooser(ctx: Context, id: Int): RemoteViews {
+        val shape = shapeOf(ctx, id)
+        val (wDp, hDp) = sizeDp(ctx, id, shape)
+        val d = minOf(ctx.resources.displayMetrics.density, 2.5f)
+        val w = (wDp * d).toInt().coerceAtLeast(60); val h = (hDp * d).toInt().coerceAtLeast(60)
+        val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(b)
+        val rad = minOf(w, h) * 0.16f
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), 0xF01B1830.toInt(), 0xF02A1F12.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        c.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), rad, rad, p)
+        p.shader = null; p.style = android.graphics.Paint.Style.STROKE; p.strokeWidth = d * 1.2f; p.color = 0x66E7B75F
+        c.drawRoundRect(p.strokeWidth, p.strokeWidth, w - p.strokeWidth, h - p.strokeWidth, rad, rad, p)
+        val s = minOf(w, h)
+        val wide = w > h * 1.6f
+        val cx = if (wide) w * 0.2f else w / 2f; val cy = if (wide) h / 2f else h * 0.4f
+        p.style = android.graphics.Paint.Style.FILL; p.color = 0x33E7B75F; c.drawCircle(cx, cy, s * 0.17f, p)
+        p.color = 0xFFE7B75F.toInt(); p.strokeWidth = s * 0.035f; p.style = android.graphics.Paint.Style.STROKE; p.strokeCap = android.graphics.Paint.Cap.ROUND
+        c.drawLine(cx - s * 0.07f, cy, cx + s * 0.07f, cy, p); c.drawLine(cx, cy - s * 0.07f, cx, cy + s * 0.07f, p)
+        val ar = Prefs.isArabicUi
+        val t = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt(); textAlign = if (wide) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.CENTER
+            typeface = runCatching { androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.cairo_bold) }.getOrNull()
+            textSize = s * (if (wide) 0.16f else 0.11f)
+        }
+        val line1 = if (ar) "اضغط واختار الويدجت" else "Tap to choose a widget"
+        val line2 = if (ar) "زجاج" else "Zujaj"
+        val tx = if (wide) w * 0.38f else w / 2f
+        val maxW = if (wide) w * 0.58f else w * 0.88f
+        if (t.measureText(line1) > maxW) t.textSize *= maxW / t.measureText(line1)
+        c.drawText(line1, tx, if (wide) h * 0.48f else h * 0.72f, t)
+        t.textSize *= 0.75f; t.color = 0xFFE7B75F.toInt()
+        c.drawText(line2, tx, if (wide) h * 0.72f else h * 0.86f, t)
+        val rv = RemoteViews(ctx.packageName, R.layout.widget_root)
+        resetSlots(rv)
+        rv.setImageViewBitmap(R.id.bg, b)
+        val pick = Intent(ctx, com.smrh.zujaj.ui.AppActivity::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).setData(android.net.Uri.parse("zujaj://pick/$id"))
+        rv.setOnClickPendingIntent(R.id.bg, activity(ctx, id * 100 + 96, pick))
+        return rv
     }
 
     /** Lock-screen hosts don't load app fonts, so Arabic-Indic digits must be drawn into the image. */

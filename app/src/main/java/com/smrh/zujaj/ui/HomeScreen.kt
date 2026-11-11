@@ -1004,9 +1004,11 @@ fun PickScreen(nav: Nav, s: Screen.Pick) {
     var chip by rememberSaveable { mutableStateOf("all") }
     val current = Prefs.widgetConfig(s.widgetId)?.styleId
     val all = Flags.visible()
-    val cats = Cat.values().filter { c -> all.any { it.cat == c } }
-    val list = (if (chip == "all") all else all.filter { it.cat.name == chip })
-        .sortedWith(compareBy<WidgetStyle>({ it.id != current }, { it.shape != s.shape }))
+    // only designs made for the size the person picked on their home screen (any size if none exists)
+    val sized = all.filter { it.shape == s.shape }.ifEmpty { all }
+    val cats = Cat.values().filter { c -> sized.any { it.cat == c } }
+    val list = (if (chip == "all") sized else sized.filter { it.cat.name == chip })
+        .sortedWith(compareBy<WidgetStyle>({ it.id != current }))
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Choose any widget", "اختار أي ويدجت"), null)
         Text(

@@ -172,6 +172,8 @@ object Prefs {
     fun setPending(token: String, cfg: WidgetConfig) {
         wp.edit().putString("pending_$token", cfg.toJson()).putString("pending_last", token).apply()
     }
+    /** A design is waiting to be placed (the app asked the launcher to pin it). */
+    fun hasPending(): Boolean = wp.getString("pending_" + (wp.getString("pending_last", "") ?: ""), null) != null
     fun takePending(token: String?): WidgetConfig? {
         val key = "pending_" + (token ?: wp.getString("pending_last", "") ?: "")
         val c = WidgetConfig.fromJson(wp.getString(key, null))

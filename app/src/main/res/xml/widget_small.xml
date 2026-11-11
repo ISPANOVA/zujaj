@@ -13,4 +13,4 @@
     android:description="@string/w_desc"
     android:widgetCategory="home_screen|keyguard"
     android:configure="com.smrh.zujaj.ui.ConfigureActivity"
-    android:widgetFeatures="reconfigurable|configuration_optional" />
+    android:widgetFeatures="reconfigurable" />
