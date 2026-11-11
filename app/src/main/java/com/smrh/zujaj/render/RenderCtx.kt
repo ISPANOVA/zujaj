@@ -153,7 +153,7 @@ class RenderCtx(
         // a resized widget: text grows a bit with the long side too, so a short or narrow slot doesn't make it tiny
         val a = w / style.shape.dw; val b = h / style.shape.dh
         val lo = min(a, b); val hi = kotlin.math.max(a, b)
-        lo * kotlin.math.min((hi / lo).toDouble().pow(0.3).toFloat(), 1.35f)
+        lo * kotlin.math.min((hi / lo).toDouble().pow(0.5).toFloat(), 1.7f)
     }
     val pad: Float = cfg.padding * u
     val now: ZonedDateTime get() = data.now
