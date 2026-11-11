@@ -452,9 +452,6 @@ fun WidgetAddedHost(nav: Nav) {
         if (cfg != null) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Rad.l)).background(Backdrops.brush(1)).padding(16.dp), contentAlignment = Alignment.Center) {
             WidgetPreview(cfg, when (st?.shape) { com.smrh.zujaj.catalog.Shape.SMALL -> Modifier.fillMaxWidth(0.5f); com.smrh.zujaj.catalog.Shape.TALL -> Modifier.fillMaxWidth(0.36f); else -> Modifier.fillMaxWidth() }, density = 2f)
         }
-        if (android.os.Build.VERSION.SDK_INT >= 31) Text(tr("Tip: long-press the widget on your screen → ✏️ to edit it any time, without opening the app.",
-            "نصيحة: دوس مطوّل على الويدجت على الشاشة ← ✏️ وعدّلها في أي وقت من غير ما تفتح التطبيق."), color = Z.sub, fontSize = 12.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp))
         PrimaryButton(tr("Add another widget", "ضيف ويدجت تانية"), Modifier.fillMaxWidth()) { close(); nav.reset(Screen.Home) }
         if (cfg != null) {
             val acc = LocalAccent.current
