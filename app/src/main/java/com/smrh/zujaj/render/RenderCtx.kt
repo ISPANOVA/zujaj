@@ -1,5 +1,6 @@
 package com.smrh.zujaj.render
 
+import kotlin.math.pow
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -148,7 +149,12 @@ class RenderCtx(
     val hits = mutableListOf<Hit>()
 
     /** One "design unit": scales the nominal design (dp) to the real widget size. */
-    val u: Float = min(w / style.shape.dw, h / style.shape.dh)
+    val u: Float = run {
+        // a resized widget: text grows a bit with the long side too, so a short or narrow slot doesn't make it tiny
+        val a = w / style.shape.dw; val b = h / style.shape.dh
+        val lo = min(a, b); val hi = kotlin.math.max(a, b)
+        lo * kotlin.math.min((hi / lo).toDouble().pow(0.3).toFloat(), 1.35f)
+    }
     val pad: Float = cfg.padding * u
     val now: ZonedDateTime get() = data.now
     val today: LocalDate get() = now.toLocalDate()
