@@ -28,7 +28,7 @@ class ResizeShotsTest {
         for (st in Catalog.all) {
             val cfg = st.defaultConfig().copy(language = Lang.AR)
             val w = st.shape.dw; val h = st.shape.dh
-            val slots = listOf(w to h, (w * 0.62f) to (h * 1.15f), (w * 1.0f) to (h * 0.62f))
+            val slots = listOf(w to h, (w * 0.55f) to (h * 1.3f), w to (h * 0.55f), w to (h * 1.7f))
             slots.forEachIndexed { k, (sw, sh) ->
                 runCatching {
                     val b = Renderer.renderFitted(ctx, cfg, sw, sh, density = 1.5f).bitmap

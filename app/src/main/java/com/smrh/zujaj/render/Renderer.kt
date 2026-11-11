@@ -82,6 +82,8 @@ object Renderer {
         val aspect = style.shape.dw / style.shape.dh
         val slot = wDp / hDp
         if (kotlin.math.abs(kotlin.math.ln(aspect / slot)) <= 0.18f) return render(ctx, cfg, wDp, hDp, false, density, bake = bake)
+        // designs that are one card (rose, night, photo…) stretch to the whole slot, however it is resized
+        if (style.id in OWN_BG || style.id in PHOTO_BG || style.id.startsWith("rose_") || style.id.startsWith("dark_")) return render(ctx, cfg, wDp, hDp, false, density, bake = bake)
         var scale = density
         val longest = max(wDp, hDp) * scale
         if (longest > MAX_SIDE) scale *= MAX_SIDE / longest
@@ -94,7 +96,7 @@ object Renderer {
         val pad = 6f
         val availW = wDp - 2 * pad; val availH = hDp - 2 * pad
         // lean towards the slot's shape (up to ~1.6×) so a resized widget fills its space instead of shrinking into the middle
-        val lean = kotlin.math.ln(slot / aspect).coerceIn(-0.3f, 0.3f)
+        val lean = kotlin.math.ln(slot / aspect).coerceIn(-0.55f, 0.55f)
         val want = aspect * kotlin.math.exp(lean)
         val rw: Float; val rh: Float
         if (availW / availH > want) { rh = availH; rw = availH * want } else { rw = availW; rh = availW / want }
