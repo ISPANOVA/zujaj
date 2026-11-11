@@ -1155,7 +1155,7 @@ object LiveR {
             val zz = zone(r); val wideW = r.style.shape == Shape.WIDE || r.style.shape == Shape.BANNER
             val x0 = if (wideW) zz.left - zz.width() * 0.15f + g.nextFloat() * zz.width() * 1.3f else r.w * g.nextFloat()
             val w0 = (if (wideW) zz.width() * (0.45f + g.nextFloat() * 0.3f) else r.w * (0.28f + g.nextFloat() * 0.22f)); val x = x0 + (if (i % 2 == 0) 1 else -1) * r.w * 0.025f * wave(t, 1, i * 0.2f)
-            val y = r.h * (0.12f + g.nextFloat() * 0.4f)
+            val y = r.h * (if (wideW) 0.12f + g.nextFloat() * 0.4f else 0.08f + g.nextFloat() * 0.22f)
             val col = if (dark) mix(0xFF59657A.toInt(), Color.WHITE, 0.15f * i) else Color.WHITE
             val al = (if (dark) 0.55f else 0.75f) * (0.6f + 0.4f * (i.toFloat() / n))
             val p = Path().apply {

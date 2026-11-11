@@ -70,7 +70,7 @@ object Kit {
 
     fun weather(r: RenderCtx): Weather {
         val s = WeatherRepo.sample
-        val w = WeatherRepo.main() ?: return s.copy(city = Prefs.cityName.ifBlank { r.t("Cairo", "القاهرة") })
+        val w = WeatherRepo.main() ?: return s.copy(city = Prefs.cityName.ifBlank { r.t("Cairo", "القاهرة") }.let { c -> if (r.ar && c.none { it in '\u0600'..'\u06FF' }) arCity(c) else c })
         val full = if (w.days.isEmpty() || w.hours.isEmpty()) w.copy(hours = if (w.hours.isEmpty()) s.hours else w.hours, days = if (w.days.isEmpty()) s.days else w.days) else w
         // Arabic widget: never an English city name (the forecast service may return one)
         return if (r.ar && full.city.none { it in '\u0600'..'\u06FF' }) full.copy(city = arCity(full.city)) else full
