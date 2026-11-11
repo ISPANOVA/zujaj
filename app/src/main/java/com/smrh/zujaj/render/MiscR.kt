@@ -124,7 +124,7 @@ object PeopleR {
     fun favorite(r: RenderCtx) {
         val rad = min(r.w, r.h) * 0.27f * r.s1
         avatar(r, 0, r.w / 2, r.h * 0.42f, rad)
-        val name = r.cfg.contacts.firstOrNull()?.name ?: r.t("Add person", "أضف شخص")
+        val name = r.cfg.contacts.firstOrNull()?.name ?: r.t("Add person", "ضيف شخص")
         r.text(name, r.w / 2, r.h * 0.84f, 12 * r.u * r.s2, r.c1, r.sansMed, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
     }
 }
@@ -264,7 +264,7 @@ object SystemR {
 // =====================================================================================  QUOTES
 object QuoteR {
     fun custom(r: RenderCtx) {
-        val text = r.cfg.text.ifBlank { r.t("Your favorite quote here", "اكتب اقتباسك المفضل هنا") }
+        val text = r.cfg.text.ifBlank { r.t("Your favorite quote here", "اكتب الجملة اللي بتحبها هنا") }
         val author = r.cfg.author.ifBlank { r.t("Author Name", "اسم الكاتب") }
         r.text("”", r.w - r.pad - 22 * r.u, r.h - r.pad - 4 * r.u, 70 * r.u, withAlpha(r.c1, 50), F.PLAYFAIR, Paint.Align.CENTER)
         r.paragraph(text, RectF(r.pad + 10 * r.u, r.pad, r.w - r.pad - 10 * r.u, r.h * 0.66f), 17 * r.u * r.s1, r.c1, if (r.ar) F.AMIRI else F.SANS_MED)
@@ -272,7 +272,7 @@ object QuoteR {
     }
 
     fun text(r: RenderCtx) {
-        val t = r.cfg.text.ifBlank { r.t("Write anything you want right on your home screen", "اكتب أي شيء تريده على شاشتك الرئيسية") }
+        val t = r.cfg.text.ifBlank { r.t("Write anything you want right on your home screen", "اكتب أي حاجة عايزها على شاشتك") }
         r.paragraph(t, RectF(r.pad + 8 * r.u, r.pad, r.w - r.pad - 8 * r.u, r.h - r.pad), 16 * r.u * r.s1, r.c1, r.sansMed)
     }
 
@@ -342,7 +342,7 @@ object CounterR {
         return ny.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 
-    private fun title(r: RenderCtx) = r.cfg.title.ifBlank { if (r.cfg.targetMillis > 0) r.t("Add Title", "أضف عنواناً") else r.t("New Year", "السنة الجديدة") }
+    private fun title(r: RenderCtx) = r.cfg.title.ifBlank { if (r.cfg.targetMillis > 0) r.t("Add Title", "ضيف عنوان") else r.t("New Year", "السنة الجديدة") }
 
     private fun daysLeft(r: RenderCtx): Long {
         val t = java.time.Instant.ofEpochMilli(target(r)).atZone(ZoneId.systemDefault()).toLocalDate()
@@ -382,7 +382,7 @@ object CounterR {
     }
 
     fun counter(r: RenderCtx) {
-        r.text(r.cfg.title.ifBlank { r.t("Add Title", "أضف عنواناً") }, r.w / 2, r.h * 0.2f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
+        r.text(r.cfg.title.ifBlank { r.t("Add Title", "ضيف عنوان") }, r.w / 2, r.h * 0.2f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
         r.text(r.n(r.cfg.counter.toString().padStart(3, '0')), r.w / 2, r.h * 0.46f, 30 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
         incBar(r, RectF(r.pad, r.h * 0.68f, r.w - r.pad, r.h - r.pad * 0.8f))
         val m = RectF(r.w - r.pad - 22 * r.u, r.pad * 0.5f, r.w - r.pad * 0.5f, r.pad * 0.5f + 22 * r.u)
@@ -391,7 +391,7 @@ object CounterR {
     }
 
     fun counterWide(r: RenderCtx) {
-        r.text(r.cfg.title.ifBlank { r.t("Add Title", "أضف عنواناً") }, r.w / 2, r.h * 0.2f, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
+        r.text(r.cfg.title.ifBlank { r.t("Add Title", "ضيف عنوان") }, r.w / 2, r.h * 0.2f, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
         r.text(r.n(r.cfg.counter.toString().padStart(3, '0')), r.w / 2, r.h * 0.46f, 34 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.CENTER)
         incBar(r, RectF(r.pad, r.h * 0.7f, r.w - r.pad, r.h - r.pad * 0.7f))
         val m = RectF(r.w - r.pad - 26 * r.u, r.pad * 0.5f, r.w - r.pad * 0.5f, r.pad * 0.5f + 26 * r.u)

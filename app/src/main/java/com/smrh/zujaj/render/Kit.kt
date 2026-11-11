@@ -57,10 +57,23 @@ object Kit {
 
     fun battery(r: RenderCtx): Int = if (r.preview) 85 else runCatching { SystemRepo.read(r.context).battery }.getOrDefault(0)
 
+    private val arCities = mapOf("cairo" to "القاهرة", "giza" to "الجيزة", "alexandria" to "الإسكندرية", "dubai" to "دبي", "riyadh" to "الرياض", "jeddah" to "جدة",
+        "mecca" to "مكة", "makkah" to "مكة", "medina" to "المدينة", "london" to "لندن", "paris" to "باريس", "new york" to "نيويورك", "doha" to "الدوحة",
+        "kuwait" to "الكويت", "amman" to "عمّان", "beirut" to "بيروت", "istanbul" to "إسطنبول", "abu dhabi" to "أبوظبي", "my location" to "موقعي", "my city" to "مدينتي")
+    /** An Arabic name for a city the forecast gave in English (Prefs' own name first, then a small table). */
+    fun arCity(en: String): String {
+        arCities[en.trim().lowercase()]?.let { return it }
+        // the forecast for the home city: use the Arabic name the phone gave for it
+        val own = Prefs.cityName
+        return if (own.any { it in '\u0600'..'\u06FF' } && en.isNotBlank() && com.smrh.zujaj.data.WeatherRepo.main()?.city == en) own else en
+    }
+
     fun weather(r: RenderCtx): Weather {
         val s = WeatherRepo.sample
         val w = WeatherRepo.main() ?: return s.copy(city = Prefs.cityName.ifBlank { r.t("Cairo", "القاهرة") })
-        return if (w.days.isEmpty() || w.hours.isEmpty()) w.copy(hours = if (w.hours.isEmpty()) s.hours else w.hours, days = if (w.days.isEmpty()) s.days else w.days) else w
+        val full = if (w.days.isEmpty() || w.hours.isEmpty()) w.copy(hours = if (w.hours.isEmpty()) s.hours else w.hours, days = if (w.days.isEmpty()) s.days else w.days) else w
+        // Arabic widget: never an English city name (the forecast service may return one)
+        return if (r.ar && full.city.none { it in '\u0600'..'\u06FF' }) full.copy(city = arCity(full.city)) else full
     }
     fun temp(r: RenderCtx, t: Double) = r.n(WeatherRepo.fmt(t))
 

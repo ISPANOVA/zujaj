@@ -96,9 +96,9 @@ object DigitalR {
         val cy = r.h / 2
         val left = r.pad + 12 * r.u
         val right = r.w - r.pad - 12 * r.u
-        r.text(a.name, left, cy - 14 * r.u, 11 * r.u * r.s2, r.c2, r.sans, maxW = r.w * 0.3f)
+        r.text(cityName(r, a.name), left, cy - 14 * r.u, 11 * r.u * r.s2, r.c2, r.sans, maxW = r.w * 0.3f)
         r.liveTime(r.hm(), left, cy + 9 * r.u, 22 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.LEFT, z(a), sample = "00:00")
-        r.text(b.name, right, cy - 14 * r.u, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.3f)
+        r.text(cityName(r, b.name), right, cy - 14 * r.u, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.3f)
         r.liveTime(r.hm(), right, cy + 9 * r.u, 22 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.RIGHT, z(b), sample = "00:00")
         val cr = 20 * r.u
         r.circle(r.w / 2, cy, cr, withAlpha(r.c1, 34))
@@ -111,7 +111,7 @@ object DigitalR {
         r.canvas.drawLine(r.w / 2, r.h * 0.22f, r.w / 2, r.h * 0.78f, r.strokePaint(withAlpha(r.c1, 40), r.u))
         for ((i, c) in listOf(a, b).withIndex()) {
             val cx = r.w * (0.25f + 0.5f * i)
-            r.text(c.name, cx, cy - 34 * r.u, 13 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w * 0.4f)
+            r.text(cityName(r, c.name), cx, cy - 34 * r.u, 13 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w * 0.4f)
             r.liveTime(r.hm(), cx, cy + 2 * r.u, 34 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.CENTER, z(c), maxW = r.w * 0.42f, sample = "00:00")
             if (!r.cfg.hour24) r.liveTime("a", cx, cy + 32 * r.u, 11 * r.u, LiveFont.SANS, r.c2, Paint.Align.CENTER, z(c))
         }
@@ -120,10 +120,10 @@ object DigitalR {
     fun worldStack(r: RenderCtx) {
         val (a, b) = cities(r, 2)
         val x = r.pad + 4 * r.u
-        r.text(a.name, x, r.h * 0.17f, 10 * r.u * r.s2, r.c2, r.sans, maxW = r.w - 2 * x)
+        r.text(cityName(r, a.name), x, r.h * 0.17f, 10 * r.u * r.s2, r.c2, r.sans, maxW = r.w - 2 * x)
         r.liveTime(r.hm(), x, r.h * 0.34f, 30 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.LEFT, z(a), sample = "00:00")
         r.canvas.drawLine(x, r.h * 0.52f, r.w - x, r.h * 0.52f, r.strokePaint(withAlpha(r.c1, 34), r.u))
-        r.text(b.name, x, r.h * 0.64f, 10 * r.u * r.s2, r.c2, r.sans, maxW = r.w - 2 * x)
+        r.text(cityName(r, b.name), x, r.h * 0.64f, 10 * r.u * r.s2, r.c2, r.sans, maxW = r.w - 2 * x)
         r.liveTime(r.hm(), x, r.h * 0.81f, 30 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.LEFT, z(b), sample = "00:00")
     }
 
@@ -134,7 +134,7 @@ object DigitalR {
             val cx = r.pad + colW * (i + 0.5f)
             val tile = RectF(cx - colW / 2 + 4 * r.u, r.h * 0.16f, cx + colW / 2 - 4 * r.u, r.h * 0.84f)
             r.tile(tile, 18 * r.u, 16)
-            r.text(c.name, cx, r.h * 0.32f, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = colW - 14 * r.u)
+            r.text(cityName(r, c.name), cx, r.h * 0.32f, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = colW - 14 * r.u)
             r.liveTime(r.hm(), cx, r.h * 0.54f, 26 * r.u * r.s1, LiveFont.SANS, r.c1, Paint.Align.CENTER, z(c), maxW = colW - 16 * r.u, sample = "00:00")
             r.liveTime("EEE", cx, r.h * 0.72f, 10 * r.u, LiveFont.SANS, r.c2, Paint.Align.CENTER, z(c))
         }
@@ -164,4 +164,6 @@ object DigitalR {
         val label = "${com.smrh.zujaj.data.Calendars.dayName(d, r.ar)} · ${r.n(d.dayOfMonth)} ${com.smrh.zujaj.data.Calendars.monthName(d.monthValue, r.ar)}"
         r.text(label, r.w / 2, r.h * 0.8f, 12 * r.u * r.s2, withAlpha(r.c1, 200), r.sansMed, Paint.Align.CENTER, spacing = 0.08f)
     }
+
+    private fun cityName(r: RenderCtx, n: String) = if (r.ar && n.none { it in '\u0600'..'\u06FF' }) Kit.arCity(n) else n
 }

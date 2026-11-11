@@ -297,7 +297,7 @@ object Catalog {
         WidgetStyle("counter", Cat.COUNTERS, "Counter", "عداد", S, feats = setOf(Feat.TITLE, Feat.COLOR2), upd = none) { CounterR.counter(it) },
         WidgetStyle("countdown_line", Cat.COUNTERS, "Countdown Line", "عد تنازلي بخط", W, pro = true, feats = setOf(Feat.TITLE, Feat.TARGET_DATE, Feat.COLOR2)) { CounterR.countdownLine(it) },
         WidgetStyle("counter_wide", Cat.COUNTERS, "Counter Wide", "عداد عريض", W, pro = true, feats = setOf(Feat.TITLE, Feat.COLOR2), upd = none) { CounterR.counterWide(it) },
-        WidgetStyle("habit_week", Cat.COUNTERS, "Habit Tracker", "متتبع العادات", B, isNew = true, feats = setOf(Feat.TITLE, Feat.ACCENT), defaults = { it.copy(title = "Habit") }) { CounterR.habit(it) },
+        WidgetStyle("habit_week", Cat.COUNTERS, "Habit Tracker", "متتبع العادات", B, isNew = true, feats = setOf(Feat.TITLE, Feat.ACCENT), defaults = { it.copy(title = "") }) { CounterR.habit(it) },
         WidgetStyle("year_progress", Cat.COUNTERS, "Year Progress", "تقدم السنة", S, isNew = true, feats = setOf(Feat.ACCENT)) { CounterR.yearProgress(it) },
 
         // ------------------------------------------------------------------ APPS
