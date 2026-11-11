@@ -783,7 +783,7 @@ object LiveR {
 
     fun weatherNow(r: RenderCtx) {
         val b = box(r); val w = Kit.weather(r)
-        val city = w.city.ifBlank { Prefs.cityName }
+        val city = w.city.ifBlank { Prefs.cityName }.let { if (r.ar) Kit.arCity(it) else it }
         if (small(r)) {
             r.textTight(Kit.temp(r, w.temp), b.centerX(), b.top + b.height() * 0.4f, b.height() * 0.46f * r.s1, r.c1, r.sansBold, maxW = b.width())
             r.text(city, b.centerX(), b.top + b.height() * 0.84f, 9 * r.u * r.s2, r.c2, r.sansBold, Paint.Align.CENTER, maxW = b.width())

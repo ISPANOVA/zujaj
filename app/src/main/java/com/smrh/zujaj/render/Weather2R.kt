@@ -206,7 +206,7 @@ object Weather2R {
         icon(r, w0.cond, w0.night, r.pad + 20 * r.u, r.h * 0.26f, 26 * r.u)
         r.text(t(r, w0.temp), r.pad + 4 * r.u, r.h * 0.58f, 24 * r.u * r.s1, r.c1, r.sansBold)
         r.text(WeatherRepo.condName(w0.cond, r.ar), r.pad + 4 * r.u, r.h * 0.74f, 8.5f * r.u, r.c2, r.sans)
-        r.text(w0.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }, r.pad + 4 * r.u, r.h * 0.86f, 8.5f * r.u, r.c1, r.sansBold, maxW = r.w * 0.35f)
+        r.text(w0.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.let { if (r.ar) Kit.arCity(it) else it }, r.pad + 4 * r.u, r.h * 0.86f, 8.5f * r.u, r.c1, r.sansBold, maxW = r.w * 0.35f)
         val ds = days(r, 5).drop(1).take(4)
         val l = r.w * 0.42f
         val rowH = (r.h - 2 * r.pad * 0.7f) / ds.size

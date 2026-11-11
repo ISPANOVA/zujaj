@@ -10,14 +10,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 object WeatherR {
-    fun main(r: RenderCtx): Weather = WeatherRepo.main() ?: WeatherRepo.sample.copy(city = Prefs.cityName.ifBlank { WeatherRepo.sample.city })
+    fun main(r: RenderCtx): Weather = (WeatherRepo.main() ?: WeatherRepo.sample.copy(city = Prefs.cityName.ifBlank { WeatherRepo.sample.city })).let { if (r.ar) it.copy(city = Kit.arCity(it.city)) else it }
 
     fun second(r: RenderCtx): Weather {
         val c = r.cfg.cities.firstOrNull() ?: return WeatherRepo.sample2.copy(city = r.t("Dubai", "دبي"))
-        return WeatherRepo.cached(c.lat, c.lng) ?: WeatherRepo.sample2.copy(city = c.name, symbol = "cloudy")
+        return (WeatherRepo.cached(c.lat, c.lng) ?: WeatherRepo.sample2.copy(city = c.name, symbol = "cloudy")).let { if (r.ar) it.copy(city = Kit.arCity(it.city)) else it }
     }
 
-    private fun city(r: RenderCtx, w: Weather) = w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.ifBlank { r.t("My location", "موقعي") }
+    private fun city(r: RenderCtx, w: Weather) = (if (r.ar) Kit.arCity(w.city) else w.city).ifBlank { com.smrh.zujaj.data.Prefs.cityName }.ifBlank { r.t("My location", "موقعي") }
     private fun temp(r: RenderCtx, t: Double) = r.n(WeatherRepo.fmt(t))
 
     fun compactBanner(r: RenderCtx) {

@@ -451,7 +451,7 @@ object Prayer2R {
         val w = Kit.weather(r)
         r.textTight(Kit.temp(r, w.temp), r.pad + 34 * r.u, r.h * 0.26f, 34 * r.u * r.s1, r.c1, r.sansBold)
         r.text(com.smrh.zujaj.data.WeatherRepo.condName(w.cond, r.ar), r.pad + 4 * r.u, r.h * 0.5f, 14 * r.u, r.c1, r.sansMed, spacing = if (r.ar) 0f else 0.12f)
-        r.text(w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }, r.w - r.pad - 4 * r.u, r.h * 0.16f, 15 * r.u, withAlpha(r.c1, 120), r.sansMed, Paint.Align.RIGHT, maxW = r.w * 0.4f)
+        r.text(w.city.ifBlank { com.smrh.zujaj.data.Prefs.cityName }.let { if (r.ar) Kit.arCity(it) else it }, r.w - r.pad - 4 * r.u, r.h * 0.16f, 15 * r.u, withAlpha(r.c1, 120), r.sansMed, Paint.Align.RIGHT, maxW = r.w * 0.4f)
         val d = Kit.day(r)
         val rise = d.list.first { it.key == "sunrise" }.time
         val set = d.list.first { it.key == "maghrib" }.time
