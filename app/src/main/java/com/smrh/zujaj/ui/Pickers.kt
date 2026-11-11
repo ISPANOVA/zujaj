@@ -134,7 +134,7 @@ fun AppsPickerDialog(initial: List<AppRef>, max: Int, onDismiss: () -> Unit, onD
     LaunchedEffect(Unit) { apps = loadApps(ctx) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(0.94f).fillMaxHeight(0.85f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp)) {
-            Text(tr("Choose apps", "اختر التطبيقات") + "  (${chosen.size}/$max)", style = MaterialTheme.typography.titleMedium)
+            Text(tr("Choose apps", "اختار التطبيقات") + "  (${chosen.size}/$max)", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(q, { q = it }, singleLine = true, placeholder = { Text(tr("Search", "بحث")) }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
             LazyColumn(Modifier.weight(1f)) {
                 items(apps.filter { q.isBlank() || it.ref.label.contains(q, true) }) { a ->
@@ -166,7 +166,7 @@ fun CityPickerDialog(onDismiss: () -> Unit, onPick: (City) -> Unit) {
     val ar = Prefs.isArabicUi
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(RoundedCornerShape(Rad.xl)).background(Z.surface).padding(16.dp)) {
-            Text(tr("Choose a city", "اختر مدينة"), style = MaterialTheme.typography.titleMedium)
+            Text(tr("Choose a city", "اختار مدينة"), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(q, { q = it }, singleLine = true, placeholder = { Text(tr("Search", "بحث")) }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
                 items(Cities.list.filter { q.isBlank() || it.en.contains(q, true) || it.ar.contains(q) }) { c ->

@@ -228,7 +228,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r.values.any { it }) scope.launch {
             val ok = locate(ctx)
-            Toast.makeText(ctx, if (ok) tr("Location updated ✓", "تم تحديث الموقع ✓") else tr("Turn on location and try again", "شغّل الموقع وحاول مرة أخرى"), Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, if (ok) tr("Location updated ✓", "الموقع اتحدّث ✓") else tr("Turn on location and try again", "شغّل الموقع وحاول مرة أخرى"), Toast.LENGTH_SHORT).show()
         }
     }
     val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -390,7 +390,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 Divider()
                 RowBase(tr("Refresh all widgets", "تحديث كل الويدجت"), onClick = {
                     scope.launch(Dispatchers.IO) { Scheduler.refreshWeatherIfNeeded(ctx, true); WidgetUpdater.updateAll(ctx) }
-                    Toast.makeText(ctx, tr("Refreshing…", "جارٍ التحديث…"), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, tr("Refreshing…", "بيتحدّث…"), Toast.LENGTH_SHORT).show()
                 }, icon = Icons.Rounded.Refresh, iconColor = teal) {}
             }
             }
@@ -402,7 +402,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
                 Divider()
                 RowBase(tr("Redeem code", "استخدام كود"), sub = codeStatus(), onClick = { showRedeem = true }, icon = Icons.Rounded.Redeem, iconColor = gold) { Chevron() }
                 Divider()
-                RowBase(tr("Restore purchases", "استعادة المشتريات"), onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking…", "جارٍ التحقق…"), Toast.LENGTH_SHORT).show() },
+                RowBase(tr("Restore purchases", "استعادة المشتريات"), onClick = { Billing.restore(); Toast.makeText(ctx, tr("Checking…", "بنتأكد…"), Toast.LENGTH_SHORT).show() },
                     icon = Icons.Rounded.Restore, iconColor = teal) {}
                 Divider()
                 RowBase(tr("Manage subscription", "إدارة الاشتراك"), onClick = {
@@ -440,7 +440,7 @@ fun SettingsScreen(nav: Nav, asTab: Boolean = false) {
     if (showLoc) ZDialog(Icons.Rounded.MyLocation, tr("Your location", "موقعك"),
         tr("Used for prayer times and weather. It never leaves your phone except to fetch the forecast.", "بنستخدمه لمواقيت الصلاة والطقس بس، ومش بيخرج من تليفونك غير عشان نجيب الطقس."),
         iconColor = Color(0xFF13B5A8), onDismiss = { showLoc = false }) {
-        PrimaryButton(tr("Detect automatically", "حدّد تلقائياً"), Modifier.fillMaxWidth(), icon = Icons.Rounded.MyLocation) {
+        PrimaryButton(tr("Detect automatically", "حدّد لوحده"), Modifier.fillMaxWidth(), icon = Icons.Rounded.MyLocation) {
             showLoc = false; perm.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
         }
         Spacer(Modifier.height(8.dp))
@@ -487,7 +487,7 @@ fun PaywallScreen(nav: Nav) {
     if (showRedeem) RedeemDialog { showRedeem = false; if (com.smrh.zujaj.data.Prefs.isPro) nav.back() }
     LaunchedEffect(msg) {
         when (msg) {
-            "pro_ok" -> { Toast.makeText(ctx, tr("Welcome to Pro ✓", "أهلاً بك في برو ✓"), Toast.LENGTH_LONG).show(); nav.back() }
+            "pro_ok" -> { Toast.makeText(ctx, tr("Welcome to Pro ✓", "أهلاً بيك في برو ✓"), Toast.LENGTH_LONG).show(); nav.back() }
             "pending" -> Toast.makeText(ctx, tr("Payment pending…", "الدفع قيد المعالجة…"), Toast.LENGTH_LONG).show()
             "error" -> Toast.makeText(ctx, tr("Purchase failed", "فشل الشراء"), Toast.LENGTH_LONG).show()
         }
@@ -538,7 +538,7 @@ fun PaywallScreen(nav: Nav) {
         val p = prices[plan]
         val (title, sub) = when (plan) {
             Plan.MONTHLY -> tr("Monthly", "شهري") to tr("Renews every month", "بيتجدد كل شهر")
-            Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية ثم سنوي") else tr("Renews every year", "بيتجدد كل سنة"))
+            Plan.YEARLY -> tr("Yearly", "سنوي") to (if (p?.trial == true) tr("Free trial, then yearly", "تجربة مجانية وبعدين سنوي") else tr("Renews every year", "بيتجدد كل سنة"))
             Plan.LIFETIME -> tr("Lifetime", "مدى الحياة") to tr("One payment, yours forever", "تدفع مرة واحدة وتبقى ليك")
         }
         val on = sel == plan
@@ -596,10 +596,10 @@ fun PaywallScreen(nav: Nav) {
                 val loading = prices.isEmpty()
                 PrimaryButton(if (busy) tr("Opening Google Play…", "بنفتح جوجل بلاي…") else tr("Continue", "متابعة"), Modifier.fillMaxWidth()) {
                     if (busy) return@PrimaryButton
-                    if (loading) { Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show(); return@PrimaryButton }
+                    if (loading) { Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر مش متاح دلوقتي — جرّب كمان شوية"), Toast.LENGTH_LONG).show(); return@PrimaryButton }
                     busy = true
                     val ok = Billing.buy(ctx as Activity, sel)
-                    if (!ok) { busy = false; Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر غير متاح حالياً — حاول بعد قليل"), Toast.LENGTH_LONG).show() }
+                    if (!ok) { busy = false; Toast.makeText(ctx, tr("Store not available yet — try again shortly", "المتجر مش متاح دلوقتي — جرّب كمان شوية"), Toast.LENGTH_LONG).show() }
                 }
             }
             Row(horizontalArrangement = Arrangement.Center) {
@@ -650,14 +650,14 @@ fun TutorialScreen(nav: Nav) {
         TopBar(tr("Quick start", "البدء السريع"), { nav.back() })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 8.dp)) {
             val steps = listOf(
-                tr("Pick a widget", "اختر ويدجت") to tr("Browse the Widgets tab and tap any design you like.", "تصفح قسم الويدجت واضغط على أي تصميم يعجبك."),
+                tr("Pick a widget", "اختار ويدجت") to tr("Browse the Widgets tab and tap any design you like.", "تصفح قسم الويدجت واضغط على أي تصميم يعجبك."),
                 tr("Customise it", "خصّصه") to tr("Change colours, background (solid, gradient, glass, aurora), texture, sizes, language and numerals.", "غيّر الألوان والخلفية (سادة، متدرج، زجاجي، شفق) والملمس والأحجام واللغة والأرقام."),
                 tr("Tap Apply", "اضغط إضافة") to tr("Your launcher asks where to place it — confirm and it appears on your home screen.", "سيسألك المشغل عن مكان الويدجت — أكّد وستظهر على شاشتك."),
-                tr("Or add from the launcher", "أو من المشغل") to tr("Long-press the home screen → Widgets → Zujaj → choose a size, then pick a design.", "اضغط مطولاً على الشاشة ← الأدوات ← زجاج ← اختر الحجم ثم التصميم."),
-                tr("Edit anytime", "عدّل في أي وقت") to tr("Open the Mine tab, or long-press a widget → Settings/Edit (Android 12+).", "افتح قسم ويدجتاتي، أو اضغط مطولاً على الويدجت ← إعدادات (أندرويد ١٢+)."),
-                tr("Lock screen", "شاشة القفل") to tr("Phones with lock-screen widget support (e.g. Samsung One UI 7+, Android 16 hub) list Zujaj widgets there too. ", "الهواتف التي تدعم ويدجت شاشة القفل (مثل سامسونج One UI 7+ وأندرويد 16) تعرض ويدجت زجاج هناك أيضاً."),
-                tr("Media widgets", "ويدجت الميديا") to tr("Allow music access once so widgets show what's playing in any app.", "اسمح بالوصول للميديا مرة واحدة لتعرض الويدجت ما يُشغَّل في أي تطبيق."),
-                tr("Keep widgets fresh", "حافظ على التحديث") to tr("If your phone kills background apps, allow Zujaj in battery settings.", "إذا كان هاتفك يغلق التطبيقات في الخلفية، اسمح لزجاج في إعدادات البطارية."),
+                tr("Or add from the launcher", "أو من المشغل") to tr("Long-press the home screen → Widgets → Zujaj → choose a size, then pick a design.", "دوس مطوّل على الشاشة ← الأدوات ← زجاج ← اختار الحجم وبعدين التصميم."),
+                tr("Edit anytime", "عدّل في أي وقت") to tr("Open the Mine tab, or long-press a widget → Settings/Edit (Android 12+).", "افتح قسم ويدجتاتي، أو دوس مطوّل على الويدجت ← إعدادات (أندرويد ١٢+)."),
+                tr("Lock screen", "شاشة القفل") to tr("Phones with lock-screen widget support (e.g. Samsung One UI 7+, Android 16 hub) list Zujaj widgets there too. ", "الموبايلات اللي بتدعم ويدجت شاشة القفل (زي سامسونج One UI 7+ وأندرويد 16) بتعرض ويدجت زجاج هناك كمان."),
+                tr("Media widgets", "ويدجت الميديا") to tr("Allow music access once so widgets show what's playing in any app.", "اسمح بالوصول للميديا مرة واحدة عشان الويدجت تعرض اللي شغال في أي تطبيق."),
+                tr("Keep widgets fresh", "حافظ على التحديث") to tr("If your phone kills background apps, allow Zujaj in battery settings.", "لو موبايلك بيقفل التطبيقات في الخلفية، اسمح لزجاج من إعدادات البطارية."),
             )
             // a numbered path with a thin connecting line — reads as steps, not as eight identical cards
             steps.forEachIndexed { i, (t, d) ->
@@ -687,7 +687,7 @@ fun MediaAccessScreen(nav: Nav) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         TopBar(tr("Music access", "الوصول للميديا"), { nav.back() })
         Spacer(Modifier.height(20.dp))
-        Text(tr("Media widgets need permission to see what's playing.", "ويدجت الميديا تحتاج إذناً لمعرفة ما يتم تشغيله."), style = MaterialTheme.typography.titleMedium)
+        Text(tr("Media widgets need permission to see what's playing.", "ويدجت الميديا محتاجة إذن عشان تعرف إيه اللي شغال."), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
         Text(tr("Zujaj only reads the current song title, artist, artwork and play state. It never reads your messages or other notifications' content and nothing leaves your phone.",
             "زجاج يقرأ فقط اسم الأغنية والفنان والصورة وحالة التشغيل. لا يقرأ رسائلك أو محتوى الإشعارات الأخرى ولا يُرسل أي شيء خارج هاتفك."), color = Z.sub)
@@ -848,7 +848,7 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
                 j?.optBoolean("ok") == true -> { step = 2; code = "" }
                 j?.optString("err") == "wait" -> { step = 2; err = tr("A code was just sent — check your inbox", "الكود اتبعت من شوية — شوف الإيميل") }
                 j?.optString("err") == "blocked" -> err = tr("Too many attempts. Try again in 15 minutes", "محاولات كتير. جرب بعد ١٥ دقيقة")
-                j != null -> err = tr("Wrong", "غير صحيح")
+                j != null -> err = tr("Wrong", "مش صح")
                 else -> err = tr("No connection", "مفيش اتصال") + (r.exceptionOrNull()?.message?.let { " ($it)" } ?: "")
             }
         }
@@ -873,7 +873,7 @@ fun AdminGateDialog(onDismiss: () -> Unit, onOk: () -> Unit) {
                         "expired" -> tr("Code expired — send a new one", "الكود انتهى — ابعت واحد جديد")
                         "wrong" -> tr("Wrong code", "الكود غلط")
                         null -> tr("No connection", "مفيش اتصال")
-                        else -> tr("Wrong", "غير صحيح")
+                        else -> tr("Wrong", "مش صح")
                     }
                 }
             }

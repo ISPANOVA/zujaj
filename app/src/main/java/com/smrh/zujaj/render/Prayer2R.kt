@@ -17,7 +17,7 @@ object Prayer2R {
     fun journey(r: RenderCtx) {
         val d = Kit.day(r); val nx = d.next
         val l = r.pad + 6 * r.u
-        r.text(r.t("NEXT PRAYER", "الصلاة القادمة"), l, r.h * 0.13f, 8.5f * r.u, r.c2, r.sansBold, spacing = 0.12f)
+        r.text(r.t("NEXT PRAYER", "الصلاة الجاية"), l, r.h * 0.13f, 8.5f * r.u, r.c2, r.sansBold, spacing = 0.12f)
         val nw = r.text(Kit.pName(r, nx), l, r.h * 0.3f, 22 * r.u * r.s1, r.c1, r.sansBold, maxW = r.w * 0.36f)
         Kit.countdown(r, l + nw + 10 * r.u, r.h * 0.3f, 15 * r.u, r.accent, prefix = "")
         Kit.moonDisc(r, r.w - r.pad - 22 * r.u, r.h * 0.23f, 15 * r.u, withAlpha(Color.WHITE, 230), withAlpha(r.c1, 30))
@@ -51,7 +51,7 @@ object Prayer2R {
         Kit.calli(r, Kit.dayName(r, true), w / 2 + r.pad / 2, r.h * 0.3f, r.h * 0.28f * r.s2, r.accent, maxW = w - 2 * r.pad, maxH = r.h * 0.28f)
         val nx = Kit.day(r).next
         val l = r.pad + 6 * r.u
-        r.text(r.t("NEXT PRAYER", "الصلاة القادمة"), l, r.h * 0.58f, 8 * r.u, r.c2, r.sansBold, spacing = 0.14f)
+        r.text(r.t("NEXT PRAYER", "الصلاة الجاية"), l, r.h * 0.58f, 8 * r.u, r.c2, r.sansBold, spacing = 0.14f)
         r.text(Kit.pName(r, nx), l, r.h * 0.71f, 17 * r.u * r.s1, r.c1, r.sansBold, maxW = w * 0.5f)
         Kit.countdown(r, w - 8 * r.u, r.h * 0.7f, 18 * r.u * r.s1, r.accent, Paint.Align.RIGHT, prefix = "")
         Kit.slider(r, l, r.h * 0.82f, w - l - 8 * r.u, Kit.progress(r), r.accent, withAlpha(r.c1, 30), 2 * r.u, 3 * r.u)
@@ -115,7 +115,7 @@ object Prayer2R {
         mosque(r, r.pad, r.h * 0.95f, split, withAlpha(r.c1, 16))
         Kit.clock(r, (r.pad + split) / 2, r.h * 0.36f, 30 * r.u * r.s1, LiveFont.SANS_BOLD, maxW = split - r.pad)
         val nx = Kit.day(r).next
-        val chip = Kit.pName(r, nx) + "  " + r.t("next", "القادمة")
+        val chip = Kit.pName(r, nx) + "  " + r.t("next", "الجاية")
         val cw = r.measure(chip, 8.5f * r.u, r.sansMed) + 14 * r.u
         val cx = (r.pad + split) / 2
         r.pill(RectF(cx - cw / 2, r.h * 0.55f, cx + cw / 2, r.h * 0.67f), withAlpha(r.accent, 60))
@@ -154,7 +154,7 @@ object Prayer2R {
             }
         }
         val all = d.list
-        panel(a, r.t("AHEAD", "القادمة"), (all.drop(i0) + all).take(3))
+        panel(a, r.t("AHEAD", "الجاية"), (all.drop(i0) + all).take(3))
         panel(b, r.t("EARLIER", "السابقة"), (all + all).drop((i0 + 3) % 6).take(3))
         r.text(Kit.hijriShort(r), a.right - 10 * r.u, a.bottom - 8 * r.u, 7.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
     }
@@ -286,7 +286,7 @@ object Prayer2R {
         r.text(Kit.gregShort(r), x, r.h * 0.34f, 8.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         Kit.line(r, b.right + 12 * r.u, r.h * 0.42f, x, r.h * 0.42f, withAlpha(r.c1, 26), 0.7f * r.u)
         val nx = Kit.day(r).next
-        r.text(r.t("Next prayer", "الصلاة القادمة"), x, r.h * 0.5f, 7.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(r.t("Next prayer", "الصلاة الجاية"), x, r.h * 0.5f, 7.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         r.text(Kit.pName(r, nx), x, r.h * 0.6f, 12 * r.u * r.s2, r.accent, r.sansBold, Paint.Align.RIGHT)
         r.text(Kit.pTime(r, nx.time), x, r.h * 0.7f, 9.5f * r.u, r.c1, r.sansMed, Paint.Align.RIGHT)
         Kit.slider(r, b.right + 14 * r.u, r.h * 0.8f, x - b.right - 14 * r.u, Kit.progress(r), r.accent, withAlpha(r.c1, 30), 2.5f * r.u, 3.5f * r.u)
@@ -350,7 +350,7 @@ object Prayer2R {
         for (k in -3..3) r.circle(mid + k * 5 * r.u, r.h * 0.45f, 1 * r.u, withAlpha(r.c1, 90))
         Kit.slider(r, l, r.h * 0.76f, rr - l, d.progress, r.accent, withAlpha(r.c1, 30), 2 * r.u, 3.5f * r.u)
         Kit.countdown(r, l, r.h * 0.89f, 8.5f * r.u, r.c1, prefix = "")
-        r.text(r.t("until next prayer", "على الصلاة القادمة"), rr, r.h * 0.89f, 7.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(r.t("until next prayer", "على الصلاة الجاية"), rr, r.h * 0.89f, 7.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT)
     }
 
     // Relay — "now" and "next" cards with the countdown between them (W)
@@ -361,7 +361,7 @@ object Prayer2R {
         val cw = r.w * 0.3f
         val a = RectF(r.pad, r.h * 0.24f, r.pad + cw, r.h * 0.78f)
         val b = RectF(r.w - r.pad - cw, a.top, r.w - r.pad, a.bottom)
-        for ((rc, p, lbl) in listOf(Triple(a, d.prev, r.t("NOW", "الآن")), Triple(b, d.next, r.t("NEXT", "التالية")))) {
+        for ((rc, p, lbl) in listOf(Triple(a, d.prev, r.t("NOW", "دلوقتي")), Triple(b, d.next, r.t("NEXT", "الجاية")))) {
             Kit.card(r, rc, 18, 12 * r.u)
             r.text(lbl, rc.left + 10 * r.u, rc.top + 12 * r.u, 7.5f * r.u, r.c2, r.sansBold, spacing = 0.14f)
             r.text(Kit.pName(r, p), rc.left + 10 * r.u, rc.top + rc.height() * 0.48f, 14 * r.u * r.s1, r.c1, r.sansBold, maxW = rc.width() - 16 * r.u)
@@ -371,7 +371,7 @@ object Prayer2R {
         r.text(r.n("${(d.progress * 100).toInt()}%"), r.w / 2, r.h * 0.55f, 8 * r.u, r.c2, r.sans, Paint.Align.CENTER)
         Kit.slider(r, a.right + 8 * r.u, r.h * 0.65f, b.left - a.right - 16 * r.u, d.progress, r.c1, withAlpha(r.c1, 40), 2.5f * r.u, 4 * r.u)
         Kit.line(r, r.pad + 4 * r.u, r.h * 0.86f, r.w - r.pad - 4 * r.u, r.h * 0.86f, withAlpha(r.c1, 26), 0.7f * r.u)
-        r.text(r.t("NOW · NEXT", "الآن · التالية"), r.w / 2, r.h * 0.93f, 7 * r.u, r.c2, r.sans, Paint.Align.CENTER, spacing = 0.12f)
+        r.text(r.t("NOW · NEXT", "دلوقتي · الجاية"), r.w / 2, r.h * 0.93f, 7 * r.u, r.c2, r.sans, Paint.Align.CENTER, spacing = 0.12f)
     }
 
     // Mosaic — bento tiles: time & day, next prayer, hijri, battery (L)
@@ -387,7 +387,7 @@ object Prayer2R {
         r.text(Kit.dayName(r), top.right - 12 * r.u, top.centerY() - 8 * r.u, 11 * r.u, r.c1, r.sansBold, Paint.Align.RIGHT)
         r.text(Kit.gregShort(r), top.right - 12 * r.u, top.centerY() + 9 * r.u, 9 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         val nx = Kit.day(r).next
-        r.text(r.t("NEXT PRAYER", "الصلاة القادمة"), bl.left + 10 * r.u, bl.top + 14 * r.u, 7.5f * r.u, r.c2, r.sansBold, spacing = 0.12f)
+        r.text(r.t("NEXT PRAYER", "الصلاة الجاية"), bl.left + 10 * r.u, bl.top + 14 * r.u, 7.5f * r.u, r.c2, r.sansBold, spacing = 0.12f)
         r.text(Kit.pName(r, nx), bl.left + 10 * r.u, bl.top + bl.height() * 0.42f, 16 * r.u * r.s2, r.c1, r.sansBold, maxW = bl.width() - 20 * r.u)
         r.text(Kit.pTime(r, nx.time), bl.left + 10 * r.u, bl.top + bl.height() * 0.6f, 11 * r.u, r.accent, r.sansBold)
         Kit.countdown(r, bl.left + 10 * r.u, bl.top + bl.height() * 0.74f, 8 * r.u, r.c2)
@@ -441,7 +441,7 @@ object Prayer2R {
         val nx = Kit.day(r).next
         r.text(Kit.pName(r, nx), r.w - r.pad, r.h * 0.38f, 22 * r.u * r.s1, r.c1, if (r.ar) F.AMIRI else r.sansBold, Paint.Align.RIGHT, maxW = r.w * 0.5f)
         r.text(Kit.pTime(r, nx.time), r.pad, r.h * 0.38f, 20 * r.u * r.s1, r.c1, r.sansBold, maxW = r.w * 0.45f)
-        r.text(r.t("next", "القادمة"), r.w - r.pad, r.h * 0.18f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(r.t("next", "الجاية"), r.w - r.pad, r.h * 0.18f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         Kit.countdown(r, r.w - r.pad, r.h * 0.7f, 11 * r.u, r.accent, Paint.Align.RIGHT)
         Kit.slider(r, r.pad, r.h * 0.86f, r.w - 2 * r.pad, Kit.progress(r), r.accent, withAlpha(r.c1, 30), 2.5f * r.u, 0f)
     }

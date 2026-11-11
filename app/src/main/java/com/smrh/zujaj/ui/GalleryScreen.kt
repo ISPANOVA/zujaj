@@ -67,7 +67,7 @@ fun GalleryScreen(nav: Nav) {
                 items(6) { Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(Rad.l)).shimmer()) }
             }
             shown.isEmpty() -> EmptyState(Icons.Rounded.Groups, tr("No designs yet", "لسه مفيش تصاميم"),
-                tr("Be the first: open any widget, make it yours, then Share → Publish to gallery.", "كن الأول: افتح أي ويدجت، ظبطها، وبعدين مشاركة ← انشر في المعرض."))
+                tr("Be the first: open any widget, make it yours, then Share → Publish to gallery.", "خليك أول واحد: افتح أي ويدجت، ظبطها، وبعدين مشاركة ← انشر في المعرض."))
             else -> LazyVerticalGrid(GridCells.Adaptive(if (pane >= 600) 300.dp else 160.dp),
                 contentPadding = PaddingValues(start = gut, end = gut, top = 8.dp, bottom = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

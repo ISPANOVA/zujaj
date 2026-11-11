@@ -263,7 +263,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         WidgetUpdater.update(ctx, s.widgetId)
                         if (cfg.cities.isNotEmpty()) Scheduler.refreshNow(ctx)
                         if (s.configure) (ctx as? MainActivity)?.finishConfigure(s.widgetId)
-                        else { Toast.makeText(ctx, tr("Saved ✓", "تم الحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
+                        else { Toast.makeText(ctx, tr("Saved ✓", "اتحفظ ✓"), Toast.LENGTH_SHORT).show(); if (!nav.back()) (ctx as? Activity)?.finish() }
                     }
                     else -> {
                         Haptics.success(ctx); pin(ctx, cfg, style.shape)
@@ -431,7 +431,7 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         }
                         if (cfg.event in setOf("birthday", "exams", "")) {
                             Divider()
-                            val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
+                            val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختار تاريخ")
                             RowBase(if (cfg.event == "birthday") tr("Birthday date", "تاريخ الميلاد") else tr("Date", "التاريخ"), sub = label,
                                 onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
                         }
@@ -476,14 +476,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                     }
                     if (Feat.TARGET_DATE in f) {
                         Divider()
-                        val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختر تاريخاً")
+                        val label = if (cfg.targetMillis > 0) SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault()).format(Date(cfg.targetMillis)) else tr("Pick a date", "اختار تاريخ")
                         RowBase(tr("Target date", "التاريخ المستهدف"), sub = label, onClick = { pickDateTime(ctx, cfg.targetMillis) { cfg = cfg.copy(targetMillis = it) } }) {}
                     }
                 }
                 Section(tr("When tapped", "لما تضغط عليها")) {
                     ChoiceRow(tr("Action", "الفعل"), cfg.tap, listOf(
                         Tap.DEFAULT to tr("Default", "افتراضي"), Tap.EDIT to tr("Edit widget", "تعديل"),
-                        Tap.OPEN_APP to tr("Open app…", "فتح تطبيق…"), Tap.NONE to tr("Nothing", "لا شيء"),
+                        Tap.OPEN_APP to tr("Open app…", "فتح تطبيق…"), Tap.NONE to tr("Nothing", "ولا حاجة"),
                     )) { cfg = cfg.copy(tap = it); if (it == Tap.OPEN_APP) showTapApp = true }
                 }
                 }
@@ -559,14 +559,14 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         Divider()
                         // fills as visual chips instead of a hidden dropdown
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(Fill.SOLID to tr("Solid", "سادة"), Fill.GRADIENT to tr("Gradient", "متدرج"), Fill.GLASS to tr("Glass", "زجاجي"), Fill.AURORA to tr("Aurora", "شفق"))
+                            listOf(Fill.SOLID to tr("Solid", "سادة"), Fill.GRADIENT to tr("Gradient", "متدرج"), Fill.GLASS to tr("Glass", "زجاجي"), Fill.FROST to tr("Frosted", "زجاج مغبّش"), Fill.AURORA to tr("Aurora", "شفق"))
                                 .forEach { (v, l) -> ZChip(l, cfg.fill == v) { cfg = cfg.copy(fill = v) } }
                         }
                         Divider()
                         RowBase(tr("Colour", "اللون")) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ColorDot(cfg.bgColor) { colorTarget = 10 }
-                                if (cfg.fill == Fill.GRADIENT || cfg.fill == Fill.AURORA) ColorDot(cfg.bgColor2) { colorTarget = 11 }
+                                if (cfg.fill == Fill.GRADIENT || cfg.fill == Fill.AURORA || cfg.fill == Fill.FROST) ColorDot(cfg.bgColor2) { colorTarget = 11 }
                             }
                         }
                         Divider()
@@ -583,6 +583,17 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                         }
                         Divider()
                         SwitchRow(tr("Border", "إطار"), cfg.border) { cfg = cfg.copy(border = it) }
+                        if (cfg.border) {
+                            Divider()
+                            RowBase(tr("Border colour", "لون الإطار"), sub = tr("Any colour you like", "أي لون تحبه")) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (cfg.borderColor != 0) androidx.compose.material3.TextButton(onClick = { cfg = cfg.copy(borderColor = 0) }) { Text(tr("Default", "الافتراضي"), color = Z.sub, fontSize = 12.sp) }
+                                    ColorDot(if (cfg.borderColor == 0) 0x55FFFFFF else cfg.borderColor) { colorTarget = 20 }
+                                }
+                            }
+                            Divider()
+                            StepperRow(tr("Border width", "سُمك الإطار"), cfg.borderWidth, 1..4, 1) { cfg = cfg.copy(borderWidth = it) }
+                        }
                         Divider()
                         ChoiceRow(tr("Texture", "الملمس"), cfg.texture, listOf(
                             Texture.OFF to tr("Off", "بدون"), Texture.NOISE to tr("Noise", "حبيبات"), Texture.GRAIN to tr("Grain", "خشن"),
@@ -612,6 +623,9 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
                             Divider(); StepperRow(tr("Letter spacing", "تباعد الحروف"), cfg.spacing, -10..40, 1) { cfg = cfg.copy(spacing = it) }
                         }
                     }
+                    Divider(); ChoiceRow(tr("Text shadow", "ظل الكلام"), cfg.textShadow, listOf(0 to tr("Off", "من غير"), 1 to tr("Soft", "خفيف"), 2 to tr("Strong", "قوي"))) { cfg = cfg.copy(textShadow = it) }
+                    Divider(); SwitchRow(tr("Keep text sizes in proportion", "الكلام يصغر ويكبر مع بعضه"), cfg.evenText,
+                        tr("When one line doesn't fit, all small texts shrink together", "لو سطر مش واخد مكانه، كل الكلام الصغير يصغر مع بعض")) { cfg = cfg.copy(evenText = it) }
                     Divider(); RowBase(tr("Reset sizes", "رجّع الأحجام"), onClick = { cfg = cfg.copy(size1 = 100, size2 = 100, size3 = 100, sizeDate = 100, sizeNames = 100, sizeTimes = 100, spacing = 0) }, icon = Icons.Rounded.Refresh, iconColor = Z.sub) {}
                 }
                 Section(tr("Language & numbers", "اللغة والأرقام")) {
@@ -656,13 +670,13 @@ fun EditorScreen(nav: Nav, s: Screen.Editor) {
 
     if (colorTarget != -1) {
         val init = when (colorTarget) { 1 -> cfg.color1; 2 -> cfg.color2; 3 -> cfg.accent; 4 -> cfg.ornColor; 5 -> cfg.accent2; 6 -> cfg.dayColor; 7 -> cfg.hijriColor
-            8 -> cfg.nameColor; 9 -> cfg.timeColor; 12 -> cfg.nextColor; 13 -> cfg.lineColor; 14 -> cfg.hourColor2; 15 -> cfg.dayColor2; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
+            20 -> if (cfg.borderColor == 0) 0xFFFFFFFF.toInt() else cfg.borderColor; 8 -> cfg.nameColor; 9 -> cfg.timeColor; 12 -> cfg.nextColor; 13 -> cfg.lineColor; 14 -> cfg.hourColor2; 15 -> cfg.dayColor2; 10 -> cfg.bgColor; else -> cfg.bgColor2 }
         ColorPickerDialog(init, { colorTarget = -1 }) { c ->
             cfg = when (colorTarget) {
                 1 -> cfg.copy(color1 = c); 2 -> cfg.copy(color2 = c); 3 -> cfg.copy(accent = c); 4 -> cfg.copy(ornColor = c)
                 5 -> cfg.copy(accent2 = c); 6 -> cfg.copy(dayColor = c); 7 -> cfg.copy(hijriColor = c)
                 8 -> cfg.copy(nameColor = c); 9 -> cfg.copy(timeColor = c); 12 -> cfg.copy(nextColor = c); 13 -> cfg.copy(lineColor = c)
-                14 -> cfg.copy(hourColor2 = c); 15 -> cfg.copy(dayColor2 = c)
+                14 -> cfg.copy(hourColor2 = c); 15 -> cfg.copy(dayColor2 = c); 20 -> cfg.copy(borderColor = c or 0x01000000)
                 10 -> cfg.copy(bgColor = c); else -> cfg.copy(bgColor2 = c)
             }
         }
@@ -694,7 +708,7 @@ private fun pickDateTime(ctx: Context, initial: Long, onPick: (Long) -> Unit) {
 fun pin(ctx: Context, cfg: WidgetConfig, shape: Shape) {
     val mgr = AppWidgetManager.getInstance(ctx)
     if (!mgr.isRequestPinAppWidgetSupported) {
-        Toast.makeText(ctx, tr("Your launcher doesn't support direct adding. Long-press the home screen → Widgets → Zujaj.", "المشغل لا يدعم الإضافة المباشرة. اضغط مطولاً على الشاشة ← الأدوات ← زجاج."), Toast.LENGTH_LONG).show()
+        Toast.makeText(ctx, tr("Your launcher doesn't support direct adding. Long-press the home screen → Widgets → Zujaj.", "اللانشر بتاعك مش بيدعم الإضافة المباشرة. دوس مطوّل على الشاشة ← الأدوات ← زجاج."), Toast.LENGTH_LONG).show()
         Prefs.setPending("manual", cfg)
         return
     }
@@ -707,7 +721,7 @@ fun pin(ctx: Context, cfg: WidgetConfig, shape: Shape) {
     val ok = runCatching { mgr.requestPinAppWidget(ComponentName(ctx, WidgetUpdater.providerFor(shape)), null, cb) }.getOrDefault(false)
     if (!ok) {
         Prefs.setPending("manual", cfg)
-        Toast.makeText(ctx, tr("Long-press the home screen → Widgets → Zujaj to place it.", "اضغط مطولاً على الشاشة ← الأدوات ← زجاج عشان تحطها."), Toast.LENGTH_LONG).show()
+        Toast.makeText(ctx, tr("Long-press the home screen → Widgets → Zujaj to place it.", "دوس مطوّل على الشاشة ← الأدوات ← زجاج عشان تحطها."), Toast.LENGTH_LONG).show()
     }
 }
 

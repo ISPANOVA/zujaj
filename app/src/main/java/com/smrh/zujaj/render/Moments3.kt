@@ -132,7 +132,7 @@ object Moments3R {
         Kit.prayerIcon(r, nx.key, pnX, prayerRc.top + R * 0.55f, R * 0.55f, Color.WHITE)
         val outerX = if (ar) prayerRc.left + pad else prayerRc.right - pad
         val oal = if (ar) Paint.Align.LEFT else Paint.Align.RIGHT
-        r.text(r.t("Next prayer", "الصلاة القادمة"), outerX, prayerRc.top + 22 * u, 11 * u * r.s2, sub, r.sans, oal, maxW = half - 2 * R - 40 * u)
+        r.text(r.t("Next prayer", "الصلاة الجاية"), outerX, prayerRc.top + 22 * u, 11 * u * r.s2, sub, r.sans, oal, maxW = half - 2 * R - 40 * u)
         val px = if (ar) prayerRc.right - pad else prayerRc.left + pad
         val pal = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
         r.text(Kit.pName(r, nx), px, prayerRc.top + topH * 0.55f, 24 * u * r.s1, ink, r.sansBold, pal, maxW = half - 2 * pad)
@@ -322,7 +322,7 @@ object Moments3R {
         Kit.prayerIcon(r, p.key, bx, by, R * 0.5f, Color.WHITE)
         val pad = 14 * u
         val lx = if (ar) pad else r.w - pad
-        r.text(r.t("Next prayer", "الصلاة القادمة"), lx, card.top + 18 * u, 10 * u * r.s2, withAlpha(r.c1, 200), r.sans, if (ar) Paint.Align.LEFT else Paint.Align.RIGHT, maxW = r.w - 2 * R - 34 * u)
+        r.text(r.t("Next prayer", "الصلاة الجاية"), lx, card.top + 18 * u, 10 * u * r.s2, withAlpha(r.c1, 200), r.sans, if (ar) Paint.Align.LEFT else Paint.Align.RIGHT, maxW = r.w - 2 * R - 34 * u)
         val tx = if (ar) r.w - pad else pad
         val al = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
         val h = card.height()

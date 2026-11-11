@@ -159,7 +159,7 @@ object Moments2R {
         val al = if (ar) Paint.Align.RIGHT else Paint.Align.LEFT
         val ox = if (ar) card.left + p else card.right - p
         val oal = if (ar) Paint.Align.LEFT else Paint.Align.RIGHT
-        r.text(r.t("Next prayer", "الصلاة القادمة"), sx, card.top + 20 * r.u, 11 * r.u * r.s2, r.c1, r.sansBold, al)
+        r.text(r.t("Next prayer", "الصلاة الجاية"), sx, card.top + 20 * r.u, 11 * r.u * r.s2, r.c1, r.sansBold, al)
         r.text("⌖ " + com.smrh.zujaj.data.Prefs.cityName.ifBlank { r.t("My city", "مدينتي") }, if (ar) sx - 100 * r.u else sx + 100 * r.u, card.top + 20 * r.u, 10 * r.u, r.c2, r.sans, al, maxW = 90 * r.u)
         // big prayer name
         val nameCx = if (ar) card.right - card.width() * 0.25f else card.left + card.width() * 0.25f

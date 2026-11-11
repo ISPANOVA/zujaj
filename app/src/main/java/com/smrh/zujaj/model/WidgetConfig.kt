@@ -5,7 +5,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
-enum class Fill { SOLID, GRADIENT, GLASS, AURORA, NONE }
+enum class Fill { SOLID, GRADIENT, GLASS, AURORA, NONE, FROST }
 
 @Serializable
 enum class Texture { OFF, NOISE, GRAIN, LINES, DOTS, GRID, WAVES }
@@ -125,6 +125,13 @@ data class WidgetConfig(
     val motion: Boolean = true,
     val liveSpeed: Int = 1,
     val liveFx: Int = 1,
+    /** Border: 0 = the soft default, otherwise this colour; width 1..4. */
+    val borderColor: Int = 0,
+    val borderWidth: Int = 1,
+    /** Shadow under every text: 0 off · 1 soft · 2 strong (reads better on busy wallpapers). */
+    val textShadow: Int = 0,
+    /** All small texts shrink together when one of them doesn't fit, so sizes stay in proportion. */
+    val evenText: Boolean = true,
 ) {
     fun toJson(): String = json.encodeToString(this)
 

@@ -25,7 +25,7 @@ object Weather2R {
         return Kit.weather(r).days.filter { it.epochDay >= today }.take(n).ifEmpty { WeatherRepo.sample.days.take(n) }
     }
     private fun hourLabel(r: RenderCtx, t: Long, first: Boolean) =
-        if (first) r.t("Now", "الآن") else r.n(SimpleDateFormat(if (r.cfg.hour24) "HH" else "h a", Locale.US).format(Date(t)).lowercase())
+        if (first) r.t("Now", "دلوقتي") else r.n(SimpleDateFormat(if (r.cfg.hour24) "HH" else "h a", Locale.US).format(Date(t)).lowercase())
     private fun dayLabel(r: RenderCtx, d: DayF, first: Boolean) =
         if (first) r.t("Today", "اليوم") else Kit.weekdayShort(r, LocalDate.ofEpochDay(d.epochDay).dayOfWeek.value)
     private fun icon(r: RenderCtx, cond: com.smrh.zujaj.data.Cond, night: Boolean, cx: Float, cy: Float, s: Float) =

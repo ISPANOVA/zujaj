@@ -45,6 +45,15 @@ object Renderer {
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         val rc = RenderCtx(ctx, bmp, style, tinted(ctx, cfg, style, bmp, scale, data), preview, scale, data)
         rc.bakeLive = bake
+        // keep labels in proportion: a dry run finds how much the tightest label had to shrink, and then all
+        // labels are drawn that much smaller together (never below 78 %), instead of one shrinking alone
+        if (cfg.evenText && (LiveFx.mode.get() ?: LiveFx.ALL) != LiveFx.FX_ONLY) {
+            val probe = RenderCtx(ctx, Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888), style, rc.cfg, preview, scale, data)
+            probe.bakeLive = bake
+            runCatching { style.draw(probe) }
+            if (probe.minFit < 0.97f) rc.textScale = probe.minFit.coerceIn(0.78f, 1f)
+            probe.bitmap.recycle()
+        }
         val mode = LiveFx.mode.get() ?: LiveFx.ALL
         if (mode != LiveFx.FX_ONLY) drawBackground(rc)
         val save = rc.canvas.save()
@@ -85,7 +94,7 @@ object Renderer {
         val pad = 6f
         val availW = wDp - 2 * pad; val availH = hDp - 2 * pad
         // lean towards the slot's shape (up to ~1.6×) so a resized widget fills its space instead of shrinking into the middle
-        val lean = kotlin.math.ln(slot / aspect).coerceIn(-0.47f, 0.47f)
+        val lean = kotlin.math.ln(slot / aspect).coerceIn(-0.3f, 0.3f)
         val want = aspect * kotlin.math.exp(lean)
         val rw: Float; val rh: Float
         if (availW / availH > want) { rh = availH; rw = availH * want } else { rw = availW; rh = availW / want }
@@ -155,6 +164,7 @@ object Renderer {
                 c.drawRoundRect(r, rad, rad, p)
             }
             Fill.GLASS -> liquidGlass(c, r, rad, rc.u, cfg.bgColor, a)
+            Fill.FROST -> frost(c, r, rad, rc.u, cfg.bgColor, cfg.bgColor2, a)
             Fill.AURORA -> {
                 p.color = withAlpha(cfg.bgColor, a)
                 c.drawRoundRect(r, rad, rad, p)
@@ -215,11 +225,11 @@ object Renderer {
             }
             c.restoreToCount(save)
         }
-        if (cfg.border && cfg.fill != Fill.GLASS) {
+        if (cfg.border && cfg.fill != Fill.GLASS && cfg.fill != Fill.FROST || (cfg.border && cfg.borderColor != 0)) {
             val bp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                strokeWidth = max(1f, rc.u * 0.9f)
-                shader = LinearGradient(0f, 0f, rc.w, rc.h,
+                strokeWidth = max(1f, rc.u * 0.9f * cfg.borderWidth.coerceIn(1, 4))
+                if (cfg.borderColor != 0) color = cfg.borderColor else shader = LinearGradient(0f, 0f, rc.w, rc.h,
                     withAlpha(Color.WHITE, if (cfg.fill == Fill.GLASS) 90 else 34),
                     withAlpha(Color.WHITE, if (cfg.fill == Fill.GLASS) 24 else 8), Shader.TileMode.CLAMP)
             }
@@ -285,6 +295,39 @@ object Renderer {
                 c.drawRoundRect(r, rad, rad, p)
             }
         }
+    }
+
+    /**
+     * Frosted glass. A widget can't see (or blur) what is behind it on the home screen — no Android app can —
+     * so this paints what a blur of the wallpaper looks like: its colours (pick them with "Match my wallpaper")
+     * melted into soft blobs under a milky veil, fine grain, light at the top and a bright thin rim.
+     */
+    fun frost(c: Canvas, r: RectF, rad: Float, u: Float, c1: Int, c2: Int, a: Int) {
+        val save = c.save()
+        c.clipPath(Path().roundRect(r, rad))
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.color = withAlpha(RenderCtx.mix(c1, c2, 0.5f), (a * 0.55f).toInt()); c.drawRect(r, p)
+        val m = max(r.width(), r.height())
+        fun blob(x: Float, y: Float, radius: Float, col: Int, k: Float) {
+            p.shader = RadialGradient(x, y, radius, withAlpha(col, (a * k).toInt()), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+            c.drawCircle(x, y, radius, p)
+        }
+        blob(r.left + r.width() * 0.1f, r.top, m * 0.8f, c1, 0.6f)
+        blob(r.right, r.bottom, m * 0.75f, c2, 0.6f)
+        blob(r.left + r.width() * 0.75f, r.top + r.height() * 0.2f, m * 0.45f, RenderCtx.mix(c1, Color.WHITE, 0.4f), 0.35f)
+        p.shader = null
+        p.color = withAlpha(Color.WHITE, (a * 0.12f).toInt()); c.drawRect(r, p)
+        p.shader = LinearGradient(0f, r.top, 0f, r.top + r.height() * 0.55f, withAlpha(Color.WHITE, (a * 0.14f).toInt()), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+        c.drawRect(r, p)
+        p.shader = BitmapShader(noiseBitmap(), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT); p.alpha = 150
+        c.drawRect(r, p)
+        c.restoreToCount(save)
+        val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = max(1f, u)
+            shader = LinearGradient(r.left, r.top, r.right, r.bottom, withAlpha(Color.WHITE, (a * 0.5f).toInt()), withAlpha(Color.WHITE, (a * 0.1f).toInt()), Shader.TileMode.CLAMP)
+        }
+        val i = rim.strokeWidth / 2
+        c.drawRoundRect(RectF(r.left + i, r.top + i, r.right - i, r.bottom - i), rad - i, rad - i, rim)
     }
 
     fun liquidGlass(c: Canvas, r: RectF, rad: Float, u: Float, tint: Int, a: Int) {

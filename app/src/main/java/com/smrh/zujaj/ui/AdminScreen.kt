@@ -126,7 +126,7 @@ fun AdminScreen(nav: Nav) {
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Control panel", "لوحة التحكم"), { nav.back() })
         if (auth == null) {
-            Text(tr("Firebase isn't configured in this build.", "Firebase غير مُعد في هذه النسخة."), modifier = Modifier.padding(20.dp), color = Z.sub)
+            Text(tr("Firebase isn't configured in this build.", "Firebase مش متظبط في النسخة دي."), modifier = Modifier.padding(20.dp), color = Z.sub)
             return
         }
         if (!AdminSession.unlocked) { Text(tr("Locked", "مقفول"), modifier = Modifier.padding(20.dp)); return }
@@ -147,7 +147,7 @@ fun AdminScreen(nav: Nav) {
             r.onSuccess { user = auth.currentUser }.onFailure { error = it.message }
         }
         if (user == null) {
-            Text(error ?: tr("Signing in…", "جارٍ تسجيل الدخول…"), modifier = Modifier.padding(20.dp), color = Z.sub)
+            Text(error ?: tr("Signing in…", "بيسجّل دخول…"), modifier = Modifier.padding(20.dp), color = Z.sub)
             return
         }
         var tab by remember { mutableIntStateOf(0) }
@@ -252,6 +252,20 @@ private fun WidgetsAdmin() {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
+            // one tap: about half of every category free (the popular ones first), the rest Pro — then Save
+            item {
+                androidx.compose.material3.TextButton(onClick = {
+                    val next = mutableSetOf<String>()
+                    Cat.values().forEach { c ->
+                        val inCat = Catalog.all.filter { it.cat == c }.sortedByDescending { it.popular }
+                        inCat.forEachIndexed { i, st -> if (i % 2 == 1) next += st.id }
+                    }
+                    pro = next
+                    Toast.makeText(ctx, tr("Half of each category is now free — review and Save", "نص كل قسم بقى مجاني — راجع واضغط حفظ"), Toast.LENGTH_LONG).show()
+                }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(tr("Balance: half free in every category", "وزّع: نص كل قسم مجاني"), color = LocalAccent.current, fontWeight = FontWeight.Bold)
+                }
+            }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val opts = listOf(tr("All", "الكل") to Catalog.all.size, "Pro" to pro.size, tr("Free", "مجاني") to (Catalog.all.size - pro.size),
@@ -305,7 +319,7 @@ private fun WidgetsAdmin() {
             ) {
                 scope.launch(kotlinx.coroutines.NonCancellable) {
                     val r = runCatching { Flags.save(flags.copy(pro = pro.toList(), fresh = fresh.toList(), hidden = hidden.toList())) }
-                    Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓ — live for everyone", "تم النشر ✓ — ظاهر للجميع الآن") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+                    Toast.makeText(ctx, if (r.isSuccess) tr("Published ✓ — live for everyone", "اتنشر ✓ — ظاهر للكل دلوقتي") else adminError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -461,7 +475,7 @@ private fun CodesAdmin() {
                 IconButton(onClick = { reload++ }) { Icon(Icons.Rounded.Refresh, null, tint = Z.sub) }
             }
             if (err != null) Text(err ?: "", color = Color(0xFFE5484D), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 22.dp))
-            if (codes == null && err == null) Text(tr("Loading…", "جارٍ التحميل…"), color = Z.sub, modifier = Modifier.padding(22.dp))
+            if (codes == null && err == null) Text(tr("Loading…", "بيحمّل…"), color = Z.sub, modifier = Modifier.padding(22.dp))
             if (codes?.isEmpty() == true) Text(tr("No codes yet", "مفيش أكواد لسه"), color = Z.sub, modifier = Modifier.padding(22.dp))
         }
         items(codes ?: emptyList(), key = { it.code }) { c ->
@@ -590,7 +604,7 @@ private fun CodeUsersDialog(code: String, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             if (err != null) Text(err ?: "", color = Color(0xFFE5484D), fontSize = 12.sp)
-            if (list == null && err == null) Text(tr("Loading…", "جارٍ التحميل…"), color = Z.sub)
+            if (list == null && err == null) Text(tr("Loading…", "بيحمّل…"), color = Z.sub)
             if (list?.isEmpty() == true) Text(tr("Nobody used this code yet", "محدش استخدم الكود ده لسه"), color = Z.sub, modifier = Modifier.padding(vertical = 20.dp))
             androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f)) {
                 items(list ?: emptyList(), key = { it.device }) { r ->

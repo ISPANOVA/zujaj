@@ -198,6 +198,7 @@ class RenderCtx(
             typeface = tf(font)
             textAlign = align
             letterSpacing = spacing + cfg.spacing / 100f
+            if (cfg.textShadow > 0) setShadowLayer((if (cfg.textShadow == 2) 4.5f else 2.5f) * u, 0f, 1f * u, if (cfg.textShadow == 2) 0xCC000000.toInt() else 0x80000000.toInt())
         }
 
     fun fillPaint(color: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; style = Paint.Style.FILL }
@@ -206,17 +207,22 @@ class RenderCtx(
         if (round) strokeCap = Paint.Cap.ROUND
     }
 
+    /** Every small text is multiplied by this (set by the renderer so labels shrink together, not one by one). */
+    var textScale = 1f
+    /** The most any small text had to shrink to fit in this pass (read by the renderer). */
+    var minFit = 1f
+
     /** Draw text vertically centred on [cy]. */
     fun text(s: String, x: Float, cy: Float, size: Float, color: Int = c1, font: F = sans, align: Paint.Align = Paint.Align.LEFT, spacing: Float = 0f, maxW: Float = 0f): Float {
         // "Small text" size from the editor applies to labels / dates / captions everywhere
-        val sz = if (size < 15 * u && cfg.size3 != 100) size * cfg.size3 / 100f else size
+        val sz = (if (size < 15 * u && cfg.size3 != 100) size * cfg.size3 / 100f else size) * textScale
         val p = paint(color, sz, font, align, spacing)
         // never run past the widget's edge, whatever text size the user chose
         val room = edgeRoom(x, align)
         val limit = if (maxW > 0) minOf(maxW, room) else room
         if (limit > 0) {
             val mw = p.measureText(s)
-            if (mw > limit) p.textSize = p.textSize * limit / mw
+            if (mw > limit) { p.textSize = p.textSize * limit / mw; if (s.length > 2) minFit = minOf(minFit, limit / mw) }
         }
         val fm = p.fontMetrics
         canvas.drawText(s, x, cy - (fm.ascent + fm.descent) / 2f, p)

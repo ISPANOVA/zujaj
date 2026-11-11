@@ -111,7 +111,7 @@ fun OnboardingScreen() {
                 }
                 val last = pager.currentPage == 2
                 val chosen = Onboarding.pick.takeIf { last }?.let { Catalog.byId(it) }
-                PrimaryButton(when { !last -> tr("Next", "التالي"); chosen != null -> tr("Add to my home screen", "حطها على شاشتي"); else -> tr("Explore first", "هتفرج الأول") },
+                PrimaryButton(when { !last -> tr("Next", "اللي بعده"); chosen != null -> tr("Add to my home screen", "حطها على شاشتي"); else -> tr("Explore first", "هتفرج الأول") },
                     Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = if (chosen != null) 4.dp else 22.dp)) {
                     if (!last) scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                     else {

@@ -352,14 +352,14 @@ object CounterR {
     fun countdownBanner(r: RenderCtx) {
         r.text(title(r), r.pad + 10 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, maxW = r.w * 0.3f)
         r.text(r.n(daysLeft(r).toString()), r.w / 2, r.h / 2, 26 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.CENTER)
-        r.text(r.t("Days Left", "يوم متبقي"), r.w - r.pad - 10 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(r.t("Days Left", "يوم باقي"), r.w - r.pad - 10 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
     }
 
     fun countdownSmall(r: RenderCtx) {
         r.text(title(r), r.w / 2, r.h * 0.2f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
         r.circle(r.w / 2, r.h * 0.5f, r.h * 0.2f, withAlpha(r.c1, 40))
         r.text(r.n(daysLeft(r).toString()), r.w / 2, r.h * 0.5f, 24 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.CENTER, maxW = r.h * 0.36f)
-        r.text(r.t("Days Left", "يوم متبقي"), r.w / 2, r.h * 0.82f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
+        r.text(r.t("Days Left", "يوم باقي"), r.w / 2, r.h * 0.82f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
     }
 
     fun countdownLine(r: RenderCtx) {
@@ -580,7 +580,7 @@ object IslamicR {
         }
         r.textTight("رمضان", r.pad + 60 * r.u, r.h / 2, r.h * 0.5f, r.c1, r.calliFont, maxW = 100 * r.u)
         r.text(r.n(days.toString()), r.w * 0.62f, r.h / 2, 28 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.CENTER)
-        r.text(r.t("days left", "يوماً متبقياً"), r.w - r.pad - 8 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(r.t("days left", "يوم باقي"), r.w - r.pad - 8 * r.u, r.h / 2, 11 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
     }
 
     fun hijriBig(r: RenderCtx) {

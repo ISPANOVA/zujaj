@@ -60,7 +60,7 @@ fun Splash(show: Boolean) {
                 Spacer(Modifier.height(26.dp))
                 CircularProgressIndicator(Modifier.size(22.dp), color = Color(0xFFE7B75F), strokeWidth = 2.dp)
                 Spacer(Modifier.height(12.dp))
-                Text(tr("Loading…", "جاري التحميل…"), color = Color(0xFF9C9CA6), fontSize = 13.sp)
+                Text(tr("Loading…", "بيحمّل…"), color = Color(0xFF9C9CA6), fontSize = 13.sp)
             }
         }
     }

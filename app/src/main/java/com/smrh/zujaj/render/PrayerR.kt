@@ -92,7 +92,7 @@ object PrayerR {
         val xr = r.w - r.pad - 8 * r.u
         r.text(nm(r, d.prev), x, r.h * 0.3f, 10 * r.u * r.s2, r.c2, r.sans)
         r.text(tm(r, d.prev.time), x, r.h * 0.55f, 17 * r.u * r.s1, r.c1, r.sansMed)
-        r.text(r.t("Next", "القادمة"), r.w / 2, r.h * 0.3f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
+        r.text(r.t("Next", "الجاية"), r.w / 2, r.h * 0.3f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.CENTER)
         r.liveCountdown(d.next.time, "", r.w / 2, r.h * 0.55f, 17 * r.u * r.s1, r.c1, Paint.Align.CENTER, bold = true)
         r.text(nm(r, d.next), xr, r.h * 0.3f, 10 * r.u * r.s2, r.c2, r.sans, Paint.Align.RIGHT)
         r.text(tm(r, d.next.time), xr, r.h * 0.55f, 17 * r.u * r.s1, r.c1, r.sansMed, Paint.Align.RIGHT)

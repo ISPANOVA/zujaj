@@ -416,7 +416,7 @@ private fun RewardedInterIntro() {
         onDismiss = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
         PrimaryButton(tr("Watch the ad", "شوف الإعلان"), androidx.compose.ui.Modifier.fillMaxWidth()) { com.smrh.zujaj.ads.AdPolicy.playRewarded(act) }
         androidx.compose.material3.TextButton(onClick = { com.smrh.zujaj.ads.AdPolicy.declineRewarded() }) {
-            androidx.compose.material3.Text(tr("No thanks", "لا شكراً"), color = Z.sub)
+            androidx.compose.material3.Text(tr("No thanks", "لأ شكراً"), color = Z.sub)
         }
     }
 }

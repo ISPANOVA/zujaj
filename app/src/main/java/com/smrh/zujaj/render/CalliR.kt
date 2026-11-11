@@ -143,7 +143,7 @@ object CalliR {
         Kit.clock(r, split - 6 * r.u, r.h * 0.18f, 22 * r.u * r.s1, LiveFont.SANS_BOLD, align = Paint.Align.RIGHT, maxW = split - r.pad)
         val d = Kit.day(r); val nx = d.next
         val rows = listOf(
-            r.t("Next", "القادمة") to Kit.pName(r, nx),
+            r.t("Next", "الجاية") to Kit.pName(r, nx),
             r.t("Time", "الوقت") to Kit.pTime(r, nx.time),
             r.t("Hijri", "هجري") to Kit.hijriShort(r),
             r.t("Battery", "الشحن") to r.n("${Kit.battery(r)}%"),

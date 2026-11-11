@@ -214,7 +214,7 @@ object Catalog {
         WidgetStyle("weather_big", Cat.WEATHER, "Weather Big", "طقس كبير", W, isNew = true, upd = wU, defaults = ::aurora) { WeatherR.big(it) },
 
         // ------------------------------------------------------------------ PRAYER
-        WidgetStyle("prayer_simple", Cat.PRAYER, "Prayer Simple", "الصلاة القادمة", B, popular = true, feats = prayerF, upd = pU) { PrayerR.simple(it) },
+        WidgetStyle("prayer_simple", Cat.PRAYER, "Prayer Simple", "الصلاة الجاية", B, popular = true, feats = prayerF, upd = pU) { PrayerR.simple(it) },
         WidgetStyle("prayer_strip", Cat.PRAYER, "Prayer Strip", "شريط الصلوات", B, feats = prayerF, upd = pU) { PrayerR.strip(it, 0) },
         WidgetStyle("prayer_pill", Cat.PRAYER, "Prayer Pill", "مواقيت كبسولة", B, feats = prayerF, upd = pU) { PrayerR.strip(it, 1) },
         WidgetStyle("prayer_dots", Cat.PRAYER, "Prayer Dots", "مواقيت بالنقاط", B, pro = true, feats = prayerF, upd = pU) { PrayerR.strip(it, 2) },
@@ -227,7 +227,7 @@ object Catalog {
         WidgetStyle("prayer_compact", Cat.PRAYER, "Prayer Ring", "حلقة الصلاة", S, pro = true, feats = prayerF, upd = pU) { PrayerR.ring(it, false) },
         WidgetStyle("prayer_ring_calli", Cat.PRAYER, "Prayer Ring Calligraphy", "حلقة بالخط", S, pro = true, feats = prayerF, upd = pU) { PrayerR.ring(it, true) },
         WidgetStyle("prayer_table", Cat.PRAYER, "Prayer Table", "جدول الصلاة", L, pro = true, feats = prayerF, upd = wU + pU) { PrayerR.table(it) },
-        WidgetStyle("prayer_next", Cat.PRAYER, "Prayer Next", "الصلاة التالية", L, feats = prayerF, upd = pU) { PrayerR.next(it) },
+        WidgetStyle("prayer_next", Cat.PRAYER, "Prayer Next", "الصلاة الجاية", L, feats = prayerF, upd = pU) { PrayerR.next(it) },
         WidgetStyle("prayer_grid", Cat.PRAYER, "Prayer Day", "يوم الصلاة", L, pro = true, popular = true, feats = prayerF, upd = pU) { PrayerR.dayGrid(it) },
         WidgetStyle("prayer_detail", Cat.PRAYER, "Prayer Detail", "تفاصيل الصلاة", W, feats = prayerF, upd = pU) { PrayerR.detail(it) },
         WidgetStyle("prayer_list", Cat.PRAYER, "Prayer List", "قائمة الصلوات", L, pro = true, feats = prayerF, upd = pU) { PrayerR.list(it) },
@@ -280,7 +280,7 @@ object Catalog {
         WidgetStyle("photo_verse_lg", Cat.PHOTO, "Photo Journal", "صورة ويومية", L, pro = true, isNew = true, feats = setOf(Feat.PHOTOS, Feat.VERSE), maxItems = 20, upd = setOf(Upd.PHOTO, Upd.DAILY), defaults = { it.copy(padding = 12, variant = 1, bgColor = 0xFF15131A.toInt()) }) { VerseR.large(it) },
         WidgetStyle("bubble_clock", Cat.CLOCK, "Bubble Clock", "ساعة الفقاعات", L, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.WEATHER), bakeTime = { true }, defaults = { it.copy(fill = Fill.NONE, accent = 0xFFB9A6F2.toInt(), calli = 2) }) { Moments2R.bubble(it) },
         WidgetStyle("words_day_card", Cat.CALLI, "Words of the Day", "كارت اليوم", L, isNew = true, popular = true, feats = setOf(Feat.ROTATE, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), bakeTime = { true }, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF8FB8E6.toInt(), bgColor2 = 0xFF6E9BD3.toInt(), color1 = 0xFFFFFFFF.toInt(), counter = 360, calli = 2) }) { Moments2R.dayCard(it) },
-        WidgetStyle("rose_next", Cat.PRAYER, "Rose · Next Prayer", "الورد · الصلاة القادمة", S, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), defaults = { it.copy(fill = Fill.GRADIENT, bgAlpha = 90, bgColor = 0xFF7A3E68.toInt(), bgColor2 = 0xFFB4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.roseNext(it) },
+        WidgetStyle("rose_next", Cat.PRAYER, "Rose · Next Prayer", "الورد · الصلاة الجاية", S, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), defaults = { it.copy(fill = Fill.GRADIENT, bgAlpha = 90, bgColor = 0xFF7A3E68.toInt(), bgColor2 = 0xFFB4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.roseNext(it) },
         WidgetStyle("rose_weather", Cat.WEATHER, "Rose · Weather", "الورد · الطقس", S, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = setOf(Upd.WEATHER), defaults = { it.copy(fill = Fill.GRADIENT, bgAlpha = 90, bgColor = 0xFF7A3E68.toInt(), bgColor2 = 0xFFB4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.roseWeather(it) },
         WidgetStyle("rose_prayers", Cat.PRAYER, "Rose · Prayer Times", "الورد · مواقيت الصلاة", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT, Feat.HOUR24), upd = setOf(Upd.DAILY, Upd.PRAYER), defaults = { it.copy(fill = Fill.GRADIENT, bgAlpha = 90, bgColor = 0xFF7A3E68.toInt(), bgColor2 = 0xFFB4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.rosePrayers(it) },
         WidgetStyle("rose_music", Cat.MEDIA, "Rose · Music", "الورد · الموسيقى", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = setOf(Upd.MEDIA), defaults = { it.copy(fill = Fill.GRADIENT, bgAlpha = 90, bgColor = 0xFF7A3E68.toInt(), bgColor2 = 0xFFB4566E.toInt(), accent = 0xFF5A2C50.toInt(), color1 = 0xFFFFFFFF.toInt(), color2 = 0xCCFFFFFF.toInt(), padding = 0) }) { Moments3R.roseMusic(it) },
@@ -370,7 +370,7 @@ object Catalog {
         WidgetStyle("prayer_mint_box", Cat.PRAYER, "Mint Box", "صندوق النعناع", S, isNew = true, feats = pF, upd = pU, defaults = mint) { Prayer2R.mintBox(it) },
         WidgetStyle("prayer_column", Cat.PRAYER, "Prayer Column", "عمود الصلاة", S, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DDC97.toInt(), bg = true, fill = com.smrh.zujaj.model.Fill.GRADIENT, bgColor = 0xFF0F1A2E.toInt(), bgColor2 = 0xFF162A3F.toInt()) }) { Prayer2R.column(it) },
         WidgetStyle("prayer_midnight", Cat.PRAYER, "Midnight", "منتصف الليل", W, isNew = true, feats = pF, upd = pU, defaults = mint) { Prayer2R.midnight(it) },
-        WidgetStyle("prayer_ahead", Cat.PRAYER, "Ahead", "القادمة", W, isNew = true, feats = pF, upd = pU) { Prayer2R.ahead(it) },
+        WidgetStyle("prayer_ahead", Cat.PRAYER, "Ahead", "الجاية", W, isNew = true, feats = pF, upd = pU) { Prayer2R.ahead(it) },
         WidgetStyle("prayer_timeline", Cat.PRAYER, "Timeline", "الخط الزمني", L, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt(), bg = true, fill = com.smrh.zujaj.model.Fill.GRADIENT, bgColor = 0xFF2A1A12.toInt(), bgColor2 = 0xFF0E0806.toInt()) }) { Prayer2R.timeline(it) },
         WidgetStyle("prayer_mint_full", Cat.PRAYER, "Mint Full", "النعناع الكامل", L, pro = true, isNew = true, feats = pF, upd = pU + Upd.WEATHER, defaults = mint) { Prayer2R.mintFull(it) },
         WidgetStyle("prayer_serene", Cat.PRAYER, "Serene", "هدوء", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFFC9CCD1.toInt(), bgColor2 = 0xFF9DA2A9.toInt(), color1 = 0xFF1B1B1F.toInt(), color2 = 0xFF4A4D55.toInt(), accent = 0xFF1F8A70.toInt()) }) { Prayer2R.serene(it) },
@@ -383,7 +383,7 @@ object Catalog {
         WidgetStyle("prayer_mosaic", Cat.PRAYER, "Mosaic", "فسيفساء", L, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DB4DC.toInt()) }) { Prayer2R.mosaic(it) },
         WidgetStyle("prayer_aurora_grid", Cat.PRAYER, "Prayer Aurora", "شفق الصلاة", W, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFF3DDCB5.toInt()) }) { Prayer2R.auroraGrid(it) },
         WidgetStyle("prayer_temple", Cat.PRAYER, "Temple of Hours", "معبد الساعات", W, pro = true, isNew = true, feats = pF, upd = pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt(), bg = true, fill = com.smrh.zujaj.model.Fill.GRADIENT, bgColor = 0xFF2A1A12.toInt(), bgColor2 = 0xFF0E0806.toInt()) }) { Prayer2R.temple(it) },
-        WidgetStyle("prayer_next_small", Cat.PRAYER, "Next Prayer", "الصلاة التالية", S, isNew = true, feats = pF, upd = pU) { Prayer2R.nextSmall(it) },
+        WidgetStyle("prayer_next_small", Cat.PRAYER, "Next Prayer", "الصلاة الجاية", S, isNew = true, feats = pF, upd = pU) { Prayer2R.nextSmall(it) },
         // ------------------------------------------------------------------ DATE (more)
         WidgetStyle("cal_seven", Cat.DATE, "Seven", "سبعة", W, isNew = true, feats = setOf(Feat.COLOR2)) { Cal2R.seven(it) },
         WidgetStyle("cal_progress", Cat.DATE, "Progress", "التقدم", W, isNew = true, feats = setOf(Feat.ACCENT), defaults = { it.copy(accent = 0xFF6E8BF0.toInt(), color2 = 0xFFD9A05B.toInt()) }) { Cal2R.progress(it) },
@@ -411,7 +411,7 @@ object Catalog {
         WidgetStyle("w_five_days", Cat.WEATHER, "Five Days", "خمس أيام", S, isNew = true, upd = wU) { Weather2R.fiveDays(it) },
         WidgetStyle("w_hourly_curve", Cat.WEATHER, "Hourly Curve", "منحنى الساعات", W, pro = true, isNew = true, upd = wU, defaults = { it.copy(fill = Fill.GRADIENT, bgColor = 0xFF3D8BDB.toInt(), bgColor2 = 0xFF7BB6EE.toInt(), color2 = 0xFFE3EEFA.toInt(), border = false) }) { Weather2R.hourlyCurve(it) },
         WidgetStyle("w_hours_days", Cat.WEATHER, "Hours & Days", "ساعات وأيام", W, isNew = true, upd = wU) { Weather2R.hoursDays(it) },
-        WidgetStyle("w_now_ahead", Cat.WEATHER, "Now & Days Ahead", "الآن والأيام الجاية", W, pro = true, isNew = true, upd = wU) { Weather2R.nowAhead(it) },
+        WidgetStyle("w_now_ahead", Cat.WEATHER, "Now & Days Ahead", "دلوقتي والأيام الجاية", W, pro = true, isNew = true, upd = wU) { Weather2R.nowAhead(it) },
         WidgetStyle("w_horizon", Cat.WEATHER, "Horizon", "الأفق", W, isNew = true, feats = setOf(Feat.ACCENT), upd = wU + pU, defaults = { it.copy(accent = 0xFFE7B75F.toInt(), bg = true, fill = com.smrh.zujaj.model.Fill.GRADIENT, bgColor = 0xFF2A1A12.toInt(), bgColor2 = 0xFF0E0806.toInt()) }) { Prayer2R.horizon(it) },
         // ------------------------------------------------------------------ SIGNATURE (new: sky, moon, beads, qibla, leaf, tracker)
         WidgetStyle("sig_sky", Cat.PRAYER, "Prayer Sky", "سماء الصلاة", W, isNew = true, popular = true, feats = setOf(Feat.ACCENT), upd = pU, defaults = { it.copy(accent = 0xFFFFD36B.toInt(), bg = true, fill = com.smrh.zujaj.model.Fill.GRADIENT, bgColor = SignatureR.SKY_KEY, bgColor2 = 0xFF141B3E.toInt()) }) { SignatureR.sky(it) },

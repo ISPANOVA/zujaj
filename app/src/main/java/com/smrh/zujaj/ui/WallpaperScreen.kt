@@ -690,7 +690,7 @@ fun WallpaperScreen(nav: Nav) {
                     }
                 }
             }
-            if (items.isNotEmpty() && !rotMode) Text(tr("Tap to edit · long-press to delete", "اضغط للتعديل · اضغط مطولاً للمسح"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, start = 6.dp))
+            if (items.isNotEmpty() && !rotMode) Text(tr("Tap to edit · long-press to delete", "اضغط للتعديل · دوس مطوّل للمسح"), color = Z.sub, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, start = 6.dp))
             if (rotMode) PrimaryButton(tr("Start auto-change", "شغّل التغيير التلقائي") + if (picked.isNotEmpty()) " (${picked.size})" else "", Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 when {
                     picked.size < 2 -> Toast.makeText(ctx, tr("Pick at least 2 wallpapers", "اختار خلفيتين على الأقل"), Toast.LENGTH_SHORT).show()
