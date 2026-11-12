@@ -560,7 +560,7 @@ object IslamicR {
         Glyphs.kaaba(r.canvas, tx, ty, 18 * r.u, r.c1)
         r.circle(cx, cy, 3 * r.u, r.c1)
         r.text(r.n("${deg.toInt()}°") + r.t(" from North", " من الشمال"), cx, r.h * 0.84f, 10 * r.u * r.s2, r.c1, r.sansMed, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
-        r.text(Prefs.cityName.ifBlank { r.t("Qibla", "القبلة") }, cx, r.h * 0.94f, 8.5f * r.u, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
+        r.text(Kit.city(r).ifBlank { r.t("Qibla", "القبلة") }, cx, r.h * 0.94f, 8.5f * r.u, r.c2, r.sans, Paint.Align.CENTER, maxW = r.w - 2 * r.pad)
     }
 
     fun ramadan(r: RenderCtx) {

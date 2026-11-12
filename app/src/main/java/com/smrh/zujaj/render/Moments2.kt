@@ -160,7 +160,7 @@ object Moments2R {
         val ox = if (ar) card.left + p else card.right - p
         val oal = if (ar) Paint.Align.LEFT else Paint.Align.RIGHT
         r.text(r.t("Next prayer", "الصلاة الجاية"), sx, card.top + 20 * r.u, 11 * r.u * r.s2, r.c1, r.sansBold, al)
-        r.text("⌖ " + com.smrh.zujaj.data.Prefs.cityName.ifBlank { r.t("My city", "مدينتي") }, if (ar) sx - 100 * r.u else sx + 100 * r.u, card.top + 20 * r.u, 10 * r.u, r.c2, r.sans, al, maxW = 90 * r.u)
+        r.text("⌖ " + Kit.city(r).ifBlank { r.t("My city", "مدينتي") }, if (ar) sx - 100 * r.u else sx + 100 * r.u, card.top + 20 * r.u, 10 * r.u, r.c2, r.sans, al, maxW = 90 * r.u)
         // big prayer name
         val nameCx = if (ar) card.right - card.width() * 0.25f else card.left + card.width() * 0.25f
         r.textTight(Kit.pName(r, d.next), nameCx, card.top + topH * 0.5f, 40 * r.u * r.s1, r.c1, if (ar) r.calliFont else r.sansBold, maxW = card.width() * 0.42f, maxH = topH * 0.3f)

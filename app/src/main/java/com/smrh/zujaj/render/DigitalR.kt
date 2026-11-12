@@ -12,7 +12,7 @@ import java.util.TimeZone
 
 object DigitalR {
     fun cities(r: RenderCtx, n: Int): List<City> {
-        val local = City(Prefs.cityName.ifBlank { r.t("Local", "محلي") }, 0.0, 0.0, TimeZone.getDefault().id)
+        val local = City(Kit.city(r).ifBlank { r.t("Local", "محلي") }, 0.0, 0.0, TimeZone.getDefault().id)
         val defaults = listOf(local, City(r.t("Dubai", "دبي"), 25.2, 55.27, "Asia/Dubai"), City(r.t("London", "لندن"), 51.5, -0.12, "Europe/London"))
         return (r.cfg.cities + defaults.drop(r.cfg.cities.size)).take(n)
     }

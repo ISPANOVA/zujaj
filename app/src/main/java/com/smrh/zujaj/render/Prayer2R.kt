@@ -226,7 +226,7 @@ object Prayer2R {
 
     // Ledger — paper table of the five prayers, next one tinted (W)
     fun ledger(r: RenderCtx) {
-        r.text(com.smrh.zujaj.data.Prefs.cityName.ifBlank { r.t("My city", "مدينتي") }, r.pad + 2 * r.u, r.h * 0.12f, 8.5f * r.u, r.c2, r.sans)
+        r.text(Kit.city(r).ifBlank { r.t("My city", "مدينتي") }, r.pad + 2 * r.u, r.h * 0.12f, 8.5f * r.u, r.c2, r.sans)
         Kit.clock(r, r.w - r.pad - 14 * r.u, r.h * 0.12f, 15 * r.u * r.s1, LiveFont.SANS_BOLD, align = Paint.Align.RIGHT)
         Glyphs.moon(r.canvas, r.w - r.pad - 3 * r.u, r.h * 0.12f, 5 * r.u, r.accent)
         r.text(Kit.hijriShort(r), r.w - r.pad, r.h * 0.24f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
@@ -357,7 +357,7 @@ object Prayer2R {
     fun relay(r: RenderCtx) {
         val d = Kit.day(r)
         r.text(r.t("PRAYER RELAY", "تتابع الصلاة"), r.pad + 4 * r.u, r.h * 0.12f, 8.5f * r.u, r.c1, r.sansBold, spacing = 0.14f)
-        r.text(com.smrh.zujaj.data.Prefs.cityName, r.w - r.pad - 4 * r.u, r.h * 0.12f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
+        r.text(Kit.city(r), r.w - r.pad - 4 * r.u, r.h * 0.12f, 8 * r.u, r.c2, r.sans, Paint.Align.RIGHT)
         val cw = r.w * 0.3f
         val a = RectF(r.pad, r.h * 0.24f, r.pad + cw, r.h * 0.78f)
         val b = RectF(r.w - r.pad - cw, a.top, r.w - r.pad, a.bottom)

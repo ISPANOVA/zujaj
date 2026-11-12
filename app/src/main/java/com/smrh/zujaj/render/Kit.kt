@@ -61,6 +61,8 @@ object Kit {
         "mecca" to "مكة", "makkah" to "مكة", "medina" to "المدينة", "london" to "لندن", "paris" to "باريس", "new york" to "نيويورك", "doha" to "الدوحة",
         "kuwait" to "الكويت", "amman" to "عمّان", "beirut" to "بيروت", "istanbul" to "إسطنبول", "abu dhabi" to "أبوظبي", "my location" to "موقعي", "my city" to "مدينتي")
     /** An Arabic name for a city the forecast gave in English (Prefs' own name first, then a small table). */
+    fun city(r: RenderCtx): String = com.smrh.zujaj.data.Prefs.cityName.let { if (r.ar) arCity(it) else it }
+
     fun arCity(en: String): String {
         arCities[en.trim().lowercase()]?.let { return it }
         // the forecast for the home city: use the Arabic name the phone gave for it

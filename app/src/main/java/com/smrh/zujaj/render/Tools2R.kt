@@ -267,7 +267,7 @@ object Tools2R {
 
     // Around me — city + mini map + four nearby searches (W)
     fun aroundMe(r: RenderCtx) {
-        val city = com.smrh.zujaj.data.Prefs.cityName.ifBlank { r.t("My area", "منطقتي") }
+        val city = Kit.city(r).ifBlank { r.t("My area", "منطقتي") }
         r.text(city, r.w * 0.56f, r.h * 0.16f, 15 * r.u * r.s1, r.c1, r.sansBold, Paint.Align.RIGHT, maxW = r.w * 0.5f)
         r.text(r.t("Maps & places nearby", "الخرائط والأماكن القريبة"), r.w * 0.56f, r.h * 0.3f, 8.5f * r.u, r.c2, r.sans, Paint.Align.RIGHT, maxW = r.w * 0.5f)
         val map = RectF(r.w * 0.6f, r.pad * 0.6f, r.w - r.pad * 0.6f, r.h * 0.42f)
