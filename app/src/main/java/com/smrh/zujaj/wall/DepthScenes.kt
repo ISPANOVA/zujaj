@@ -30,8 +30,8 @@ object DepthScenes {
         Mood("Dawn", "فجر", c(0xFF0C0716), c(0xFF4B2A5A), c(0xFFFFB0C8), c(0xFF140C22), c(0xFFA0507A), c(0xFFFFE0EA), c(0xFFFFE4EE), c(0xFFFF6FA0), c(0xFFFFB0C8)),
     )
     val scenes = listOf(
-        Scene("Peak", "قمة", 0.30f), Scene("Twin peaks", "قمتين", 0.33f), Scene("Planet", "كوكب", 0.40f, "clock_thin", 0.62f),
-        Scene("Dunes", "كثبان", 0.40f), Scene("Pyramids", "أهرامات", 0.36f), Scene("Mosque", "مسجد", 0.34f, "clock_stack", 0.5f),
+        Scene("Peak", "قمة", 0.30f), Scene("Twin peaks", "قمتين", 0.33f), Scene("Planet", "كوكب", 0.56f, "clock_thin", 0.62f),
+        Scene("Dunes", "كثبان", 0.44f), Scene("Pyramids", "أهرامات", 0.36f), Scene("Mosque", "مسجد", 0.34f, "clock_stack", 0.5f),
         Scene("Skyline", "مدينة", 0.34f), Scene("Palms", "نخيل", 0.34f, "clock_thin", 0.62f), Scene("Lighthouse", "فنار", 0.30f, "clock_stack", 0.5f),
         Scene("Sail", "مركب", 0.42f), Scene("Pines", "صنوبر", 0.36f), Scene("Crystal", "كريستال", 0.32f, "clock_thin", 0.62f),
         Scene("Orb", "كرة", 0.36f), Scene("Arch", "قوس", 0.30f, "clock_stack", 0.48f), Scene("Iceberg", "جبل تلج", 0.38f),
@@ -84,7 +84,7 @@ object DepthScenes {
         val s = scenes[it.scene]; val m = moods[it.mood]
         val asp = WallRender.naturalAspect(WallLayer(kind = s.kind))
         val hFrac = s.width * (W / H.toFloat()) / asp
-        val cy = s.top - 0.15f * hFrac
+        val cy = s.top + 0.02f * hFrac  // a good half of the clock hides behind the shape
         val fills = intArrayOf(4, 2, 3, 0, 5, 1)
         val n = System.nanoTime()
         val clock = WallLayer(id = n, kind = s.kind, cx = 0.5f, cy = cy, w = s.width, behind = true,
@@ -188,7 +188,7 @@ object DepthScenes {
         }
 
         fun planet() {
-            val cx = W * 0.5f; val cy = H * 1.12f; val rad = W * 0.95f
+            val cx = W * 0.5f; val cy = H * 1.0f; val rad = W * 0.95f
             glow(f, cx, cy, rad * 1.12f, a(m.glow, 110))
             val path = Path().apply { addCircle(cx, cy, rad, Path.Direction.CW) }
             p.shader = RadialGradient(cx - rad * 0.3f, cy - rad * 0.6f, rad * 1.4f, intArrayOf(m.lit, m.dark, Color.BLACK), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
