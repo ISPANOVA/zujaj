@@ -94,6 +94,15 @@
 
         <!-- the real screen; the launcher icon is one of the aliases below (the user picks its colour).
              The default alias keeps the old name ".ui.MainActivity", so existing home-screen icons stay. -->
+        <!-- lock-screen taps on app shortcuts: asks to unlock, then opens the app -->
+        <activity
+            android:name=".widget.LaunchTrampoline"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:showWhenLocked="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity
             android:name=".ui.AppActivity"
             android:exported="true"

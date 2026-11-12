@@ -247,7 +247,9 @@ open class MainActivity : ComponentActivity() {
         if (i.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) {
             configureId = i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             val shape = WidgetUpdater.shapeOf(this, configureId)
-            // New or existing (e.g. the ⚙ on a Samsung lock-screen widget): choose ANY design for it
+            // a widget that already has a design (the launcher's "Settings" / ⚙): edit that design
+            Prefs.widgetConfig(configureId)?.let { cfg -> if (Catalog.byId(cfg.styleId) != null) return Screen.Editor(cfg.styleId, configureId, configure = true) }
+            // a new one: choose ANY design for it
             return Screen.Pick(shape, configureId)
         }
         // a design someone shared: zujaj://w/CODE or zujaj.pages.dev/w#CODE

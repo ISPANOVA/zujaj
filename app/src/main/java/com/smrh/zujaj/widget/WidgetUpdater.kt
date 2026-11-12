@@ -390,6 +390,12 @@ object WidgetUpdater {
     private fun activity(ctx: Context, req: Int, intent: Intent): PendingIntent =
         PendingIntent.getActivity(ctx, req, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), FLAGS)
 
+    /** On the lock screen, another app is opened through our trampoline (unlock first, then open). */
+    private fun appLaunch(ctx: Context, id: Int, req: Int, target: Intent): PendingIntent =
+        if (!isKeyguard(ctx, id)) activity(ctx, req, target)
+        else PendingIntent.getActivity(ctx, req, Intent(ctx, LaunchTrampoline::class.java).setAction("zujaj.LAUNCH.$req")
+            .putExtra(LaunchTrampoline.EXTRA, target).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), FLAGS)
+
     private fun broadcast(ctx: Context, req: Int, id: Int, cmd: String, arg: String): PendingIntent {
         val i = Intent(ctx, ActionReceiver::class.java)
             .setAction("zujaj.CMD.$cmd.$arg.$id")
@@ -412,8 +418,8 @@ object WidgetUpdater {
     private fun pendingFor(ctx: Context, id: Int, slot: Int, a: HitAction): PendingIntent? {
         val req = id * 100 + slot
         return when (a) {
-            is HitAction.App -> activity(ctx, req, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(ComponentName(a.app.pkg, a.app.cls)))
-            is HitAction.Launch -> activity(ctx, req, Intent(a.intent))
+            is HitAction.App -> appLaunch(ctx, id, req, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(ComponentName(a.app.pkg, a.app.cls)))
+            is HitAction.Launch -> appLaunch(ctx, id, req, Intent(a.intent))
             is HitAction.Contact -> activity(ctx, req, contactIntent(a.contact))
             is HitAction.Cmd -> when (a.cmd) {
                 "edit" -> editIntent(ctx, id)
@@ -438,7 +444,7 @@ object WidgetUpdater {
         return when (cfg.tap) {
             Tap.NONE -> null
             Tap.EDIT -> editIntent(ctx, id)
-            Tap.OPEN_APP -> cfg.tapApp?.let { activity(ctx, req, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(ComponentName(it.pkg, it.cls))) }
+            Tap.OPEN_APP -> cfg.tapApp?.let { appLaunch(ctx, id, req, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(ComponentName(it.pkg, it.cls))) }
                 ?: editIntent(ctx, id)
             Tap.DEFAULT -> when (style.cat) {
                 Cat.CLOCK, Cat.DIGITAL -> activity(ctx, req, com.smrh.zujaj.render.Intents.alarms(ctx))

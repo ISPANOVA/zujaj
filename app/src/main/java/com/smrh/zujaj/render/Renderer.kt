@@ -69,6 +69,39 @@ object Renderer {
         return RenderResult(bmp, rc.lives, rc.hits, scale, rc.fx)
     }
 
+
+    private fun fit(sw: Float, sh: Float, w: Float, h: Float): Float =
+        kotlin.math.abs(kotlin.math.ln((sw / sh) / (w / h))) + 0.6f * kotlin.math.abs(kotlin.math.ln(minOf(w / sw, h / sh).coerceAtMost(1f)))
+
+    private val adaptCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * When a widget is resized far from its own shape, the design of the same family that suits the new
+     * size best (or null to keep the chosen one). Family = same category, same look (id prefix) first.
+     */
+    fun adapt(cfg: WidgetConfig, wDp: Float, hDp: Float): String? {
+        if (wDp < 30 || hDp < 30) return null
+        val style = Catalog.byId(cfg.styleId) ?: return null
+        if (style.fx != null) return null
+        val key = "${style.id}|${(wDp / 20).toInt()}|${(hDp / 20).toInt()}|${com.smrh.zujaj.data.Prefs.isPro}"
+        adaptCache[key]?.let { return it.ifEmpty { null } }
+        val own = fit(style.shape.dw, style.shape.dh, wDp, hDp)
+        var best: String? = null
+        if (own > 0.55f) {
+            val prefix = style.id.substringBefore('_')
+            var bestScore = own - 0.35f
+            for (c in Catalog.all) {
+                if (c.id == style.id || c.cat != style.cat || c.shape == style.shape) continue
+                if (c.fx != null && style.fx == null) continue
+                if (com.smrh.zujaj.remote.Flags.locked(c) || com.smrh.zujaj.remote.Flags.isHidden(c)) continue
+                val sc = fit(c.shape.dw, c.shape.dh, wDp, hDp) + (if (c.id.substringBefore('_') == prefix) 0f else 0.25f)
+                if (sc < bestScore) { bestScore = sc; best = c.id }
+            }
+        }
+        adaptCache[key] = best.orEmpty()
+        return best
+    }
+
     /**
      * Renders for a placed widget of any size: the background always fills the whole widget
      * (stretch it tall or wide and the card grows with it), while the design itself keeps its
@@ -78,6 +111,9 @@ object Renderer {
         ctx: Context, cfg: WidgetConfig, wDp: Float, hDp: Float,
         density: Float = ctx.resources.displayMetrics.density, bake: Boolean = false,
     ): RenderResult {
+        // resized a lot (a wide prayer widget squeezed to a small square…): switch to its smaller
+        // sibling in the same family, with the same colours and settings, so it still looks right
+        adapt(cfg, wDp, hDp)?.let { alt -> return renderFitted(ctx, cfg.copy(styleId = alt), wDp, hDp, density, bake) }
         val style = Catalog.byId(cfg.styleId) ?: Catalog.all.first()
         val aspect = style.shape.dw / style.shape.dh
         val slot = wDp / hDp
