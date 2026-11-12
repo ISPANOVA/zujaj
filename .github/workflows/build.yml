@@ -31,7 +31,7 @@ jobs:
 
       - name: Render previews (Robolectric)
         id: previews
-        if: contains(github.event.head_commit.message, '[previews]') || contains(github.event.head_commit.message, '[tests]') || contains(github.event.head_commit.message, '[frames]') || contains(github.event.head_commit.message, '[store]') || contains(github.event.head_commit.message, '[resize]')
+        if: contains(github.event.head_commit.message, '[previews]') || contains(github.event.head_commit.message, '[tests]') || contains(github.event.head_commit.message, '[frames]') || contains(github.event.head_commit.message, '[store]') || contains(github.event.head_commit.message, '[resize]') || contains(github.event.head_commit.message, '[depth]')
         continue-on-error: true
         env:
           MSG: ${{ github.event.head_commit.message }}
@@ -44,6 +44,7 @@ jobs:
           # "[tests]" = only the app-flow tests, quickly, with a thread dump if one gets stuck
           case "$MSG" in *"[frames]"*) list="LiveFramesTest"; limit=10m; dumpAt=580;; esac
           case "$MSG" in *"[resize]"*) list="ResizeShotsTest"; limit=14m; dumpAt=800;; esac
+          case "$MSG" in *"[depth]"*) list="DepthShotsTest"; limit=14m; dumpAt=800;; esac
           case "$MSG" in *"[store]"*) list="StoreShotsTest"; limit=14m; dumpAt=800;; esac
           case "$MSG" in *"[tests]"*) list="WidgetTapTest BackScrollTest NavTest"; limit=7m; dumpAt=380;; esac
           for t in $list; do
