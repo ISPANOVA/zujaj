@@ -71,6 +71,8 @@ import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1202,6 +1204,7 @@ private fun WallsAdmin() {
     var err by remember { mutableStateOf<String?>(null) }
     var confirm by remember { mutableStateOf<WallSrc?>(null) }
     var uploading by remember { mutableStateOf(false) }
+    var depthCfg by remember { mutableStateOf(com.smrh.zujaj.remote.Walls.DepthCfg()) }
     LaunchedEffect(reload, page) {
         items = null
         runCatching {
@@ -1209,7 +1212,8 @@ private fun WallsAdmin() {
             when (page) {
                 0 -> W.pending().map { WallSrc.Remote(it) }
                 1 -> { val h = W.hiddenBuiltIn(); W.approved("home").map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in h }.map { WallSrc.Built(it) } }
-                else -> W.approved("community").map { WallSrc.Remote(it) }
+                2 -> W.approved("community").map { WallSrc.Remote(it) }
+                else -> { depthCfg = W.depthCfg(); com.smrh.zujaj.wall.DepthScenes.all.map { WallSrc.Depth(it) } }
             }
         }.onSuccess { items = it; err = null }.onFailure { err = it.message; items = emptyList() }
     }
@@ -1230,7 +1234,7 @@ private fun WallsAdmin() {
             PrimaryButton(tr("Delete", "امسح"), Modifier.fillMaxWidth()) {
                 confirm = null
                 AdminWork.launch(kotlinx.coroutines.NonCancellable) {
-                    val r = runCatching { when (w) { is WallSrc.Built -> com.smrh.zujaj.remote.Walls.hideBuiltIn(w.wp.id); is WallSrc.Remote -> com.smrh.zujaj.remote.Walls.remove(w.item.id) } }
+                    val r = runCatching { when (w) { is WallSrc.Built -> com.smrh.zujaj.remote.Walls.hideBuiltIn(w.wp.id); is WallSrc.Remote -> com.smrh.zujaj.remote.Walls.remove(w.item.id); is WallSrc.Depth -> com.smrh.zujaj.remote.Walls.setDepthHidden(w.d.id, true) } }
                     Toast.makeText(ctx, if (r.isSuccess) tr("Deleted", "اتمسحت") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++
                 }
             }
@@ -1244,7 +1248,9 @@ private fun WallsAdmin() {
                 PrimaryButton(if (uploading) tr("Uploading…", "بنرفع…") else tr("Upload to Home (SMRH)", "ارفع للرئيسية (SMRH)"), Modifier.fillMaxWidth(), icon = Icons.Rounded.Upload) {
                     if (!uploading) picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
-                Segmented(listOf(tr("Waiting", "مستني"), tr("Home", "الرئيسية"), tr("Community", "المجتمع")), page) { page = it }
+                Segmented(listOf(tr("Waiting", "مستني"), tr("Home", "الرئيسية"), tr("Community", "المجتمع"), tr("Depth", "عمق")), page) { page = it }
+                if (page == 3) Text(tr("Tap PRO / FREE to switch a wallpaper. Hidden ones disappear for everyone; tap the eye to bring one back.",
+                    "اضغط PRO / مجاني عشان تغيّر الخلفية. المخفية بتختفي عند الكل، واضغط العين عشان ترجّعها."), color = Z.sub, fontSize = 13.sp)
                 if (err != null) Text(tr("Couldn't load: ", "معرفناش نحمّل: ") + err, color = Color(0xFFE5484D), fontSize = 13.sp)
                 if (items?.isEmpty() == true && err == null) Text(if (page == 0) tr("Nothing to review ✓", "مفيش حاجة تتراجع ✓") else tr("Empty", "فاضي"), color = Z.sub)
             }
@@ -1252,8 +1258,30 @@ private fun WallsAdmin() {
         items(items.orEmpty(), key = { it.key }) { w ->
             Column {
                 WallThumb(w, Modifier.fillMaxWidth().aspectRatio(270f / 585f))
-                Text(w.by, fontSize = 11.sp, color = Z.sub, maxLines = 1)
-                Row {
+                Text(if (w is WallSrc.Depth) w.d.name(Prefs.isArabicUi) else w.by, fontSize = 11.sp, color = Z.sub, maxLines = 1)
+                if (w is WallSrc.Depth) Row(verticalAlignment = Alignment.CenterVertically) {
+                    val id = w.d.id
+                    val pro = depthCfg.isPro(id); val hid = id in depthCfg.hidden
+                    Text(if (pro) "PRO" else tr("FREE", "مجاني"), color = if (pro) Color.Black else Z.text, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (pro) Z.pro else Z.surface).border(1.dp, Z.line, RoundedCornerShape(50))
+                            .clickable {
+                                AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                                    val r = runCatching { com.smrh.zujaj.remote.Walls.setDepthPro(id, !pro) }
+                                    if (r.isSuccess) depthCfg = depthCfg.copy(pro = if (!pro) depthCfg.pro + id else depthCfg.pro - id, free = if (pro) depthCfg.free + id else depthCfg.free - id)
+                                    else Toast.makeText(ctx, adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show()
+                                }
+                            }.padding(horizontal = 10.dp, vertical = 4.dp))
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = {
+                        AdminWork.launch(kotlinx.coroutines.NonCancellable) {
+                            val r = runCatching { com.smrh.zujaj.remote.Walls.setDepthHidden(id, !hid) }
+                            if (r.isSuccess) depthCfg = depthCfg.copy(hidden = if (hid) depthCfg.hidden - id else depthCfg.hidden + id)
+                            else Toast.makeText(ctx, adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show()
+                        }
+                    }, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                        Icon(if (hid) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, null, tint = if (hid) Color(0xFFE5484D) else Z.sub)
+                    }
+                } else Row {
                     if (page == 0 && w is WallSrc.Remote) TextButton(onClick = {
                         AdminWork.launch(kotlinx.coroutines.NonCancellable) { val r = runCatching { com.smrh.zujaj.remote.Walls.approve(w.item.id) }
                             Toast.makeText(ctx, if (r.isSuccess) tr("Approved ✓", "اتوافق عليها ✓") else adminError(r.exceptionOrNull()), Toast.LENGTH_SHORT).show(); reload++ }

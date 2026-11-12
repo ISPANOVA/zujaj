@@ -118,6 +118,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.runtime.saveable.rememberSaveable
 
 // =============================================================================== gate
 object WallGate {
@@ -184,6 +185,7 @@ fun WallpaperScreen(nav: Nav) {
     var showBlur by remember { mutableStateOf(false) }
     var showApply by remember { mutableStateOf(false) }
     var colorFor by remember { mutableStateOf<Long?>(null) }
+    var studioFor by remember { mutableStateOf<Long?>(null) }
     var menu by remember { mutableStateOf(false) }
     var snapX by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -204,7 +206,9 @@ fun WallpaperScreen(nav: Nav) {
     androidx.activity.compose.BackHandler(enabled = !gallery) {
         if (adjust) { adjust = false } else { selected = null; lockPreview = false; gallery = true; galleryVer++ }
     }
-    val owned by com.smrh.zujaj.billing.Billing.wall.collectAsState()
+    val ownedRaw by com.smrh.zujaj.billing.Billing.wall.collectAsState()
+    // a free ready-made depth wallpaper can be saved and applied without Pro
+    val owned = ownedRaw || (design.depthId >= 0 && !com.smrh.zujaj.remote.Walls.depthCache.isPro(design.depthId))
     val accent = LocalAccent.current
     val found = remember { Animatable(0f) }      // outline animation 0..1
     val subjectIn = remember { Animatable(1f) }  // subject fade over the layers
@@ -229,7 +233,7 @@ fun WallpaperScreen(nav: Nav) {
             File(design.mask).takeIf { design.mask.isNotBlank() }?.delete()
             photo = withContext(Dispatchers.IO) { WallRender.loadImage(f.path) }
             mask = null
-            update(design.copy(image = f.path, mask = "", zoom = 1f, px = 0f, py = 0f, layers = design.layers.map { it.copy(behind = false) }))
+            update(design.copy(image = f.path, mask = "", zoom = 1f, px = 0f, py = 0f, depthId = -1, layers = design.layers.map { it.copy(behind = false) }))
             busy = false
             az = 1f; ax = 0f; ay = 0f; adjust = true; selected = null; gallery = false
     }
@@ -243,6 +247,27 @@ fun WallpaperScreen(nav: Nav) {
         }
     }
     LaunchedEffect(Unit) { WallHandoff.path?.let { p -> WallHandoff.path = null; busy = true; usePhoto(File(p)) } }
+    // a ready-made depth wallpaper picked in the Wallpapers tab: its picture, its shape and its clock, all editable
+    LaunchedEffect(Unit) {
+        val id = WallHandoff.depth
+        if (id < 0) return@LaunchedEffect
+        WallHandoff.depth = -1; busy = true
+        val it = com.smrh.zujaj.wall.DepthScenes.all.firstOrNull { d -> d.id == id }
+        if (it != null) {
+            val (d, pb, mb) = withContext(Dispatchers.Default) {
+                val pt = com.smrh.zujaj.wall.DepthScenes.paint(it, screenW, screenH)
+                val dir = WallDesign.dir(ctx); val stamp = System.currentTimeMillis()
+                val img = File(dir, "depth_${id}_$stamp.png"); val msk = File(dir, "depth_${id}_${stamp}_m.png")
+                img.outputStream().use { o -> pt.full.compress(Bitmap.CompressFormat.PNG, 100, o) }
+                msk.outputStream().use { o -> pt.fg.compress(Bitmap.CompressFormat.PNG, 100, o) }
+                Triple(com.smrh.zujaj.wall.DepthScenes.design(it, img.path, msk.path, screenW, screenH), pt.full, pt.fg)
+            }
+            File(design.image).takeIf { design.image.isNotBlank() && it.name.startsWith("depth_") }?.delete()
+            photo = pb; mask = mb; design = d
+            selected = null; gallery = false; adjust = false
+        }
+        busy = false
+    }
 
     fun add(l: WallLayer) { update(design.copy(layers = design.layers + l)); selected = l.id; showSheet = false }
     fun change(id: Long, f: (WallLayer) -> WallLayer) = update(design.copy(layers = design.layers.map { if (it.id == id) f(it) else it }))
@@ -369,6 +394,10 @@ fun WallpaperScreen(nav: Nav) {
                     val hasMask = mask != null && subject != null
                     design.layers.filter { it.behind && hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if ((l.glass || l.glassFill) && !adjust) bg else null) }
                     if (hasMask && design.layers.any { it.behind }) subject?.let { Image(it, null, Modifier.fillMaxSize().then(photoMove).graphicsLayer { alpha = subjectIn.value }) }
+                    if (hasMask && subject != null) design.layers.filter { it.behind }.forEach { l ->
+                        if (l.blend > 0) LayerView(l, size, false, null, WallRender.BLEND[l.blend.coerceIn(0, 3)])
+                        if (l.front > 0) LayerView(l, size, false, null, 1f, l.front)
+                    }
                     design.layers.filter { !it.behind || !hasMask }.forEach { l -> LayerView(l, size, selected == l.id, if ((l.glass || l.glassFill) && !adjust) bg else null) }
                     // "found it" — glowing outline sweeping across the subject
                     if (found.value > 0f) outline?.let { o ->
@@ -458,7 +487,7 @@ fun WallpaperScreen(nav: Nav) {
                     }
                     handle(rc.right, rc.top, Icons.Rounded.Close) { selected = null; update(design.copy(layers = design.layers.filter { it.id != l.id })) }
                     handle(rc.left, rc.top, Icons.Rounded.ContentCopy) { add(l.copy(id = System.nanoTime(), cy = (l.cy + 0.08f).coerceAtMost(0.95f))) }
-                    handle(rc.right, rc.bottom, Icons.Rounded.Palette) { colorFor = l.id }
+                    handle(rc.right, rc.bottom, Icons.Rounded.Palette) { if (l.kind.startsWith("clock_")) studioFor = l.id else colorFor = l.id }
                     handle(rc.left, rc.bottom, Icons.Rounded.OpenInFull, Modifier.pointerInput(l.id) {
                         detectDragGestures { ch, d ->
                             ch.consume()
@@ -617,6 +646,14 @@ fun WallpaperScreen(nav: Nav) {
             Toast.makeText(ctx, tr("Tap any part to move, resize or recolour it", "اضغط على أي جزء عشان تحركه أو تكبره أو تغير لونه"), Toast.LENGTH_SHORT).show()
         }
     }
+    studioFor?.let { id ->
+        val l = design.layers.firstOrNull { it.id == id }
+        if (l == null) studioFor = null
+        else ModalBottomSheet(onDismissRequest = { studioFor = null }, containerColor = Z.surface2) {
+            StudioSheet(l, design, hasMask = mask != null, onLayer = { nl -> change(id) { nl } }, onDesign = { update(it) },
+                onDepth = { depth(listOf(id)) }, onColors = { studioFor = null; colorFor = id })
+        }
+    }
     colorFor?.let { id ->
         val l = design.layers.firstOrNull { it.id == id }
         if (l == null) colorFor = null
@@ -729,7 +766,7 @@ private fun Color.toArgbInt(): Int = android.graphics.Color.argb((alpha * 255).t
 
 /** One layer drawn from its own cached bitmap and placed with an offset — moving it is free. */
 @Composable
-private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: ImageBitmap? = null) {
+private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: ImageBitmap? = null, alphaK: Float = 1f, part: Int = 0) {
     val ctx = LocalContext.current
     if (box.width <= 0) return
     val rc = WallRender.rect(l, box.width, box.height)
@@ -748,7 +785,8 @@ private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: Imag
     }
     val glassUnder = if (l.glassFill) under else null
     val px6 = if (glassUnder != null) (rc.left / 6f).roundToInt() * 100000 + (rc.top / 6f).roundToInt() else 0
-    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute, arKey, glassUnder, px6) {
+    val look = listOf(l.fill, l.font, l.tfmt, l.h24, l.persp, (l.track * 100).roundToInt())
+    val bmp by produceState<ImageBitmap?>(null, l.kind, l.styleId, l.text, l.color, l.color2, l.gDir, wBucket, minute, arKey, glassUnder, px6, look) {
         value = withContext(Dispatchers.Default) { runCatching {
             val b = WallRender.styled(ctx, l, wBucket.coerceAtLeast(24))
             if (glassUnder != null) {
@@ -763,7 +801,20 @@ private fun LayerView(l: WallLayer, box: IntSize, selected: Boolean, under: Imag
         Image(b, null, Modifier
             .offset { IntOffset(rc.left.roundToInt(), (rc.centerY() - h / 2).roundToInt()) }
             .size(with(dens) { rc.width().toDp() }, with(dens) { h.toDp() })
-            .graphicsLayer { shadowElevation = 0f; alpha = l.alpha / 255f })
+            .graphicsLayer {
+                shadowElevation = 0f; alpha = l.alpha / 255f * alphaK
+                if (part != 0) {
+                    // only the hours or the minutes, for "this part in front"
+                    val pb = WallRender.partBox(l, part)
+                    clip = true
+                    shape = androidx.compose.ui.graphics.RectangleShape.let { _ ->
+                        object : androidx.compose.ui.graphics.Shape {
+                            override fun createOutline(size: androidx.compose.ui.geometry.Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density) =
+                                androidx.compose.ui.graphics.Outline.Rectangle(androidx.compose.ui.geometry.Rect(pb.left * size.width, pb.top * size.height, pb.right * size.width, pb.bottom * size.height))
+                        }
+                    }
+                }
+            })
     }
 }
 
@@ -1407,4 +1458,107 @@ private fun shareWall(ctx: android.content.Context, d: WallDesign, photo: Bitmap
         .putExtra(Intent.EXTRA_TEXT, "https://play.google.com/store/apps/details?id=" + ctx.packageName)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
+
+/** Depth studio for a clock: style, format, position, depth and motion — every look in one place. */
+@Composable
+private fun StudioSheet(l: WallLayer, design: WallDesign, hasMask: Boolean, onLayer: (WallLayer) -> Unit, onDesign: (WallDesign) -> Unit, onDepth: () -> Unit, onColors: () -> Unit) {
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val accent = LocalAccent.current
+    Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
+        Text(tr("Studio", "الاستوديو"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val tabs = listOf(tr("Style", "الشكل"), tr("Format", "التنسيق"), tr("Position", "المكان"), tr("Depth", "العمق"), tr("Motion", "الحركة"))
+            items(tabs.size) { i -> ZChip(tabs[i], tab == i) { tab = i } }
+        }
+        Spacer(Modifier.height(12.dp))
+        @Composable
+        fun title(t: String) = Text(t, color = Z.sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+        @Composable
+        fun slider(label: String, v: Float, range: ClosedFloatingPointRange<Float>, show: String, set: (Float) -> Unit) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, fontSize = 14.sp, modifier = Modifier.weight(1f)); Text(show, color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+            Slider(v, set, valueRange = range, colors = SliderDefaults.colors(thumbColor = accent, activeTrackColor = accent))
+        }
+        @Composable
+        fun chips(opts: List<String>, sel: Int, set: (Int) -> Unit) = androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(opts.size) { i -> ZChip(opts[i], sel == i) { set(i) } }
+        }
+        when (tab) {
+            0 -> {
+                title(tr("Font", "الخط"))
+                val ctx = LocalContext.current
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(WallRender.CLOCK_FONTS.size) { i ->
+                        val tf = remember(i) { androidx.compose.ui.text.font.FontFamily(com.smrh.zujaj.render.Fonts.get(ctx, WallRender.CLOCK_FONTS[i])) }
+                        val on = l.font == i || (l.font < 0 && i == (if (l.kind == "clock_tall") 0 else 1))
+                        Box(Modifier.size(58.dp).clip(CircleShape).background(Z.surface).border(if (on) 2.dp else 1.dp, if (on) accent else Z.line, CircleShape)
+                            .clickable { onLayer(l.copy(font = i)) }, contentAlignment = Alignment.Center) {
+                            Text("12", fontFamily = tf, fontSize = 24.sp, color = Z.text)
+                        }
+                    }
+                }
+                title(tr("Fill", "التلوين"))
+                chips(listOf(tr("Solid", "سادة"), tr("Split", "نصين"), tr("Gradient", "متدرج"), tr("Side gradient", "متدرج بالعرض"), tr("Fade top", "باهت من فوق"), tr("Fade bottom", "باهت من تحت")), l.fill) {
+                    onLayer(l.copy(fill = it, color2 = if (it == 0) 0 else if (l.color2 == 0) com.smrh.zujaj.wall.DepthScenes.moods[0].clock2 else l.color2))
+                }
+                title(tr("Colours", "الألوان"))
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(com.smrh.zujaj.wall.DepthScenes.moods.size) { i ->
+                        val m = com.smrh.zujaj.wall.DepthScenes.moods[i]
+                        Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Z.surface).border(1.dp, Z.line, RoundedCornerShape(14.dp))
+                            .clickable { onLayer(l.copy(color = m.clock1, color2 = if (l.fill == 0) 0 else m.clock2)) }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(Modifier.size(56.dp, 24.dp).clip(RoundedCornerShape(8.dp))) {
+                                Box(Modifier.weight(1f).fillMaxHeight().background(Color(m.clock1))); Box(Modifier.weight(1f).fillMaxHeight().background(Color(m.clock2)))
+                            }
+                            Text(if (Prefs.isArabicUi) m.ar else m.en, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+                TextButton(onClick = onColors) { Text(tr("Pick any colour…", "اختار أي لون…"), color = accent) }
+            }
+            1 -> {
+                slider(tr("Clock size", "حجم الساعة"), l.w, 0.15f..1.2f, "${(l.w * 100).roundToInt()}%") { onLayer(l.copy(w = it)) }
+                slider(tr("Opacity", "الشفافية"), l.alpha.toFloat(), 30f..255f, "${l.alpha * 100 / 255}%") { onLayer(l.copy(alpha = it.roundToInt())) }
+                slider(tr("Letter spacing", "المسافة بين الأرقام"), l.track, -0.1f..0.5f, "${(l.track * 100).roundToInt()}") { onLayer(l.copy(track = it)) }
+                val asp = WallRender.aspect(l)
+                slider(tr("Height", "الطول"), 1f / asp, 0.3f..3f, "${(100f / asp).roundToInt()}%") { onLayer(l.copy(ar = 1f / it)) }
+                title(tr("Time format", "شكل الوقت"))
+                chips(listOf("12:45", "1245", "12.45", "124508", "12:45:08"), l.tfmt) { onLayer(l.copy(tfmt = it)) }
+                title(tr("24-hour", "نظام ٢٤ ساعة"))
+                chips(listOf(tr("Phone setting", "زي التليفون"), tr("12-hour", "١٢ ساعة"), tr("24-hour", "٢٤ ساعة")), l.h24 + 1) { onLayer(l.copy(h24 = it - 1)) }
+            }
+            2 -> {
+                slider(tr("Left ↔ Right", "شمال ↔ يمين"), l.cx, 0f..1f, "${(l.cx * 100).roundToInt()}") { onLayer(l.copy(cx = it)) }
+                slider(tr("Top ↕ Bottom", "فوق ↕ تحت"), l.cy, 0f..1f, "${(l.cy * 100).roundToInt()}") { onLayer(l.copy(cy = it)) }
+                TextButton(onClick = { onLayer(l.copy(cx = 0.5f)) }) { Text(tr("Centre it", "في النص"), color = accent) }
+            }
+            3 -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Depth clock", "الساعة ورا الشكل"), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Places the clock between the shape and the sky.", "بتحط الساعة بين الشكل والسما."), color = Z.sub, fontSize = 12.sp)
+                    }
+                    Switch(l.behind && hasMask, { if (it && !hasMask) onDepth() else if (it) onLayer(l.copy(behind = true)) else onLayer(l.copy(behind = false)) },
+                        colors = SwitchDefaults.colors(checkedTrackColor = accent, checkedThumbColor = Color.White))
+                }
+                title(tr("Clock perspective", "منظور الساعة"))
+                chips(listOf(tr("Flat", "مسطح"), tr("Left wall", "حيطة شمال"), tr("Right wall", "حيطة يمين"), tr("Recede up", "لفوق"), tr("Recede down", "لتحت")), l.persp) { onLayer(l.copy(persp = it)) }
+                title(tr("In front of the shape", "قدام الشكل"))
+                chips(listOf(tr("All behind", "كلها ورا"), tr("Hours in front", "الساعات قدام"), tr("Minutes in front", "الدقايق قدام")), l.front) { onLayer(l.copy(front = it, behind = true)) }
+                title(tr("Blend with the shape", "تداخل مع الشكل"))
+                chips(listOf(tr("Off", "مقفول"), tr("Soft", "خفيف"), tr("Medium", "متوسط"), tr("Strong", "قوي")), l.blend) { onLayer(l.copy(blend = it)) }
+            }
+            else -> {
+                Text(tr("Works when it's set as a live wallpaper.", "بتشتغل لما تحطها خلفية حيّة."), color = Z.sub, fontSize = 12.sp)
+                title(tr("Parallax (tilt your phone)", "بارالاكس (ميّل التليفون)"))
+                chips(listOf(tr("Off", "مقفول"), tr("Soft", "خفيف"), tr("Medium", "متوسط"), tr("Strong", "قوي")), design.parallax) { onDesign(design.copy(parallax = it)) }
+                title(tr("On unlock", "لما تفتح القفل"))
+                chips(listOf(tr("None", "من غير"), tr("Fade & scale", "ظهور وتكبير"), tr("Slide up", "يطلع لفوق"), tr("Slide down", "ينزل لتحت"), tr("Slide left", "يمين لشمال"), tr("Slide right", "شمال ليمين")), design.anim) { onDesign(design.copy(anim = it)) }
+            }
+        }
+    }
 }

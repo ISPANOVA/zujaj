@@ -39,6 +39,21 @@ data class WallLayer(
     val hide: Float = 0.3f,
     /** date line: stays just above the clock */
     val stick: Boolean = true,
+    /** Depth studio (clocks): font (-1 = the kind's own), fill look, letter spacing, time format,
+     *  24h (-1 = phone setting), perspective, see-through over the subject, and which part sits in front */
+    val font: Int = -1,
+    /** 0 solid (or the old 2-colour gradient), 1 split, 2 gradient, 3 side gradient, 4 fade top, 5 fade bottom */
+    val fill: Int = 0,
+    val track: Float = 0f,
+    /** 0 12:45, 1 1245, 2 12.45, 3 124508, 4 12:45:08 */
+    val tfmt: Int = 0,
+    val h24: Int = -1,
+    /** 0 flat, 1 left wall, 2 right wall, 3 recede up, 4 recede down */
+    val persp: Int = 0,
+    /** 0 off … 3 strong: how much of the hidden part shows through the subject */
+    val blend: Int = 0,
+    /** 0 all behind, 1 hours in front, 2 minutes in front */
+    val front: Int = 0,
 )
 
 @Serializable
@@ -58,6 +73,12 @@ data class WallDesign(
     val filter: Int = 0,
     /** darkens the top of the photo (0–80 %) so the clock stands out */
     val topShade: Int = 0,
+    /** live wallpaper: tilt parallax 0 off, 1 soft, 2 medium, 3 strong */
+    val parallax: Int = 0,
+    /** live wallpaper: how the clock shows on unlock — 0 none, 1 fade & scale, 2 slide up, 3 slide down, 4 slide left, 5 slide right */
+    val anim: Int = 0,
+    /** id of the ready-made depth wallpaper it started from (-1 = own photo) */
+    val depthId: Int = -1,
 ) {
     fun toJson() = J.encodeToString(this)
 

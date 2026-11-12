@@ -54,6 +54,26 @@ object Walls {
         db().collection("app").document("walls").set(mapOf("hidden" to FieldValue.arrayUnion(id)), com.google.firebase.firestore.SetOptions.merge()).await()
     }
 
+    // ------------------------------------------------------------ ready-made depth wallpapers: Pro / free / hidden, set in the control panel
+    data class DepthCfg(val pro: Set<Int> = emptySet(), val free: Set<Int> = emptySet(), val hidden: Set<Int> = emptySet()) {
+        /** first 20 (one of each scene) and every 5th are free unless the admin says otherwise */
+        fun isPro(id: Int) = id in pro || (id !in free && !(id < 20 || id % 5 == 0))
+    }
+    @Volatile var depthCache = DepthCfg()
+    suspend fun depthCfg(): DepthCfg {
+        val d = db().collection("app").document("walls").get().await()
+        fun ints(k: String) = (d.get(k) as? List<*>)?.mapNotNull { (it as? Number)?.toInt() }?.toSet().orEmpty()
+        return DepthCfg(ints("depthPro"), ints("depthFree"), ints("depthHidden")).also { depthCache = it }
+    }
+    suspend fun setDepthPro(id: Int, pro: Boolean) {
+        val doc = db().collection("app").document("walls")
+        val (add, rem) = if (pro) "depthPro" to "depthFree" else "depthFree" to "depthPro"
+        doc.set(mapOf(add to FieldValue.arrayUnion(id), rem to FieldValue.arrayRemove(id)), com.google.firebase.firestore.SetOptions.merge()).await()
+    }
+    suspend fun setDepthHidden(id: Int, hidden: Boolean) {
+        db().collection("app").document("walls").set(mapOf("depthHidden" to if (hidden) FieldValue.arrayUnion(id) else FieldValue.arrayRemove(id)), com.google.firebase.firestore.SetOptions.merge()).await()
+    }
+
     // ------------------------------------------------------------ uploading
     /** At most 3 community uploads a day from one phone. */
     fun canSubmit(): Boolean {

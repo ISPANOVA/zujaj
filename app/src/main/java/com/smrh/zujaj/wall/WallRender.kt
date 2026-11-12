@@ -49,7 +49,7 @@ object WallRender {
         BitmapFactory.decodeFile(path, o)
         var s = 1
         while (max(o.outWidth, o.outHeight) / (s * 2) >= maxSide) s *= 2
-        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = s })?.let { if (trim) trimBars(it) else it }
+        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = s })?.let { if (trim && !File(path).name.startsWith("depth_")) trimBars(it) else it }
     }.getOrNull()
 
     /** Cuts off flat black (or white) bars around a photo — e.g. a screenshot of a picture. */
@@ -371,14 +371,18 @@ object WallRender {
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = l.color }
         val date = Date(now.toInstant().toEpochMilli())
         fun t(pat: String) = r.n(SimpleDateFormat(pat, Locale.US).format(date))
-        val hm = if (Prefs.isArabicUi && false) "" else if (android.text.format.DateFormat.is24HourFormat(ctx)) "HH:mm" else "hh:mm"
+        val is24 = if (l.h24 < 0) android.text.format.DateFormat.is24HourFormat(ctx) else l.h24 == 1
+        val hh = if (is24) "HH" else "hh"
+        val hm = when (l.tfmt) { 1 -> "${hh}mm"; 2 -> "$hh.mm"; 3 -> "${hh}mmss"; 4 -> "$hh:mm:ss"; else -> "$hh:mm" }
+        if (l.track != 0f) p.letterSpacing = l.track
+        fun clockFont(def: F) = r.tf(CLOCK_FONTS.getOrNull(l.font) ?: def)
         when (l.kind) {
-            "clock_tall" -> { p.typeface = r.tf(F.CLK_BEBAS); fitText(c, t(hm), box, p, l.fit) }
-            "clock_thin" -> { p.typeface = r.tf(F.CLK_SIXCAPS); fitText(c, t(hm), box, p, l.fit) }
+            "clock_tall" -> { p.typeface = clockFont(F.CLK_BEBAS); fitText(c, t(hm), box, p, l.fit) }
+            "clock_thin" -> { p.typeface = clockFont(F.CLK_SIXCAPS); fitText(c, t(hm), box, p, l.fit) }
             "clock_stack" -> {
-                p.typeface = r.tf(F.CLK_SIXCAPS)
-                fitText(c, t(hm.take(2)), RectF(0f, 0f, w.toFloat(), h * 0.49f), p, l.fit)
-                fitText(c, t("mm"), RectF(0f, h * 0.51f, w.toFloat(), h.toFloat()), p, l.fit)
+                p.typeface = clockFont(F.CLK_SIXCAPS)
+                fitText(c, t(hh), RectF(0f, 0f, w.toFloat(), h * 0.49f), p, l.fit)
+                fitText(c, t(if (l.tfmt >= 3) "mmss" else "mm"), RectF(0f, h * 0.51f, w.toFloat(), h.toFloat()), p, l.fit)
             }
             "date_line" -> dateLine(r, c, l, w.toFloat(), h.toFloat(), date)
             "day_calli" -> r.textTight(Kit.dayName(r, true), w / 2f, h / 2f, h * 0.9f, l.color, r.calliFont, maxW = w * 0.98f, maxH = h * 0.92f)
@@ -459,18 +463,59 @@ object WallRender {
     }
 
     /** Layer bitmap with its solid/gradient colour applied. */
+    val BLEND = floatArrayOf(0f, 0.22f, 0.4f, 0.6f)
+
+    /** Clock fonts offered in the depth studio, in picker order. */
+    val CLOCK_FONTS = listOf(F.CLK_BEBAS, F.CLK_SIXCAPS, F.CLK_ANTON, F.CLK_OSWALD, F.CLK_SHOULDERS, F.CLK_ORBITRON, F.CLK_MICHROMA,
+        F.CLK_UNBOUNDED, F.CLK_SYNE, F.CLK_RIGHTEOUS, F.CLK_ARCHIVO, F.CLK_ABRIL, F.CLK_PLAYFAIR, F.CLK_BODONI, F.CLK_DMSERIF, F.CLK_POIRET, F.CLK_LABEL, F.CLK_COMFORTAA)
+
     fun styled(ctx: Context, l: WallLayer, wPx: Int, now: ZonedDateTime = ZonedDateTime.now()): Bitmap {
         val b = layerBitmap(ctx, l, wPx, now)
-        if (l.color2 == 0) return b
-        val out = if (b.isMutable) b else b.copy(Bitmap.Config.ARGB_8888, true)
-        val c = Canvas(out)
-        val (x1, y1) = when (l.gDir) { 1 -> out.width.toFloat() to 0f; 2 -> out.width.toFloat() to out.height.toFloat(); else -> 0f to out.height.toFloat() }
-        val p = Paint().apply {
-            shader = android.graphics.LinearGradient(0f, 0f, x1, y1, l.color, l.color2, android.graphics.Shader.TileMode.CLAMP)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        val out0 = if (l.fill == 0 && l.color2 == 0) b else {
+            val out = if (b.isMutable) b else b.copy(Bitmap.Config.ARGB_8888, true)
+            val c = Canvas(out)
+            val W = out.width.toFloat(); val H = out.height.toFloat()
+            val c2 = if (l.color2 != 0) l.color2 else l.color
+            val clear = l.color and 0x00FFFFFF
+            val sh: android.graphics.Shader = when (l.fill) {
+                1 -> android.graphics.LinearGradient(0f, 0f, W, 0f, intArrayOf(l.color, l.color, c2, c2), floatArrayOf(0f, 0.5f, 0.5f, 1f), android.graphics.Shader.TileMode.CLAMP)
+                2 -> android.graphics.LinearGradient(0f, 0f, 0f, H, l.color, c2, android.graphics.Shader.TileMode.CLAMP)
+                3 -> android.graphics.LinearGradient(0f, 0f, W, 0f, l.color, c2, android.graphics.Shader.TileMode.CLAMP)
+                4 -> android.graphics.LinearGradient(0f, 0f, 0f, H, intArrayOf(clear, l.color, c2), floatArrayOf(0f, 0.55f, 1f), android.graphics.Shader.TileMode.CLAMP)
+                5 -> android.graphics.LinearGradient(0f, 0f, 0f, H, intArrayOf(l.color, c2, c2 and 0x00FFFFFF), floatArrayOf(0f, 0.45f, 1f), android.graphics.Shader.TileMode.CLAMP)
+                else -> {
+                    val (x1, y1) = when (l.gDir) { 1 -> W to 0f; 2 -> W to H; else -> 0f to H }
+                    android.graphics.LinearGradient(0f, 0f, x1, y1, l.color, l.color2, android.graphics.Shader.TileMode.CLAMP)
+                }
+            }
+            c.drawRect(0f, 0f, W, H, Paint().apply { shader = sh; xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN) })
+            out
         }
-        c.drawRect(0f, 0f, out.width.toFloat(), out.height.toFloat(), p)
+        return if (l.persp == 0) out0 else perspective(out0, l.persp)
+    }
+
+    /** Leans the layer like a wall or a floor, inside its own box. */
+    fun perspective(b: Bitmap, mode: Int): Bitmap {
+        val W = b.width.toFloat(); val H = b.height.toFloat()
+        val k = 0.22f
+        val dst = when (mode) {
+            1 -> floatArrayOf(0f, 0f, W, H * k, W, H * (1 - k), 0f, H)            // left wall: far edge on the right
+            2 -> floatArrayOf(0f, H * k, W, 0f, W, H, 0f, H * (1 - k))             // right wall
+            3 -> floatArrayOf(W * k, 0f, W * (1 - k), 0f, W, H, 0f, H)             // recede up
+            else -> floatArrayOf(0f, 0f, W, 0f, W * (1 - k), H, W * k, H)          // recede down
+        }
+        val m = Matrix(); m.setPolyToPoly(floatArrayOf(0f, 0f, W, 0f, W, H, 0f, H), 0, dst, 0, 4)
+        val out = Bitmap.createBitmap(b.width, b.height, Bitmap.Config.ARGB_8888)
+        Canvas(out).drawBitmap(b, m, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
         return out
+    }
+
+    /** Part of a clock layer's box that is the hours (1) or the minutes (2), as fractions of its width/height. */
+    fun partBox(l: WallLayer, part: Int): RectF {
+        val stack = l.kind == "clock_stack"
+        val cut = if (l.tfmt == 1 || l.tfmt == 3) 0.5f else 0.47f
+        return if (stack) { if (part == 1) RectF(0f, 0f, 1f, 0.5f) else RectF(0f, 0.5f, 1f, 1f) }
+        else if (part == 1) RectF(0f, 0f, cut, 1f) else RectF(1f - cut, 0f, 1f, 1f)
     }
 
     /** The photo (blurred/darkened as set), cropped to W×H. */
@@ -503,6 +548,26 @@ object WallRender {
         val mp = Paint(Paint.FILTER_BITMAP_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
         sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
         return sub
+    }
+
+    /** The wallpaper split into its 4 planes (for the live wallpaper's tilt and unlock motion). */
+    class Parts(val bg: Bitmap, val behind: Bitmap?, val subject: Bitmap?, val top: Bitmap?)
+
+    fun parts(ctx: Context, d0: WallDesign, photo: Bitmap?, mask: Bitmap?, W: Int, H: Int, now: ZonedDateTime = ZonedDateTime.now()): Parts {
+        val d = WallFit.apply(d0, photo, mask, W, H)
+        val bg = background(d, photo, W, H)
+        val deep = photo != null && mask != null && d.layers.any { it.behind }
+        fun layer(block: (Canvas) -> Unit): Bitmap = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888).also { block(Canvas(it)) }
+        val behind = if (deep) layer { c -> d.layers.filter { it.behind }.forEach { l -> drawLayer(ctx, c, l, W, H, now, bg) } } else null
+        val sub = if (deep) subject(d, photo!!, mask!!, W, H) else null
+        val top = layer { c ->
+            if (deep) d.layers.filter { it.behind }.forEach { l ->
+                if (l.blend > 0) drawLayer(ctx, c, l, W, H, now, null, BLEND[l.blend.coerceIn(0, 3)])
+                if (l.front > 0) drawLayer(ctx, c, l, W, H, now, null, 1f, l.front)
+            }
+            d.layers.filter { !it.behind || !deep }.forEach { l -> drawLayer(ctx, c, l, W, H, now, bg) }
+        }
+        return Parts(bg, behind, sub, top)
     }
 
     /** A soft glowing outline of the subject (for the "found it" animation). */
@@ -639,18 +704,25 @@ object WallRender {
         return top to bottom
     }
 
-    private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime, under: Bitmap? = null) {
+    private fun drawLayer(ctx: Context, c: Canvas, l: WallLayer, W: Int, H: Int, now: ZonedDateTime, under: Bitmap? = null, alphaK: Float = 1f, part: Int = 0) {
         val rc = rect(l, W, H)
+        if (part != 0) {
+            val pb = partBox(l, part)
+            c.save(); c.clipRect(rc.left + pb.left * rc.width(), rc.top - rc.height(), rc.left + pb.right * rc.width(), rc.bottom + rc.height())
+            if (l.kind == "clock_stack") { c.restore(); c.save(); c.clipRect(rc.left - rc.width(), rc.top + pb.top * rc.height(), rc.right + rc.width(), rc.top + pb.bottom * rc.height()) }
+            drawLayer(ctx, c, l.copy(glass = false), W, H, now, under, alphaK, 0)
+            c.restore(); return
+        }
         if (l.glass && under != null) glassPlate(under, rc)?.let { c.drawBitmap(it, null, glassRect(rc), Paint(Paint.FILTER_BITMAP_FLAG)) }
         val b = styled(ctx, l, rc.width().toInt(), now)
         val dst = RectF(rc.left, rc.centerY() - rc.width() / (b.width / b.height.toFloat()) / 2, rc.right, rc.centerY() + rc.width() / (b.width / b.height.toFloat()) / 2)
-        if (l.shadow && !l.glassFill) {
+        if (l.shadow && !l.glassFill && alphaK >= 1f) {
             val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(rc.width() * 0.02f + 2f, BlurMaskFilter.Blur.NORMAL); alpha = 90 }
             val sh = b.extractAlpha()
             c.drawBitmap(sh, null, RectF(dst.left, dst.top + rc.width() * 0.006f, dst.right, dst.bottom + rc.width() * 0.006f), sp.apply { color = Color.BLACK })
         }
         val fin = if (l.glassFill && under != null) runCatching { glassify(b, under, dst) }.getOrDefault(b) else b
-        c.drawBitmap(fin, null, dst, Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = l.alpha })
+        c.drawBitmap(fin, null, dst, Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = (l.alpha * alphaK).toInt() })
     }
 
     /**
@@ -685,6 +757,11 @@ object WallRender {
             val mp = Paint(Paint.FILTER_BITMAP_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
             sc.drawBitmap(mask, Matrix(m).apply { preScale(photo.width / mask.width.toFloat(), photo.height / mask.height.toFloat()) }, mp)
             c.drawBitmap(sub, 0f, 0f, Paint().apply { alpha = (255 * reveal).toInt() })
+            // see-through and "this part in front" for layers tucked behind the subject
+            for (l in d.layers.filter { it.behind }) {
+                if (l.blend > 0) drawLayer(ctx, c, l, W, H, now, null, BLEND[l.blend.coerceIn(0, 3)])
+                if (l.front > 0) drawLayer(ctx, c, l, W, H, now, null, 1f, l.front)
+            }
         }
         for (l in d.layers.filter { !it.behind || mask == null }) drawLayer(ctx, c, l, W, H, now, out)
         return out

@@ -264,13 +264,25 @@ object WallLibrary {
 }
 
 /** Hands a picture to the wallpaper editor (photo + clocks/widgets on top). */
-object WallHandoff { @Volatile var path: String? = null }
+object WallHandoff { @Volatile var path: String? = null; @Volatile var depth: Int = -1 }
 
 /** One card in the Wallpapers tab: a built-in drawing or an uploaded picture. */
 sealed class WallSrc {
     abstract val key: String; abstract val by: String
     data class Built(val wp: WallLibrary.Wall) : WallSrc() { override val key = "b${wp.id}"; override val by = "SMRH" }
     data class Remote(val item: com.smrh.zujaj.remote.Walls.Item) : WallSrc() { override val key = "r${item.id}"; override val by = item.by }
+    data class Depth(val d: com.smrh.zujaj.wall.DepthScenes.Item) : WallSrc() { override val key = "d${d.id}"; override val by = "SMRH" }
+}
+
+/** Small previews of the ready-made depth wallpapers, with their clock tucked behind the shape. */
+object DepthThumbs {
+    private val cache = android.util.LruCache<Int, ImageBitmap>(80)
+    suspend fun get(ctx: android.content.Context, it: com.smrh.zujaj.wall.DepthScenes.Item): ImageBitmap = cache.get(it.id) ?: withContext(Dispatchers.Default) {
+        val W = 360; val H = 780
+        val pt = com.smrh.zujaj.wall.DepthScenes.paint(it, W, H)
+        val d = com.smrh.zujaj.wall.DepthScenes.design(it, "", "", W, H)
+        com.smrh.zujaj.wall.WallRender.compose(ctx, d, pt.full, pt.fg, W, H).asImageBitmap().also { b -> cache.put(it.id, b) }
+    }
 }
 
 /** Centre-crops [src] to the phone's screen shape and sets it. where: 1 home, 2 lock, 3 both. */
@@ -303,7 +315,11 @@ fun WallLibraryTab(nav: Nav) {
     var hidden by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var community by remember { mutableStateOf<List<com.smrh.zujaj.remote.Walls.Item>?>(null) }
     var err by remember { mutableStateOf(false) }
+    var depthCfg by remember { mutableStateOf(com.smrh.zujaj.remote.Walls.depthCache) }
+    val ownedWall by com.smrh.zujaj.billing.Billing.wall.collectAsState()
+    var buyDepth by remember { mutableStateOf(false) }
     LaunchedEffect(reload) {
+        runCatching { com.smrh.zujaj.remote.Walls.depthCfg() }.onSuccess { depthCfg = it }
         runCatching { com.smrh.zujaj.remote.Walls.hiddenBuiltIn() }.onSuccess { hidden = it }
         runCatching { com.smrh.zujaj.remote.Walls.approved("home") }.onSuccess { homeRemote = it }
         runCatching { com.smrh.zujaj.remote.Walls.approved("community") }.onSuccess { community = it; err = false }.onFailure { err = true; community = community ?: emptyList() }
@@ -327,9 +343,11 @@ fun WallLibraryTab(nav: Nav) {
             (homeRemote + community.orEmpty()).associate { it.id to (com.smrh.zujaj.remote.Walls.decode(it.thumb)?.let { b -> WallLibrary.family(WallLibrary.average(b)) } ?: 1) }
         }
     }
-    fun famOf(s: WallSrc) = when (s) { is WallSrc.Built -> WallLibrary.family(s.wp); is WallSrc.Remote -> remoteFam[s.item.id] ?: -1 }
+    fun famOf(s: WallSrc) = when (s) { is WallSrc.Built -> WallLibrary.family(s.wp); is WallSrc.Remote -> remoteFam[s.item.id] ?: -1
+        is WallSrc.Depth -> WallLibrary.family(com.smrh.zujaj.wall.DepthScenes.moods[s.d.mood].glow) }
     val gut = if (pane >= 600) Sp.xl else Sp.l
-    val list: List<WallSrc>? = (if (page == 0) homeRemote.map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in hidden }.map { WallSrc.Built(it) }
+    val list: List<WallSrc>? = (if (page == 2) com.smrh.zujaj.wall.DepthScenes.all.filter { it.id !in depthCfg.hidden }.map { WallSrc.Depth(it) }
+        else if (page == 0) homeRemote.map { WallSrc.Remote(it) } + WallLibrary.all.filter { it.id !in hidden }.map { WallSrc.Built(it) }
         else community?.map { WallSrc.Remote(it) })?.filter { fam == 0 || famOf(it) == fam }
     LazyVerticalGrid(GridCells.Fixed(cols), Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = gut, end = gut, top = Sp.l, bottom = LocalDockSpace.current),
@@ -349,7 +367,9 @@ fun WallLibraryTab(nav: Nav) {
                     }
                     Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Z.sub)
                 }
-                Segmented(listOf(tr("Home", "الرئيسية"), tr("Community", "المجتمع")), page) { page = it }
+                // tabs: Home · Depth · Community (pages 0, 2, 1)
+                Segmented(listOf(tr("Home", "الرئيسية"), tr("Depth", "عمق"), tr("Community", "المجتمع")), when (page) { 2 -> 1; 1 -> 2; else -> 0 }) { page = when (it) { 1 -> 2; 2 -> 1; else -> 0 } }
+                if (page == 2) Text(tr("The clock sits behind the shape. Tap one to open it in the studio and change everything.", "الساعة ورا الشكل. اضغط على أي واحدة تفتحها في الاستوديو وتغيّر فيها كل حاجة."), fontSize = 13.sp, color = Z.sub)
                 // colour filter
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(WallLibrary.families.size) { i ->
@@ -398,12 +418,19 @@ fun WallLibraryTab(nav: Nav) {
         }
         items(list.orEmpty(), key = { it.key }) { src ->
             Column {
-                WallThumb(src, Modifier.fillMaxWidth().aspectRatio(270f / 585f).clickable { open = src })
-                Text(src.by, fontSize = 12.sp, color = Z.sub, maxLines = 1, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                val pro = src is WallSrc.Depth && depthCfg.isPro(src.d.id)
+                WallThumb(src, Modifier.fillMaxWidth().aspectRatio(270f / 585f).clickable {
+                    if (src is WallSrc.Depth) {
+                        if (pro && !ownedWall) buyDepth = true
+                        else { WallHandoff.depth = src.d.id; nav.go(Screen.Wallpapers) }
+                    } else open = src
+                }, pro = pro && !ownedWall)
+                Text(if (src is WallSrc.Depth) src.d.name(ar) else src.by, fontSize = 12.sp, color = Z.sub, maxLines = 1, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
             }
         }
     }
     open?.let { WallSheet(it, nav) { open = null } }
+    if (buyDepth) WallBuySheet { buyDepth = false }
     picked?.let { bmp ->
         ZDialog(Icons.Rounded.Upload, tr("Share this wallpaper", "شارك الخلفية دي"), tr("It shows in Community after review. Your name appears under it.", "هتظهر في المجتمع بعد المراجعة، واسمك هيتكتب تحتها."), onDismiss = { if (!sending) picked = null }) {
             Image(bmp.asImageBitmap(), null, Modifier.height(200.dp).aspectRatio(270f / 585f).clip(RoundedCornerShape(Rad.m)).align(Alignment.CenterHorizontally), contentScale = ContentScale.Crop)
@@ -425,15 +452,20 @@ fun WallLibraryTab(nav: Nav) {
 }
 
 @Composable
-fun WallThumb(src: WallSrc, modifier: Modifier) {
+fun WallThumb(src: WallSrc, modifier: Modifier, pro: Boolean = false) {
+    val ctx = LocalContext.current
     val img by produceState<ImageBitmap?>(null, src.key) {
         value = when (src) {
             is WallSrc.Built -> WallLibrary.thumb(src.wp)
             is WallSrc.Remote -> withContext(Dispatchers.Default) { com.smrh.zujaj.remote.Walls.decode(src.item.thumb)?.asImageBitmap() }
+            is WallSrc.Depth -> runCatching { DepthThumbs.get(ctx, src.d) }.getOrNull()
         }
     }
     Box(modifier.clip(RoundedCornerShape(Rad.l)).then(if (img == null) Modifier.shimmer() else Modifier.background(Z.surface)).border(1.dp, Z.line, RoundedCornerShape(Rad.l))) {
         img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        if (pro) Box(Modifier.align(Alignment.TopEnd).padding(7.dp).clip(RoundedCornerShape(50)).background(Z.pro).padding(horizontal = 7.dp, vertical = 2.dp)) {
+            Text("PRO", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+        }
     }
 }
 
@@ -449,6 +481,7 @@ private fun WallSheet(src: WallSrc, nav: Nav, onClose: () -> Unit) {
                 WallLibrary.paint(src.wp, minOf(dm.widthPixels, dm.heightPixels, 1440), maxOf(dm.widthPixels, dm.heightPixels).coerceAtMost(3120))
             }
             is WallSrc.Remote -> runCatching { com.smrh.zujaj.remote.Walls.fullImage(src.item.id) }.getOrNull()
+            is WallSrc.Depth -> null
         }
     }
     val preview = remember(big) { big?.asImageBitmap() }
